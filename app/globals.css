@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html.dark {
+  /* background-color: rgb(17, 17, 19); */
+  background-color: #18181b;
+}
+
+html.light {
+  /* background-color: rgb(238, 237, 242); */
+  background-color: #ffffff;
+}
+
+nav [data-active="true"] a {
+  color: #a6ff00;
+}
+
+.dark path.recharts-rectangle{
+  fill: #a6ff00;
+}
+
+.dark path.recharts-curve.recharts-area-area
+{
+  fill: #a6ff00;
+}
+
+.dark path.recharts-curve.recharts-line-curve{
+  stroke: #a6ff00;
+}

@@ -1,0 +1,198 @@
+import { auth } from "@clerk/nextjs";
+import prisma from "@/prisma/prisma";
+import { Prisma } from "@prisma/client";
+import Link from "next/link";
+import { Button } from "@nextui-org/button";
+import { IconPlus } from "@tabler/icons-react";
+import PageHeading from "@/components/PageHeading/PageHeading";
+import RoutineCards from "./_components/RoutineCards";
+import { WorkoutPlan } from "@prisma/client";
+
+type Exercise = {
+  id: string;
+  name: string;
+  category: string;
+};
+
+type WorkoutPlanExercise = {
+  Exercise: Exercise;
+  order: number | null;
+  sets: number;
+};
+
+type ExtendedWorkoutPlan = WorkoutPlan & {
+  WorkoutPlanExercise: WorkoutPlanExercise[];
+};
+
+export default async function WorkoutPage() {
+  const { userId }: { userId: string | null } = auth();
+
+  if (!userId) {
+    throw new Error("You must be signed in to view this page.");
+  }
+
+  // Fetch user role
+  const userInfo = await prisma.userInfo.findUnique({
+    where: { userId },
+    select: { role: true },
+  });
+
+  const isAdmin = userInfo?.role === "ADMIN" || userInfo?.role === "SUPER_ADMIN";
+
+  // Fetch assigned workouts
+  const assignedWorkouts = await prisma.assignedWorkout.findMany({
+    where: {
+      userId: userId,
+      status: {
+        in: ["PENDING", "IN_PROGRESS"],
+      },
+    },
+    orderBy: {
+      assignedAt: "desc",
+    },
+    include: {
+      workoutPlan: {
+        include: {
+          WorkoutPlanExercise: {
+            include: {
+              Exercise: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: true,
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Fetch admin info for assigned workouts
+  const adminIds = [...new Set(assignedWorkouts.map(aw => aw.assignedBy))];
+  let adminMap = new Map();
+
+  if (adminIds.length > 0) {
+    // Get admin info from Clerk since UserInfo only has userId and role
+    const { clerkClient } = await import("@clerk/nextjs");
+
+    try {
+      const adminUsers = await Promise.all(
+        adminIds.map(async (adminId) => {
+          try {
+            const user = await clerkClient.users.getUser(adminId);
+            return {
+              userId: adminId,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              username: user.username,
+              email: user.emailAddresses?.[0]?.emailAddress,
+            };
+          } catch (error) {
+            // If user not found in Clerk, return basic info
+            return {
+              userId: adminId,
+              firstName: null,
+              lastName: null,
+              username: null,
+              email: null,
+            };
+          }
+        })
+      );
+
+      adminMap = new Map(adminUsers.map(admin => [admin.userId, admin]));
+    } catch (error) {
+      console.error("Error fetching admin info:", error);
+    }
+  }
+
+  const whereClause: Prisma.WorkoutPlanWhereInput[] = [
+    { isSystemRoutine: true },
+  ];
+
+  if (userId && typeof userId === "string") {
+    whereClause.push({
+      userId: userId,
+    });
+  }
+
+  const routines: ExtendedWorkoutPlan[] = await prisma.workoutPlan.findMany({
+    where: {
+      OR: whereClause,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      WorkoutPlanExercise: {
+        select: {
+          sets: true,
+          reps: true,
+          exerciseDuration: true,
+          order: true,
+          Exercise: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const userRoutines = routines.filter((routine) => !routine.isSystemRoutine);
+  const systemRoutines = routines.filter((routine) => routine.isSystemRoutine);
+
+  return (
+    <>
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+      <PageHeading title="Start Workout" />
+
+        {isAdmin && (
+          <Button
+            as={Link}
+            href="/edit-routine/step-1"
+            color="primary"
+            className="gap-unit-1 mb-3"
+          >
+            <IconPlus size={16} /> New Routine
+          </Button>
+        )}
+      </div>
+
+      {assignedWorkouts.length > 0 && (
+        <>
+          <h2 className="font-semibold text-xl md:text-2xl mb-3">Assigned Workouts</h2>
+          <RoutineCards
+            routines={assignedWorkouts.map(aw => ({
+              ...aw.workoutPlan,
+              _assignmentId: aw.id,
+              _assignmentStatus: aw.status,
+              _assignedBy: aw.assignedBy,
+              _assignedByAdmin: adminMap.get(aw.assignedBy),
+            }))}
+            isSystem={false}
+            isAssigned={true}
+          />
+        </>
+      )}
+
+      {isAdmin && (
+        <>
+          <h2 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Your Routines</h2>
+          <RoutineCards routines={userRoutines} isSystem={false} />
+        </>
+      )}
+
+      <h3 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Example Routines</h3>
+      <RoutineCards routines={systemRoutines} isSystem={true} />
+    </>
+  );
+}

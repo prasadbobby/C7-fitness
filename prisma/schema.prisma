@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserInfo {
+  id     String @id @default(uuid())
+  userId String @unique
+  age    Int?
+  height Float?
+  weight Float?
+  role   UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assignedWorkouts AssignedWorkout[]
+}
+
+model AssignedWorkout {
+  id            String      @id @default(uuid())
+  userId        String
+  workoutPlanId String
+  assignedBy    String      // Admin user ID
+  assignedAt    DateTime    @default(now())
+  status        AssignmentStatus @default(PENDING)
+  notes         String?
+  dueDate       DateTime?
+  user          UserInfo    @relation(fields: [userId], references: [userId])
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+}
+
+model Exercise {
+  id                  String                @id @default(uuid())
+  name                String
+  aliases             String[]
+  primary_muscles     Muscle[]
+  secondary_muscles   Muscle[]
+  force               ForceType?
+  level               LevelType
+  mechanic            MechanicType?
+  equipment           EquipmentType?
+  category            CategoryType
+  instructions        String[]
+  description         String?
+  tips                String[]
+  image               String?
+  date_created        DateTime              @default(now())
+  date_updated        DateTime?             @default(now())
+  WorkoutPlanExercise WorkoutPlanExercise[]
+  logExercises  WorkoutLogExercise[]
+  userPBs UserExercisePB[]
+  favouritedBy FavouriteExercise[]
+  userGoals           UserGoal[]
+}
+
+model FavouriteExercise {
+  userId   String
+  favouritedAt   DateTime @default(now())
+  exerciseId    String
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@id([userId, exerciseId])
+}
+
+model WorkoutPlan {
+  id              String              @id @default(uuid())
+  name            String
+  userId     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  notes           String?
+  isSystemRoutine Boolean             @default(false)
+  systemRoutineCategory String?
+  logs            WorkoutLog[]
+  WorkoutPlanExercise WorkoutPlanExercise[]
+  assignedWorkouts AssignedWorkout[]
+}
+
+model WorkoutPlanExercise {
+  id                String        @id @default(uuid())
+  workoutPlanId String
+  exerciseId    String
+  sets          Int
+  reps          Int?
+  exerciseDuration  Int?
+  order         Int?
+  trackingType  TrackingType
+  Exercise      Exercise    @relation(fields: [exerciseId], references: [id])
+  WorkoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+}
+
+model WorkoutLog {
+  id              String              @id @default(uuid())
+  userId     String
+  workoutPlanId   String
+  date            DateTime
+  duration        Int
+  inProgress      Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  date_updated    DateTime?           @default(now())
+  WorkoutPlan     WorkoutPlan        @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exercises       WorkoutLogExercise[]
+  UserExercisePB  UserExercisePB[]    @relation("WorkoutLogToUserExercisePB")
+}
+
+model WorkoutLogExercise {
+  id            String @id @default(uuid())
+  workoutLogId  String
+  exerciseId    String
+  trackingType  TrackingType
+  Exercise      Exercise   @relation(fields: [exerciseId], references: [id])
+  WorkoutLog    WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+  sets          SetLog[]
+}
+
+model SetLog {
+  id            String @id @default(uuid())
+  workoutLogExerciseId String
+  weight              Float?
+  reps                Int?
+  exerciseDuration            Int?
+  order               Int?
+  isWarmUp            Boolean           @default(false)
+  WorkoutLogExercise  WorkoutLogExercise @relation(fields: [workoutLogExerciseId], references: [id], onDelete: Cascade)
+}
+
+model UserExercisePB {
+  userId       String
+  exerciseId        String
+  weight            Float
+  reps              Int?
+  exerciseDuration  Int?
+  exercise          Exercise @relation(fields: [exerciseId], references: [id])
+  createdAt         DateTime @default(now())
+  workoutLogId      String?
+  WorkoutLog        WorkoutLog? @relation("WorkoutLogToUserExercisePB", fields: [workoutLogId], references: [id], onDelete: Cascade)
+
+  @@id([userId, exerciseId])
+}
+
+model UserGoal {
+  id          String   @id @default(uuid())
+  userId      String
+  exerciseId  String
+  goalType    GoalType
+  goalValue   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Exercise    Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@unique([userId, exerciseId, goalType])
+}
+
+enum GoalType {
+  WEIGHT
+}
+
+model UserEquipment {
+  userId   String
+  equipmentType EquipmentType
+
+  @@id([userId, equipmentType])
+}
+
+enum TrackingType {
+  reps
+  duration
+}
+
+enum CategoryType {
+  strength
+  stretching
+  plyometrics
+  strongman
+  powerlifting
+  cardio
+  olympic_weightlifting @map("olympic weightlifting")
+}
+
+enum EquipmentType {
+  body_only     @map("body only")
+  machine
+  other
+  foam_roll     @map("foam roll")
+  kettlebells
+  dumbbell
+  cable
+  barbell
+  bands
+  medicine_ball @map("medicine ball")
+  exercise_ball @map("exercise ball")
+  e_z_curl_bar  @map("e-z curl bar")
+}
+
+enum ForceType {
+  pull
+  push
+  static
+}
+
+enum LevelType {
+  beginner
+  intermediate
+  expert
+}
+
+enum MechanicType {
+  compound
+  isolation
+}
+
+enum Muscle {
+  abdominals
+  hamstrings
+  adductors
+  quadriceps
+  biceps
+  shoulders
+  chest
+  middle_back @map("middle back")
+  calves
+  glutes
+  lower_back  @map("lower back")
+  lats
+  triceps
+  traps
+  forearms
+  neck
+  abductors
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  ABSENT
+}
+
+// Step Tracking Models
+model StepGoal {
+  id            String    @id @default(uuid())
+  userId        String
+  assignedBy    String    // Admin user ID
+  dailyTarget   Int       // Target steps per day
+  startDate     DateTime  @default(now())
+  endDate       DateTime? // Optional end date for the goal
+  isActive      Boolean   @default(true)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  stepLogs      StepLog[]
+
+  @@index([userId, isActive])
+}
+
+model StepLog {
+  id              String    @id @default(uuid())
+  userId          String
+  stepGoalId      String?   // Optional reference to goal
+  date            DateTime  // Date for this step count (date only, no time)
+  actualSteps     Int       // Steps actually taken
+  targetSteps     Int       // Target steps for this day (including carry-over)
+  carryOverSteps  Int       @default(0) // Steps carried over from previous day
+  excessSteps     Int       @default(0) // Excess steps that reduce tomorrow's goal
+  isCompleted     Boolean   @default(false) // Whether daily goal was met
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  stepGoal        StepGoal? @relation(fields: [stepGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model StepChallenge {
+  id            String              @id @default(uuid())
+  name          String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  targetSteps   Int                 // Total steps target for the challenge
+  isActive      Boolean             @default(true)
+  createdBy     String              // Admin user ID
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  participants  StepChallengeParticipant[]
+}
+
+model StepChallengeParticipant {
+  id            String        @id @default(uuid())
+  userId        String
+  challengeId   String
+  joinedAt      DateTime      @default(now())
+  totalSteps    Int           @default(0) // Total steps accumulated during challenge
+  isCompleted   Boolean       @default(false)
+
+  // Relations
+  challenge     StepChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([challengeId, totalSteps])
+}
