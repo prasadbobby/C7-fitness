@@ -1,7 +1,5 @@
 "use server";
-// Canvas temporarily disabled for Vercel deployment
-// import { createCanvas, registerFont } from "canvas";
-// registerFont("font/InterVariable.ttf", { family: "Inter" });
+import { ImageResponse } from '@vercel/og';
 
 const data = [
   {
@@ -77,60 +75,71 @@ const data = [
 ];
 
 export async function ShareImageServerAction() {
-  // Canvas functionality temporarily disabled for Vercel deployment
-  // This feature requires canvas which has native dependencies
-  // that don't work on serverless functions
-
-  // Return a placeholder or null for now
-  return null;
-
-  /*
-  const width = 640;
-  const height = 240;
-  const canvas = createCanvas(width, height);
-  const context = canvas.getContext("2d");
-
-  // Draw background
-  context.fillStyle = "#18181b";
-  context.fillRect(0, 0, width, height);
-
   // Use the first workout from the static data
   const workout = data[0];
 
-  // Add workout title
-  context.fillStyle = "#A6FF00";
-  context.font = "30px Inter";
-  context.fillText(workout.WorkoutPlan.name, 50, 50);
+  const imageResponse = new ImageResponse(
+    (
+      <div
+        style={{
+          backgroundColor: '#18181b',
+          width: '640px',
+          height: '240px',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '50px',
+          fontFamily: 'Inter',
+        }}
+      >
+        <div
+          style={{
+            color: '#A6FF00',
+            fontSize: '30px',
+            fontWeight: 'bold',
+            marginBottom: '20px',
+          }}
+        >
+          {workout.WorkoutPlan.name}
+        </div>
 
-  // Change font size and style for exercise info
-  context.fillStyle = "#ffffff";
-  context.font = "16px Inter";
+        {workout.exercises.map((exercise, index) => {
+          const setDetails = exercise.sets
+            .map((set) => {
+              let details = `Weight: ${set.weight}`;
+              if (set.reps !== null) {
+                details += `, Reps: ${set.reps}`;
+              }
+              if (set.exerciseDuration !== null) {
+                details += `, Duration: ${set.exerciseDuration}`;
+              }
+              return details;
+            })
+            .join(", ");
 
-  // Add workout exercises
-  workout.exercises.forEach((exercise, index) => {
-    const setName = exercise.Exercise.name;
-    const setDetails = exercise.sets
-      .map((set) => {
-        let details = `Weight: ${set.weight}`;
-        if (set.reps !== null) {
-          details += `, Reps: ${set.reps}`;
-        }
-        if (set.exerciseDuration !== null) {
-          details += `, Duration: ${set.exerciseDuration}`;
-        }
-        return details;
-      })
-      .join(", ");
-    context.fillText(`${setName}: ${setDetails}`, 50, 100 + index * 30);
-  });
+          return (
+            <div
+              key={index}
+              style={{
+                color: '#ffffff',
+                fontSize: '16px',
+                marginBottom: '10px',
+              }}
+            >
+              {exercise.Exercise.name}: {setDetails}
+            </div>
+          );
+        })}
+      </div>
+    ),
+    {
+      width: 640,
+      height: 240,
+    }
+  );
 
-  // Convert the canvas to an image buffer
-  const buffer = canvas.toBuffer("image/png");
+  // Convert to buffer and then to base64
+  const buffer = await imageResponse.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
 
-  // Convert the buffer to a base64 string
-  const base64 = buffer.toString("base64");
-
-  // Return the base64 string
   return base64;
-  */
 }

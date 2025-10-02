@@ -341,7 +341,6 @@ export default function StepTrackingAdmin() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar
-                          src={goal.userInfo?.imageUrl}
                           name={(() => {
                             const name = goal.userInfo?.username || goal.userInfo?.firstName || goal.userInfo?.email || goal.userId;
                             if (name) {
@@ -506,7 +505,6 @@ export default function StepTrackingAdmin() {
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
-                          src={user.imageUrl}
                           name={(() => {
                             const name = user.username || user.firstName || user.email;
                             if (name) {
