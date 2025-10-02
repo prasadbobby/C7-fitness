@@ -83,3 +83,4 @@ helpers.txt
 uploads/
 temp/
 package-lock.json
+.env.*
