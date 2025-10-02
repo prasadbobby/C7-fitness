@@ -36,6 +36,7 @@ export default async function RootLayout({
       signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
       afterSignInUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
       afterSignUpUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
+      domain={process.env.NODE_ENV === 'production' ? 'clerk.www.c7pfs.site' : undefined}
     >
       <html
         lang="en"
