@@ -1,7 +1,7 @@
 "use server";
-import { createCanvas, registerFont } from "canvas";
-
-registerFont("font/InterVariable.ttf", { family: "Inter" });
+// Canvas temporarily disabled for Vercel deployment
+// import { createCanvas, registerFont } from "canvas";
+// registerFont("font/InterVariable.ttf", { family: "Inter" });
 
 const data = [
   {
@@ -77,6 +77,14 @@ const data = [
 ];
 
 export async function ShareImageServerAction() {
+  // Canvas functionality temporarily disabled for Vercel deployment
+  // This feature requires canvas which has native dependencies
+  // that don't work on serverless functions
+
+  // Return a placeholder or null for now
+  return null;
+
+  /*
   const width = 640;
   const height = 240;
   const canvas = createCanvas(width, height);
@@ -124,4 +132,5 @@ export async function ShareImageServerAction() {
 
   // Return the base64 string
   return base64;
+  */
 }
