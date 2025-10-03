@@ -11,9 +11,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-
     const { searchParams } = new URL(request.url);
     const challengeId = searchParams.get("challengeId");
+    const cleanup = searchParams.get("cleanup") === "true";
+
+    // If cleanup is requested, perform comprehensive cleanup first
+    if (cleanup) {
+      await performComprehensiveCleanup();
+    }
 
     const whereClause = challengeId ? { challengeId } : {};
 
@@ -32,40 +37,112 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get user details from Clerk
-    const participantsWithUserInfo = await Promise.all(
-      participants.map(async (participant) => {
-        try {
-          const user = await clerkClient.users.getUser(participant.userId);
-          return {
-            ...participant,
-            user: {
-              firstName: user.firstName || "",
-              lastName: user.lastName || "",
-              email: user.emailAddresses[0]?.emailAddress || "",
-              imageUrl: user.imageUrl || "",
-            },
-          };
-        } catch (error) {
-          console.error(`Error fetching user ${participant.userId}:`, error);
-          return {
-            ...participant,
-            user: {
-              firstName: "Unknown",
-              lastName: "User",
-              email: "unknown@example.com",
-              imageUrl: "",
-            },
-          };
-        }
-      })
-    );
+    // Get user details from Clerk and filter out deleted users
+    const participantsWithUserInfo = [];
+    const orphanedParticipants = [];
 
-    return NextResponse.json({ participants: participantsWithUserInfo });
+    for (const participant of participants) {
+      try {
+        const user = await clerkClient.users.getUser(participant.userId);
+        participantsWithUserInfo.push({
+          ...participant,
+          user: {
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            email: user.emailAddresses[0]?.emailAddress || "",
+            imageUrl: user.imageUrl || "",
+          },
+        });
+      } catch (error) {
+        console.error(`User ${participant.userId} not found in Clerk, marking for cleanup:`, error);
+        orphanedParticipants.push(participant.id);
+      }
+    }
+
+    // Clean up orphaned participants in batch
+    if (orphanedParticipants.length > 0) {
+      try {
+        const deletedCount = await cleanupOrphanedParticipants(orphanedParticipants);
+        console.log(`Cleaned up ${deletedCount} orphaned participant records`);
+      } catch (cleanupError) {
+        console.error("Failed to cleanup orphaned participants:", cleanupError);
+      }
+    }
+
+    return NextResponse.json({
+      participants: participantsWithUserInfo,
+      cleanedUp: orphanedParticipants.length
+    });
   } catch (error) {
     console.error("Error fetching participants:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+}
+
+// Helper function to clean up orphaned participants and related data
+async function cleanupOrphanedParticipants(participantIds: string[]) {
+  return await prisma.$transaction(async (tx) => {
+    // Delete related comments first
+    await tx.ninetyDayChallengeComment.deleteMany({
+      where: {
+        participantId: {
+          in: participantIds
+        }
+      }
+    });
+
+    // Delete related posts
+    await tx.ninetyDayChallengePost.deleteMany({
+      where: {
+        participantId: {
+          in: participantIds
+        }
+      }
+    });
+
+    // Finally delete the participants
+    const result = await tx.ninetyDayChallengeParticipant.deleteMany({
+      where: {
+        id: {
+          in: participantIds
+        }
+      }
+    });
+
+    return result.count;
+  });
+}
+
+// Comprehensive cleanup function
+async function performComprehensiveCleanup() {
+  console.log("Performing comprehensive cleanup of orphaned records...");
+
+  // Get all participants
+  const allParticipants = await prisma.ninetyDayChallengeParticipant.findMany({
+    select: {
+      id: true,
+      userId: true
+    }
+  });
+
+  const orphanedParticipants = [];
+
+  // Check each participant against Clerk
+  for (const participant of allParticipants) {
+    try {
+      await clerkClient.users.getUser(participant.userId);
+    } catch (error) {
+      // User doesn't exist in Clerk, mark as orphaned
+      orphanedParticipants.push(participant.id);
+    }
+  }
+
+  if (orphanedParticipants.length > 0) {
+    const cleanedCount = await cleanupOrphanedParticipants(orphanedParticipants);
+    console.log(`Comprehensive cleanup removed ${cleanedCount} orphaned participants`);
+  }
+
+  return orphanedParticipants.length;
 }
 
 export async function POST(request: NextRequest) {

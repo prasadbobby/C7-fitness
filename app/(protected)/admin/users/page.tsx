@@ -39,6 +39,7 @@ import {
   IconBarbell,
   IconUser,
   IconChartLine,
+  IconArrowDown,
 } from "@tabler/icons-react";
 
 interface User {
@@ -360,6 +361,7 @@ export default function UserManagement() {
                         as={Link}
                         href={`/admin/users/${user.id}/progress`}
                         title="View Progress"
+                        aria-label="View user progress"
                       >
                         <IconChartLine size={16} />
                       </Button>
@@ -369,6 +371,7 @@ export default function UserManagement() {
                         variant="ghost"
                         onPress={() => handleEditUser(user)}
                         title="Edit User"
+                        aria-label="Edit user"
                       >
                         <IconEdit size={16} />
                       </Button>
@@ -379,6 +382,7 @@ export default function UserManagement() {
                         color="danger"
                         onPress={() => handleDeleteUser(user)}
                         title="Delete User"
+                        aria-label="Delete user"
                       >
                         <IconTrash size={16} />
                       </Button>
@@ -431,7 +435,25 @@ export default function UserManagement() {
           </>
         }
       >
-        <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+        {selectedUser && (
+          <div>
+            <p className="mb-4">Are you sure you want to permanently delete this user?</p>
+            <div className="p-4 bg-danger/10 rounded-lg border-l-4 border-danger">
+              <h4 className="font-semibold text-danger mb-2">⚠️ Warning: This action cannot be undone!</h4>
+              <p className="text-sm text-foreground-600">
+                This will permanently delete:
+              </p>
+              <ul className="text-sm text-foreground-600 mt-2 ml-4 list-disc">
+                <li>User account and profile</li>
+                <li>All workout logs and progress</li>
+                <li>Personal bests and achievements</li>
+                <li>Challenge participation and posts</li>
+                <li>Equipment preferences and goals</li>
+                <li>All related data from both database and Clerk</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </BottomSheet>
     </div>
   );

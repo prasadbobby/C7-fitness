@@ -19,6 +19,15 @@ model UserInfo {
   assignedWorkouts AssignedWorkout[]
 }
 
+model PendingInvitation {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  role         UserRole
+  invitationId String?  // Clerk invitation ID
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model AssignedWorkout {
   id            String      @id @default(uuid())
   userId        String

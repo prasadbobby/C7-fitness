@@ -8,7 +8,7 @@ import { Switch } from "@nextui-org/switch";
 import { Chip } from "@nextui-org/chip";
 import { Select, SelectItem } from "@nextui-org/select";
 import { User } from "@nextui-org/user";
-import { IconSearch, IconUserPlus, IconEye } from "@tabler/icons-react";
+import { IconSearch, IconUserPlus, IconEye, IconTrash } from "@tabler/icons-react";
 
 interface Participant {
   id: string;
@@ -57,6 +57,7 @@ export function ParticipantManagement() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -162,6 +163,23 @@ export function ParticipantManagement() {
       }
     } catch (error) {
       console.error('Error adding participant:', error);
+    }
+  };
+
+  const handleCleanupOrphanedRecords = async () => {
+    setIsCleaningUp(true);
+    try {
+      const response = await fetch(`/api/admin/ninety-day-challenge/participants?cleanup=true`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Cleaned up ${data.cleanedUp} orphaned records`);
+        // Refresh the data
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Error cleaning up orphaned records:', error);
+    } finally {
+      setIsCleaningUp(false);
     }
   };
 
@@ -298,15 +316,26 @@ export function ParticipantManagement() {
         </Card>
       )}
 
-      {/* Add Button */}
+      {/* Action Buttons */}
       {!showAddForm && (
-        <Button
-          color="primary"
-          startContent={<IconUserPlus size={20} />}
-          onPress={() => setShowAddForm(true)}
-        >
-          Add Participant
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            color="primary"
+            startContent={<IconUserPlus size={20} />}
+            onPress={() => setShowAddForm(true)}
+          >
+            Add Participant
+          </Button>
+          <Button
+            color="warning"
+            variant="flat"
+            startContent={<IconTrash size={20} />}
+            onPress={handleCleanupOrphanedRecords}
+            isLoading={isCleaningUp}
+          >
+            {isCleaningUp ? "Cleaning Up..." : "Cleanup Orphaned Records"}
+          </Button>
+        </div>
       )}
 
       {/* Participants List */}

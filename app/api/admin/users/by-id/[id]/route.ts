@@ -47,37 +47,91 @@ export async function DELETE(
   try {
     await requireAdmin();
 
-    // Delete related records first
+    // Find the user to get their userId for Clerk deletion
+    const user = await prisma.userInfo.findUnique({
+      where: { id: params.id },
+      select: { userId: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Delete related records first in correct order to handle foreign key constraints
+    await prisma.ninetyDayChallengeComment.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.ninetyDayChallengeReaction.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.ninetyDayChallengePost.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.ninetyDayChallengeParticipant.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.stepChallengeParticipant.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.stepLog.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    await prisma.stepGoal.deleteMany({
+      where: { userId: user.userId },
+    });
+
     await prisma.assignedWorkout.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
     await prisma.favouriteExercise.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
     await prisma.userExercisePB.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
     await prisma.userGoal.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
     await prisma.userEquipment.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
     await prisma.workoutLog.deleteMany({
-      where: { userId: params.id },
+      where: { userId: user.userId },
     });
 
-    // Finally delete the user
+    // Finally delete the user from our database
     await prisma.userInfo.delete({
       where: { id: params.id },
     });
 
-    return NextResponse.json({ success: true });
+    // Optionally delete the user from Clerk as well
+    try {
+      const { clerkClient } = await import("@clerk/nextjs");
+      await clerkClient.users.deleteUser(user.userId);
+    } catch (clerkError) {
+      console.warn("Could not delete user from Clerk:", clerkError);
+      // Continue anyway since we've deleted from our database
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "User and all related data deleted successfully"
+    });
+
   } catch (error) {
     console.error("Error deleting user:", error);
     return NextResponse.json(
