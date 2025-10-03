@@ -4,5 +4,6 @@ import { auth } from "@clerk/nextjs";
 export const checkRole = (role: Roles) => {
   const { sessionClaims } = auth();
 
-  return sessionClaims?.metadata.role === role;
+  // Check both metadata.role and publicMetadata.role for compatibility
+  return sessionClaims?.metadata?.role === role || sessionClaims?.publicMetadata?.role === role;
 };

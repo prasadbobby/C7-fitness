@@ -315,3 +315,134 @@ model StepChallengeParticipant {
   @@unique([userId, challengeId])
   @@index([challengeId, totalSteps])
 }
+
+// 90-Day Challenge Models
+model NinetyDayChallenge {
+  id              String                         @id @default(uuid())
+  title           String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean                        @default(true)
+  createdBy       String                         // Admin user ID
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+
+  // Relations
+  participants    NinetyDayChallengeParticipant[]
+  posts           NinetyDayChallengePost[]
+
+  @@index([isActive, startDate])
+}
+
+model NinetyDayChallengeParticipant {
+  id                String              @id @default(uuid())
+  userId            String
+  challengeId       String
+  isEnabled         Boolean             @default(false) // Admin controls access
+  joinedAt          DateTime            @default(now())
+  completedDays     Int                 @default(0)
+  lastActiveDate    DateTime?
+
+  // Relations
+  challenge         NinetyDayChallenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  posts             NinetyDayChallengePost[]
+  comments          NinetyDayChallengeComment[]
+
+  @@unique([userId, challengeId])
+  @@index([challengeId, isEnabled])
+}
+
+model NinetyDayChallengePost {
+  id              String                    @id @default(uuid())
+  userId          String
+  challengeId     String
+  participantId   String
+  date            DateTime                  // Date of the post (daily basis)
+  sleepHours      Float?                    // Sleep duration in hours
+  sleepQuality    SleepQuality?            // Sleep quality rating
+  mealTracking    String?                  // Meal tracking details (JSON or text)
+  dayDescription  String?                  // How was your day description
+  mood            MoodType?                // Daily mood rating
+  energy          EnergyLevel?             // Energy level rating
+  achievements    String?                  // Daily achievements or wins
+  challenges      String?                  // Daily challenges faced
+  photos          String[]                 // Array of photo URLs for transformation tracking
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  // Relations
+  challenge       NinetyDayChallenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participant     NinetyDayChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  reactions       NinetyDayChallengeReaction[]
+  comments        NinetyDayChallengeComment[]
+
+  @@unique([userId, challengeId, date])
+  @@index([challengeId, date])
+  @@index([userId, date])
+}
+
+model NinetyDayChallengeReaction {
+  id          String                 @id @default(uuid())
+  userId      String                 // User who reacted
+  postId      String
+  reactionType ReactionType
+  createdAt   DateTime               @default(now())
+
+  // Relations
+  post        NinetyDayChallengePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, reactionType])
+  @@index([postId, reactionType])
+}
+
+model NinetyDayChallengeComment {
+  id            String                        @id @default(uuid())
+  postId        String
+  userId        String                        // User who commented
+  participantId String?                       // Optional for admin users
+  content       String                        // Comment content
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @updatedAt
+
+  // Relations
+  post          NinetyDayChallengePost        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  participant   NinetyDayChallengeParticipant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([userId])
+}
+
+enum SleepQuality {
+  POOR
+  FAIR
+  GOOD
+  VERY_GOOD
+  EXCELLENT
+}
+
+enum MoodType {
+  VERY_LOW
+  LOW
+  NEUTRAL
+  GOOD
+  VERY_GOOD
+  EXCELLENT
+}
+
+enum EnergyLevel {
+  VERY_LOW
+  LOW
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  SUPPORT
+  STRONG
+  FIRE
+  CLAP
+}

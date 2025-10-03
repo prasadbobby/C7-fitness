@@ -30,6 +30,8 @@ import {
   IconSettings,
   IconTrendingUp,
   IconX,
+  IconCalendarEvent,
+  IconWorldStar,
 } from "@tabler/icons-react";
 
 export default function SidebarNav() {
@@ -37,21 +39,31 @@ export default function SidebarNav() {
   const pathname = usePathname();
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isChallengeEnabled, setIsChallengeEnabled] = useState(false);
 
   useEffect(() => {
-    async function checkAdmin() {
+    async function checkUserStatus() {
       if (user) {
         try {
-          const response = await fetch('/api/admin/check-auth');
-          const data = await response.json();
-          setIsAdmin(data.isAdmin);
+          // Check admin status
+          const adminResponse = await fetch('/api/admin/check-auth');
+          const adminData = await adminResponse.json();
+          setIsAdmin(adminData.isAdmin);
+
+          // Check if user is enabled for 90-day challenge
+          const challengeResponse = await fetch('/api/ninety-day-challenge/check-access');
+          if (challengeResponse.ok) {
+            const challengeData = await challengeResponse.json();
+            setIsChallengeEnabled(challengeData.isEnabled);
+          }
         } catch (error) {
-          console.error('Error checking admin status:', error);
+          console.error('Error checking user status:', error);
           setIsAdmin(false);
+          setIsChallengeEnabled(false);
         }
       }
     }
-    checkAdmin();
+    checkUserStatus();
   }, [user]);
 
   return (
@@ -106,6 +118,20 @@ export default function SidebarNav() {
               label="Analytics"
               href="/admin/analytics"
               active={pathname === "/admin/analytics"}
+            />
+
+            <NavItem
+              icon={<IconCalendarEvent size={22} className="shrink-0" />}
+              label="90-Day Challenge"
+              href="/admin/ninety-day-challenge"
+              active={pathname === "/admin/ninety-day-challenge"}
+            />
+
+            <NavItem
+              icon={<IconWorldStar size={22} className="shrink-0" />}
+              label="C7 Community"
+              href="/community"
+              active={pathname === "/community"}
             />
 
             {/* Workout Section for Admin */}
@@ -181,6 +207,23 @@ export default function SidebarNav() {
               href="/step-tracking"
               active={pathname === "/step-tracking"}
             />
+
+            {isChallengeEnabled && (
+              <>
+                <NavItem
+                  icon={<IconCalendarEvent size={22} className="shrink-0" />}
+                  label="90-Day Challenge"
+                  href="/ninety-day-challenge"
+                  active={pathname === "/ninety-day-challenge"}
+                />
+                <NavItem
+                  icon={<IconWorldStar size={22} className="shrink-0" />}
+                  label="C7 Community"
+                  href="/community"
+                  active={pathname === "/community"}
+                />
+              </>
+            )}
 
             <NavItem
               icon={<IconUser size={22} className="shrink-0" />}
