@@ -76,7 +76,7 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
     try {
       const invitation = await clerkClient.invitations.createInvitation({
         emailAddress: email,
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.c7pfs.site'}${process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}?role=${targetRole.toLowerCase()}`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://c7pfs.site'}${process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}?role=${targetRole.toLowerCase()}`,
         publicMetadata: {
           role: targetRole.toLowerCase(),
           invitedBy: currentUserRole?.toLowerCase() || "admin"
@@ -162,9 +162,7 @@ export async function cancelInvitation(email: string) {
     // Try to revoke the Clerk invitation if we have the ID
     if (pendingInvitation.invitationId) {
       try {
-        await clerkClient.invitations.revokeInvitation({
-          invitationId: pendingInvitation.invitationId
-        });
+        await clerkClient.invitations.revokeInvitation(pendingInvitation.invitationId);
       } catch (clerkError) {
         console.warn("Could not revoke Clerk invitation:", clerkError);
         // Continue anyway to clean up our database
