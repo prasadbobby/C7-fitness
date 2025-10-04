@@ -155,16 +155,14 @@ export default async function WorkoutPage() {
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
       <PageHeading title="Start Workout" />
 
-        {isAdmin && (
-          <Button
-            as={Link}
-            href="/edit-routine/step-1"
-            color="primary"
-            className="gap-unit-1 mb-3"
-          >
-            <IconPlus size={16} /> New Routine
-          </Button>
-        )}
+        <Button
+          as={Link}
+          href="/edit-routine/step-1"
+          color="primary"
+          className="gap-unit-1 mb-3"
+        >
+          <IconPlus size={16} /> New Routine
+        </Button>
       </div>
 
       {assignedWorkouts.length > 0 && (
@@ -184,12 +182,30 @@ export default async function WorkoutPage() {
         </>
       )}
 
-      {isAdmin && (
-        <>
-          <h2 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Your Routines</h2>
+      <>
+        <h2 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Your Routines</h2>
+        {userRoutines.length > 0 ? (
           <RoutineCards routines={userRoutines} isSystem={false} />
-        </>
-      )}
+        ) : (
+          <div className="text-center py-8 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <div className="space-y-2">
+              <IconPlus className="w-8 h-8 text-zinc-400 mx-auto" />
+              <p className="text-zinc-500 text-sm">
+                You haven't created any custom routines yet.
+              </p>
+              <Button
+                as={Link}
+                href="/edit-routine/step-1"
+                color="primary"
+                size="sm"
+                className="mt-2"
+              >
+                Create Your First Routine
+              </Button>
+            </div>
+          </div>
+        )}
+      </>
 
       {/* Only show example routines to admins, or to users who have assigned workouts */}
       {(isAdmin || assignedWorkouts.length > 0) && (
