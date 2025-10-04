@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
 import { checkAdminAuth } from "@/utils/adminAuth";
-import PageHeading from "@/components/PageHeading/PageHeading";
-import { InviteUserForm } from "./_components/InviteSuperAdminForm";
-import { UserManagementList } from "./_components/SuperAdminList";
-import { ExistingUsersManager } from "./_components/ExistingUsersManager";
-import prisma from "@/prisma/prisma";
 import { UserRole } from "@prisma/client";
-import { clerkClient } from "@clerk/nextjs";
+import { Card, CardBody, CardHeader, Chip, Button } from "@nextui-org/react";
+import { IconSettings, IconShield, IconDatabase, IconLock, IconMail, IconChartLine, IconServer } from "@tabler/icons-react";
+import Link from "next/link";
 
 export default async function AdminSettingsPage() {
   const { isAdmin, role, userId } = await checkAdminAuth();
@@ -20,106 +17,6 @@ export default async function AdminSettingsPage() {
     redirect("/admin/dashboard");
   }
 
-  // Get all users with admin roles
-  const adminUsersData = await prisma.userInfo.findMany({
-    where: {
-      role: {
-        in: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
-      }
-    },
-    select: {
-      id: true,
-      userId: true,
-      role: true,
-      createdAt: true
-    },
-    orderBy: {
-      role: 'desc' // SUPER_ADMIN first, then ADMIN
-    }
-  });
-
-  // Get Clerk user details for admin users
-  const adminUserIds = adminUsersData.map(user => user.userId);
-  const clerkAdminUsers = adminUserIds.length > 0 ? await clerkClient.users.getUserList({
-    userId: adminUserIds
-  }) : [];
-
-  // Create a map of Clerk user data
-  const clerkUserMap = new Map(clerkAdminUsers.map(user => [user.id, user]));
-
-  // Combine database and Clerk data for admin users
-  const adminUsers = adminUsersData.map(dbUser => {
-    const clerkUser = clerkUserMap.get(dbUser.userId);
-    return {
-      id: dbUser.id,
-      userId: dbUser.userId,
-      role: dbUser.role,
-      createdAt: dbUser.createdAt.toISOString(), // Serialize date
-      name: clerkUser ? `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() : 'Unknown User',
-      email: clerkUser?.emailAddresses?.[0]?.emailAddress || 'No email',
-      imageUrl: clerkUser?.imageUrl || ''
-    };
-  });
-
-  // Get all pending invitations
-  const pendingInvitationsData = await prisma.pendingInvitation.findMany({
-    select: {
-      email: true,
-      role: true,
-      createdAt: true,
-      invitationId: true
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  });
-
-  // Serialize pending invitations
-  const pendingInvitations = pendingInvitationsData.map(invitation => ({
-    ...invitation,
-    createdAt: invitation.createdAt.toISOString() // Serialize date
-  }));
-
-  // Get regular users for role management (limit to 50 for performance)
-  const regularUsersData = await prisma.userInfo.findMany({
-    where: {
-      role: UserRole.USER
-    },
-    select: {
-      id: true,
-      userId: true,
-      role: true,
-      createdAt: true
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-    take: 50
-  });
-
-  // Get Clerk user details for regular users
-  const regularUserIds = regularUsersData.map(user => user.userId);
-  const clerkRegularUsers = regularUserIds.length > 0 ? await clerkClient.users.getUserList({
-    userId: regularUserIds
-  }) : [];
-
-  // Create a map for regular users
-  const clerkRegularUserMap = new Map(clerkRegularUsers.map(user => [user.id, user]));
-
-  // Combine database and Clerk data for regular users
-  const regularUsers = regularUsersData.map(dbUser => {
-    const clerkUser = clerkRegularUserMap.get(dbUser.userId);
-    return {
-      id: dbUser.id,
-      userId: dbUser.userId,
-      role: dbUser.role,
-      createdAt: dbUser.createdAt.toISOString(), // Serialize date
-      name: clerkUser ? `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() : 'Unknown User',
-      email: clerkUser?.emailAddresses?.[0]?.emailAddress || 'No email',
-      imageUrl: clerkUser?.imageUrl || ''
-    };
-  });
-
   const currentUserRole = role as UserRole;
 
   return (
@@ -128,31 +25,219 @@ export default async function AdminSettingsPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            User Management Center
+            Admin Settings
           </h1>
           <p className="text-foreground-500 text-lg max-w-2xl mx-auto">
-            Manage user roles, send invitations, and oversee system access.
+            System configuration and administrative controls.
             {currentUserRole === UserRole.SUPER_ADMIN ? " You have full administrative privileges." : " You have administrative privileges."}
           </p>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-8">
-          {/* Invite New Users */}
-          <InviteUserForm />
-
+        {/* Settings Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* User Management */}
-          <UserManagementList
-            adminUsers={adminUsers}
-            regularUsers={regularUsers}
-            currentUserId={userId}
-            currentUserRole={currentUserRole}
-            pendingInvitations={pendingInvitations}
-          />
+          <Card className="border-2 border-primary/10 hover:border-primary/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-secondary/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <IconShield size={24} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">User Management</h3>
+                  <p className="text-sm text-foreground-500">Manage users, roles, and invitations</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                View, edit, invite, and manage all user accounts and their permissions.
+              </p>
+              <Button
+                as={Link}
+                href="/admin/users"
+                color="primary"
+                variant="flat"
+                fullWidth
+                endContent={<IconShield size={16} />}
+              >
+                Open User Management
+              </Button>
+            </CardBody>
+          </Card>
 
-          {/* Existing Users Manager */}
-          <ExistingUsersManager currentUserRole={currentUserRole} />
+          {/* System Configuration */}
+          <Card className="border-2 border-warning/10 hover:border-warning/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-warning/5 to-orange-500/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-warning/10 rounded-lg">
+                  <IconSettings size={24} className="text-warning" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">System Settings</h3>
+                  <p className="text-sm text-foreground-500">Application configuration</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                Configure application-wide settings, features, and preferences.
+              </p>
+              <Button
+                color="warning"
+                variant="flat"
+                fullWidth
+                endContent={<IconSettings size={16} />}
+                isDisabled
+              >
+                Coming Soon
+              </Button>
+            </CardBody>
+          </Card>
+
+          {/* Database Management */}
+          <Card className="border-2 border-secondary/10 hover:border-secondary/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-secondary/5 to-purple-500/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <IconDatabase size={24} className="text-secondary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Database</h3>
+                  <p className="text-sm text-foreground-500">Data management and backups</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                Monitor database health, manage backups, and view system statistics.
+              </p>
+              <Button
+                color="secondary"
+                variant="flat"
+                fullWidth
+                endContent={<IconDatabase size={16} />}
+                isDisabled
+              >
+                Coming Soon
+              </Button>
+            </CardBody>
+          </Card>
+
+          {/* Security Settings */}
+          <Card className="border-2 border-danger/10 hover:border-danger/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-danger/5 to-red-500/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-danger/10 rounded-lg">
+                  <IconLock size={24} className="text-danger" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Security</h3>
+                  <p className="text-sm text-foreground-500">Security and authentication</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                Configure authentication settings, API keys, and security policies.
+              </p>
+              <Button
+                color="danger"
+                variant="flat"
+                fullWidth
+                endContent={<IconLock size={16} />}
+                isDisabled
+              >
+                Coming Soon
+              </Button>
+            </CardBody>
+          </Card>
+
+          {/* Email Settings */}
+          <Card className="border-2 border-success/10 hover:border-success/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-success/5 to-green-500/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-success/10 rounded-lg">
+                  <IconMail size={24} className="text-success" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Email</h3>
+                  <p className="text-sm text-foreground-500">Email notifications and templates</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                Configure email templates, notification settings, and SMTP configuration.
+              </p>
+              <Button
+                color="success"
+                variant="flat"
+                fullWidth
+                endContent={<IconMail size={16} />}
+                isDisabled
+              >
+                Coming Soon
+              </Button>
+            </CardBody>
+          </Card>
+
+          {/* Analytics */}
+          <Card className="border-2 border-blue-500/10 hover:border-blue-500/30 transition-colors">
+            <CardHeader className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-b border-divider">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <IconChartLine size={24} className="text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Analytics</h3>
+                  <p className="text-sm text-foreground-500">Usage statistics and insights</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-4">
+              <p className="text-sm text-foreground-600 mb-4">
+                View detailed analytics, user engagement metrics, and system performance.
+              </p>
+              <Button
+                className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+                variant="flat"
+                fullWidth
+                endContent={<IconChartLine size={16} />}
+                isDisabled
+              >
+                Coming Soon
+              </Button>
+            </CardBody>
+          </Card>
         </div>
+
+        {/* Admin Info */}
+        <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+          <CardBody className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <IconServer size={32} className="text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-foreground mb-2">Administrator Information</h3>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground-500">Your Role:</span>
+                    <Chip color={currentUserRole === UserRole.SUPER_ADMIN ? "danger" : "warning"} variant="flat">
+                      {currentUserRole.replace('_', ' ')}
+                    </Chip>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground-500">Access Level:</span>
+                    <span className="font-medium text-foreground">
+                      {currentUserRole === UserRole.SUPER_ADMIN ? "Full System Access" : "Administrative Access"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

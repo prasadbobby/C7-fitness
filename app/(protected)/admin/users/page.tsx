@@ -88,12 +88,19 @@ export default function UserManagement() {
   const { replace } = useRouter();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [regularUsers, setRegularUsers] = useState<User[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [currentTab, setCurrentTab] = useState("all");
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isInviteOpen, onOpen: onInviteOpen, onClose: onInviteClose } = useDisclosure();
 
   // Get values from URL parameters
   const page = Number(searchParams.get("page")) || 1;
@@ -141,10 +148,13 @@ export default function UserManagement() {
         role: selectedRole,
       });
 
-      const response = await fetch(`/api/admin/users?${params}`);
+      const response = await fetch(`/api/admin/users/management?${params}`);
       const data = await response.json();
 
       setUsers(data.users);
+      setAdminUsers(data.adminUsers);
+      setRegularUsers(data.regularUsers);
+      setPendingInvitations(data.pendingInvitations);
       setTotal(data.total);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -199,6 +209,55 @@ export default function UserManagement() {
     }
   };
 
+  const handleCancelInvitation = async (email: string) => {
+    setIsLoading(email);
+    try {
+      const result = await cancelInvitation(email);
+      if (result.success) {
+        await fetchUsers(); // Refresh data
+      } else {
+        console.error(result.error || "Failed to cancel invitation");
+      }
+    } catch (error) {
+      console.error("Failed to cancel invitation");
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleDemoteUser = async (userId: string, currentRole: "USER" | "ADMIN" | "SUPER_ADMIN") => {
+    let newRole: "USER" | "ADMIN" | "SUPER_ADMIN";
+
+    // Determine new role based on current role
+    if (currentRole === "SUPER_ADMIN") {
+      newRole = "ADMIN";
+    } else if (currentRole === "ADMIN") {
+      newRole = "USER";
+    } else {
+      console.error("Cannot demote a regular user further");
+      return;
+    }
+
+    setIsUpdatingRole(userId);
+    try {
+      const result = await updateUserRole(userId, newRole as any);
+      if (result.success) {
+        await fetchUsers(); // Refresh data
+      } else {
+        console.error(result.error || "Failed to update user role");
+      }
+    } catch (error) {
+      console.error("Failed to update user role");
+    } finally {
+      setIsUpdatingRole(null);
+    }
+  };
+
+  const handleInviteSuccess = async () => {
+    onInviteClose();
+    await fetchUsers(); // Refresh data to show new pending invitation
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case "SUPER_ADMIN":
@@ -210,6 +269,29 @@ export default function UserManagement() {
     }
   };
 
+  const getRoleIcon = (role: "USER" | "ADMIN" | "SUPER_ADMIN") => {
+    switch (role) {
+      case "SUPER_ADMIN":
+        return IconShield;
+      case "ADMIN":
+        return IconSettings;
+      case "USER":
+        return IconUser;
+      default:
+        return IconUser;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(dateString));
+  };
+
   const totalPages = Math.ceil(total / itemsPerPage);
 
   return (
@@ -218,9 +300,17 @@ export default function UserManagement() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
           <p className="text-foreground-500 mt-2">
-            Manage user accounts, roles, and permissions.
+            Manage user accounts, roles, permissions, and send invitations.
           </p>
         </div>
+        <Button
+          color="primary"
+          startContent={<IconUserPlus size={18} />}
+          className="font-medium"
+          onPress={onInviteOpen}
+        >
+          Invite User
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -258,13 +348,13 @@ export default function UserManagement() {
         <Card>
           <CardBody className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-success/10 rounded-lg">
-                <IconBarbell size={20} className="text-success" />
+              <div className="p-2 bg-secondary/10 rounded-lg">
+                <IconMail size={20} className="text-secondary" />
               </div>
               <div>
-                <p className="text-sm text-foreground-500">Active Assignments</p>
+                <p className="text-sm text-foreground-500">Pending Invitations</p>
                 <p className="text-xl font-bold text-foreground">
-                  {users.reduce((sum, user) => sum + user._count.assignedWorkouts, 0)}
+                  {pendingInvitations.length}
                 </p>
               </div>
             </div>
@@ -303,121 +393,274 @@ export default function UserManagement() {
         </CardBody>
       </Card>
 
-      {/* Users Table */}
+      {/* Users and Invitations Tabs */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Users table">
-            <TableHeader>
-              <TableColumn>USER ID</TableColumn>
-              <TableColumn>ROLE</TableColumn>
-              <TableColumn>PHYSICAL INFO</TableColumn>
-              <TableColumn>WORKOUTS</TableColumn>
-              <TableColumn>JOINED</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent="No users found" isLoading={loading}>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar
-                        src={user.imageUrl}
-                        name={(() => {
-                          const name = user.username || user.firstName || user.email;
-                          if (name) {
-                            if (name.includes('@')) {
-                              return name.split('@')[0].charAt(0).toUpperCase();
-                            }
-                            return name.charAt(0).toUpperCase();
-                          }
-                          return "U";
-                        })()}
-                        size="sm"
-                        classNames={{
-                          name: "font-bold"
-                        }}
-                        color="primary"
-                        showFallback
-                      />
-                      <div>
-                        <div className="font-medium text-sm">
-                          {user.username || user.firstName || user.email || "Unknown User"}
-                        </div>
-                        {user.email && (user.email !== (user.username || user.firstName)) && (
-                          <div className="text-xs text-foreground-500">
-                            {user.email}
+          <Tabs
+            selectedKey={currentTab}
+            onSelectionChange={(key) => setCurrentTab(key.toString())}
+            variant="underlined"
+            classNames={{
+              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider px-6",
+              cursor: "w-full bg-primary",
+              tab: "max-w-fit px-0 h-12",
+              tabContent: "group-data-[selected=true]:text-primary"
+            }}
+          >
+            <Tab
+              key="all"
+              title={
+                <div className="flex items-center gap-2">
+                  <IconUser size={18} />
+                  <span>All Users ({users.length})</span>
+                </div>
+              }
+            >
+              <div className="p-0">
+                <Table aria-label="All users table">
+                  <TableHeader>
+                    <TableColumn>USER</TableColumn>
+                    <TableColumn>ROLE</TableColumn>
+                    <TableColumn>PHYSICAL INFO</TableColumn>
+                    <TableColumn>WORKOUTS</TableColumn>
+                    <TableColumn>JOINED</TableColumn>
+                    <TableColumn>ACTIONS</TableColumn>
+                  </TableHeader>
+                  <TableBody emptyContent="No users found" isLoading={loading}>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar
+                              src={user.imageUrl}
+                              name={user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                              size="sm"
+                              color="primary"
+                              showFallback
+                            />
+                            <div>
+                              <div className="font-medium text-sm">
+                                {user.name || "Unknown User"}
+                              </div>
+                              <div className="text-xs text-foreground-500">
+                                {user.email}
+                              </div>
+                            </div>
                           </div>
-                        )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Chip color={getRoleColor(user.role)} variant="flat" size="sm">
+                              {user.role}
+                            </Chip>
+                            {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                color="warning"
+                                onClick={() => handleDemoteUser(user.userId, user.role)}
+                                isLoading={isUpdatingRole === user.userId}
+                                className="opacity-60 hover:opacity-100"
+                                title={user.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
+                              >
+                                <IconArrowDown size={16} />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {user.age && <span>Age: {user.age}</span>}
+                            {user.height && <span className="ml-2">Height: {user.height}cm</span>}
+                            {user.weight && <span className="ml-2">Weight: {user.weight}kg</span>}
+                            {!user.age && !user.height && !user.weight && (
+                              <span className="text-foreground-400">Not provided</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <IconBarbell size={16} />
+                            <span>{user._count.assignedWorkouts}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {formatDate(user.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="ghost"
+                              color="primary"
+                              as={Link}
+                              href={`/admin/users/${user.id}/progress`}
+                              title="View Progress"
+                            >
+                              <IconChartLine size={16} />
+                            </Button>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="ghost"
+                              onPress={() => handleEditUser(user)}
+                              title="Edit User"
+                            >
+                              <IconEdit size={16} />
+                            </Button>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="ghost"
+                              color="danger"
+                              onPress={() => handleDeleteUser(user)}
+                              title="Delete User"
+                            >
+                              <IconTrash size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Tab>
+
+            <Tab
+              key="admins"
+              title={
+                <div className="flex items-center gap-2">
+                  <IconShield size={18} />
+                  <span>Administrators ({adminUsers.length})</span>
+                </div>
+              }
+            >
+              <div className="p-6">
+                {adminUsers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <IconShield size={48} className="mx-auto text-foreground-300 mb-4" />
+                    <p className="text-foreground-500">No administrators found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {adminUsers.map((admin) => {
+                      const RoleIcon = getRoleIcon(admin.role);
+                      return (
+                        <div
+                          key={admin.id}
+                          className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center gap-4">
+                            <Avatar
+                              src={admin.imageUrl}
+                              name={admin.name.charAt(0).toUpperCase()}
+                              size="md"
+                              color="primary"
+                              showFallback
+                            />
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-semibold text-foreground">
+                                  {admin.name}
+                                </p>
+                              </div>
+                              <p className="text-sm text-foreground-500">
+                                {admin.email}
+                              </p>
+                              <p className="text-xs text-foreground-400">
+                                Joined {formatDate(admin.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Chip size="sm" color={getRoleColor(admin.role)} variant="flat" className="font-medium">
+                              {admin.role.replace('_', ' ')}
+                            </Chip>
+                            {(admin.role === "ADMIN" || admin.role === "SUPER_ADMIN") && (
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                color="warning"
+                                onClick={() => handleDemoteUser(admin.userId, admin.role)}
+                                isLoading={isUpdatingRole === admin.userId}
+                                className="opacity-60 hover:opacity-100"
+                                title={admin.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
+                              >
+                                <IconArrowDown size={16} />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Tab>
+
+            <Tab
+              key="pending"
+              title={
+                <div className="flex items-center gap-2">
+                  <IconClock size={18} />
+                  <span>Pending Invitations ({pendingInvitations.length})</span>
+                </div>
+              }
+            >
+              <div className="p-6">
+                {pendingInvitations.length === 0 ? (
+                  <div className="text-center py-12">
+                    <IconMail size={48} className="mx-auto text-foreground-300 mb-4" />
+                    <p className="text-foreground-500">No pending invitations</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingInvitations.map((invitation) => (
+                      <div
+                        key={invitation.email}
+                        className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-primary/10 rounded-full">
+                            <IconMail size={20} className="text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">{invitation.email}</p>
+                            <p className="text-sm text-foreground-500">
+                              Invited {formatDate(invitation.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Chip size="sm" color={getRoleColor(invitation.role)} variant="flat">
+                            {invitation.role.replace('_', ' ')} PENDING
+                          </Chip>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            color="danger"
+                            onClick={() => handleCancelInvitation(invitation.email)}
+                            isLoading={isLoading === invitation.email}
+                            className="opacity-60 hover:opacity-100"
+                            title="Cancel Invitation"
+                          >
+                            <IconX size={16} />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Chip color={getRoleColor(user.role)} variant="flat" size="sm">
-                      {user.role}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {user.age && <span>Age: {user.age}</span>}
-                      {user.height && <span className="ml-2">Height: {user.height}cm</span>}
-                      {user.weight && <span className="ml-2">Weight: {user.weight}kg</span>}
-                      {!user.age && !user.height && !user.weight && (
-                        <span className="text-foreground-400">Not provided</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <IconBarbell size={16} />
-                      <span>{user._count.assignedWorkouts}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        color="primary"
-                        as={Link}
-                        href={`/admin/users/${user.id}/progress`}
-                        title="View Progress"
-                        aria-label="View user progress"
-                      >
-                        <IconChartLine size={16} />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        onPress={() => handleEditUser(user)}
-                        title="Edit User"
-                        aria-label="Edit user"
-                      >
-                        <IconEdit size={16} />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        color="danger"
-                        onPress={() => handleDeleteUser(user)}
-                        title="Delete User"
-                        aria-label="Delete user"
-                      >
-                        <IconTrash size={16} />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Tab>
+          </Tabs>
         </CardBody>
       </Card>
 
@@ -480,6 +723,19 @@ export default function UserManagement() {
             </div>
           </div>
         )}
+      </BottomSheet>
+
+      {/* Invite User Modal */}
+      <BottomSheet
+        isOpen={isInviteOpen}
+        onClose={onInviteClose}
+        title="Invite New User"
+        size="lg"
+      >
+        <InviteUserForm
+          onSuccess={handleInviteSuccess}
+          onCancel={onInviteClose}
+        />
       </BottomSheet>
     </div>
   );
