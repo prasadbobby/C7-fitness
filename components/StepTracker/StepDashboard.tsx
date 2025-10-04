@@ -9,13 +9,9 @@ import {
   Input,
   Progress,
   Chip,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   useDisclosure,
 } from "@nextui-org/react";
+import BottomSheet from "@/components/UI/BottomSheet";
 import DatePicker from "@/components/UI/DatePicker";
 import {
   IconTrendingUp,
@@ -473,27 +469,13 @@ export default function StepDashboard() {
       )}
 
       {/* Log Steps Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalContent>
-          <ModalHeader>Log Steps</ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <Input
-                type="number"
-                label="Steps Count"
-                placeholder="e.g., 8500"
-                value={logSteps}
-                onChange={(e) => setLogSteps(e.target.value)}
-                endContent={<span className="text-foreground-500">steps</span>}
-              />
-              <DatePicker
-                label="Date"
-                value={logDate ? new Date(logDate) : undefined}
-                onChange={(date) => setLogDate(date ? date.toISOString().split('T')[0] : '')}
-              />
-            </div>
-          </ModalBody>
-          <ModalFooter>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Log Steps"
+        size="lg"
+        footer={
+          <>
             <Button variant="ghost" onPress={onClose}>
               Cancel
             </Button>
@@ -505,9 +487,25 @@ export default function StepDashboard() {
             >
               Log Steps
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            type="number"
+            label="Steps Count"
+            placeholder="e.g., 8500"
+            value={logSteps}
+            onChange={(e) => setLogSteps(e.target.value)}
+            endContent={<span className="text-foreground-500">steps</span>}
+          />
+          <DatePicker
+            label="Date"
+            value={logDate ? new Date(logDate) : undefined}
+            onChange={(date) => setLogDate(date ? date.toISOString().split('T')[0] : '')}
+          />
+        </div>
+      </BottomSheet>
     </div>
   );
 }

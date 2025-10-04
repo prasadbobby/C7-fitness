@@ -121,16 +121,26 @@ export function ChallengeManagement() {
   };
 
   if (loading) {
-    return <div>Loading challenges...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-sm text-zinc-500">Loading challenges...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       {/* Create/Edit Form */}
       {showCreateForm && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">
+        <Card shadow="none" className="shadow-md border-none bg-gradient-to-br from-background to-default-50">
+          <CardHeader className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <IconPlus className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">
               {editingChallenge ? 'Edit Challenge' : 'Create New Challenge'}
             </h3>
           </CardHeader>
@@ -188,8 +198,10 @@ export function ChallengeManagement() {
       {!showCreateForm && (
         <Button
           color="primary"
+          variant="shadow"
           startContent={<IconPlus size={20} />}
           onPress={() => setShowCreateForm(true)}
+          className="font-medium"
         >
           Create New Challenge
         </Button>
@@ -198,45 +210,62 @@ export function ChallengeManagement() {
       {/* Challenges List */}
       <div className="space-y-3">
         {challenges.map((challenge) => (
-          <Card key={challenge.id}>
-            <CardBody>
+          <Card key={challenge.id} shadow="none" className="shadow-md border-none hover:shadow-lg transition-shadow">
+            <CardBody className="p-6">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <IconCalendarEvent size={20} className="text-primary" />
-                    <h4 className="font-semibold text-lg">{challenge.title}</h4>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <IconCalendarEvent size={18} className="text-primary" />
+                    </div>
+                    <h4 className="font-bold text-xl text-foreground">{challenge.title}</h4>
                     <Chip
                       color={challenge.isActive ? "success" : "default"}
+                      variant="flat"
                       size="sm"
+                      className="font-medium"
                     >
                       {challenge.isActive ? "Active" : "Inactive"}
                     </Chip>
                   </div>
 
                   {challenge.description && (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
                       {challenge.description}
                     </p>
                   )}
 
-                  <div className="text-sm text-zinc-500 space-y-1">
-                    <p>
-                      <strong>Duration:</strong> {' '}
-                      {new Date(challenge.startDate).toLocaleDateString()} - {' '}
-                      {new Date(challenge.endDate).toLocaleDateString()}
-                    </p>
-                    <p>
-                      <strong>Participants:</strong> {challenge.participantCount}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                        <span className="text-zinc-500">Duration</span>
+                      </div>
+                      <p className="font-medium text-foreground pl-4">
+                        {new Date(challenge.startDate).toLocaleDateString()} - {' '}
+                        {new Date(challenge.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-warning rounded-full"></div>
+                        <span className="text-zinc-500">Participants</span>
+                      </div>
+                      <p className="font-medium text-foreground pl-4">
+                        {challenge.participantCount} enrolled
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2 ml-4">
+                <div className="flex gap-2 ml-6">
                   <Button
                     size="sm"
+                    color="secondary"
                     variant="flat"
                     startContent={<IconEdit size={16} />}
                     onPress={() => startEdit(challenge)}
+                    className="font-medium"
                   >
                     Edit
                   </Button>
@@ -246,6 +275,7 @@ export function ChallengeManagement() {
                     variant="flat"
                     startContent={<IconTrash size={16} />}
                     onPress={() => handleDelete(challenge.id)}
+                    className="font-medium"
                   >
                     Delete
                   </Button>
@@ -256,9 +286,19 @@ export function ChallengeManagement() {
         ))}
 
         {challenges.length === 0 && (
-          <Card>
-            <CardBody className="text-center py-8">
-              <p className="text-zinc-500">No challenges created yet.</p>
+          <Card shadow="none" className="shadow-md border-none">
+            <CardBody className="text-center py-12">
+              <div className="space-y-4">
+                <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+                  <IconCalendarEvent className="w-8 h-8 text-zinc-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-foreground mb-2">No Challenges Yet</h3>
+                  <p className="text-zinc-500 text-sm">
+                    Create your first 90-day transformation challenge to get started.
+                  </p>
+                </div>
+              </div>
             </CardBody>
           </Card>
         )}

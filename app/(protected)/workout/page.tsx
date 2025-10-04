@@ -191,8 +191,30 @@ export default async function WorkoutPage() {
         </>
       )}
 
-      <h3 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Example Routines</h3>
-      <RoutineCards routines={systemRoutines} isSystem={true} />
+      {/* Only show example routines to admins, or to users who have assigned workouts */}
+      {(isAdmin || assignedWorkouts.length > 0) && (
+        <>
+          <h3 className="font-semibold text-xl md:text-2xl mb-3 mt-10">Example Routines</h3>
+          <RoutineCards routines={systemRoutines} isSystem={true} />
+        </>
+      )}
+
+      {/* Message for users with no assigned workouts */}
+      {!isAdmin && assignedWorkouts.length === 0 && (
+        <div className="text-center py-12">
+          <div className="space-y-4">
+            <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+              <IconPlus className="w-8 h-8 text-zinc-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg text-foreground mb-2">No Workouts Assigned</h3>
+              <p className="text-zinc-500 text-sm max-w-md mx-auto">
+                You don't have any workouts assigned yet. Contact your trainer or administrator to get started with your fitness journey.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

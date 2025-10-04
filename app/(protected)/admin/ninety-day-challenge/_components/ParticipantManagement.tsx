@@ -190,7 +190,14 @@ export function ParticipantManagement() {
   );
 
   if (loading) {
-    return <div>Loading participants...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-sm text-zinc-500">Loading participants...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
