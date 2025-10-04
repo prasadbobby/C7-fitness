@@ -41,14 +41,19 @@ export async function PATCH(
         const endOfDay = new Date(newAssignmentDate);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // Check if user already has any workout assigned for the new date (excluding current assignment)
-        const existingAssignmentOnSameDay = await prisma.assignedWorkout.findFirst({
+        // Get the current assignment's workout plan ID
+        const currentAssignmentFull = await prisma.assignedWorkout.findUnique({
+          where: { id: params.id },
+          select: {
+            workoutPlanId: true,
+          },
+        });
+
+        // Check if user already has the same workout assigned for the new date (excluding current assignment)
+        const newAssignmentDateString = newAssignmentDate.toISOString().split('T')[0];
+        const existingAssignments = await prisma.assignedWorkout.findMany({
           where: {
             userId: currentAssignment.userId,
-            assignedAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
             id: {
               not: params.id, // Exclude the current assignment being updated
             },
@@ -62,13 +67,19 @@ export async function PATCH(
           },
         });
 
-        if (existingAssignmentOnSameDay) {
+        // Check for duplicate assignment of same workout on same date
+        const duplicateAssignment = existingAssignments.find(assignment => {
+          const existingDateString = assignment.assignedAt.toISOString().split('T')[0];
+          return existingDateString === newAssignmentDateString && assignment.workoutPlanId === currentAssignmentFull?.workoutPlanId;
+        });
+
+        if (duplicateAssignment) {
           const formattedDate = newAssignmentDate.toLocaleDateString();
           return NextResponse.json(
             {
-              error: "USER_ALREADY_HAS_WORKOUT_TODAY",
-              message: `User already has "${existingAssignmentOnSameDay.workoutPlan.name}" workout assigned for ${formattedDate}`,
-              existingWorkout: existingAssignmentOnSameDay.workoutPlan.name,
+              error: "DUPLICATE_WORKOUT_ASSIGNMENT",
+              message: `User already has "${duplicateAssignment.workoutPlan.name}" workout assigned for ${formattedDate}`,
+              existingWorkout: duplicateAssignment.workoutPlan.name,
               date: formattedDate
             },
             { status: 400 }

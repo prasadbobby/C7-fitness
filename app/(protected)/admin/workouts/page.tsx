@@ -219,7 +219,7 @@ export default function WorkoutAssignment() {
       } else {
         const errorData = await response.json();
 
-        if (errorData.error === "USER_ALREADY_HAS_WORKOUT_TODAY") {
+        if (errorData.error === "USER_ALREADY_HAS_WORKOUT_TODAY" || errorData.error === "DUPLICATE_WORKOUT_ASSIGNMENT") {
           toast.error(`Cannot assign workout: User already has "${errorData.existingWorkout}" workout assigned for ${errorData.date}`);
         } else {
           toast.error(errorData.message || "Failed to assign workout");
@@ -280,7 +280,7 @@ export default function WorkoutAssignment() {
       } else {
         const errorData = await response.json();
 
-        if (errorData.error === "USER_ALREADY_HAS_WORKOUT_TODAY") {
+        if (errorData.error === "USER_ALREADY_HAS_WORKOUT_TODAY" || errorData.error === "DUPLICATE_WORKOUT_ASSIGNMENT") {
           toast.error(`Cannot update assignment: User already has "${errorData.existingWorkout}" workout assigned for ${errorData.date}`);
         } else {
           toast.error(errorData.message || "Failed to update assignment");

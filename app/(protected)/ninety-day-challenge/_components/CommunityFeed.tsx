@@ -19,7 +19,8 @@ import {
   IconTrash,
   IconCalendar,
   IconPhoto,
-  IconX
+  IconX,
+  IconHeart
 } from "@tabler/icons-react";
 import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 
@@ -78,7 +79,11 @@ interface Post {
   } | null;
 }
 
-export function CommunityFeed() {
+interface CommunityFeedProps {
+  challengeId?: string;
+}
+
+export function CommunityFeed({ challengeId }: CommunityFeedProps = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,7 +99,7 @@ export function CommunityFeed() {
 
   useEffect(() => {
     fetchPosts();
-  }, [currentPage, selectedDate]);
+  }, [currentPage, selectedDate, challengeId]);
 
   const fetchPosts = async () => {
     try {
@@ -102,6 +107,9 @@ export function CommunityFeed() {
       if (selectedDate) {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         url += `&date=${dateStr}`;
+      }
+      if (challengeId) {
+        url += `&challengeId=${challengeId}`;
       }
 
       const response = await fetch(url);

@@ -6,6 +6,7 @@ import { ChallengeDetails } from "./_components/ChallengeDetails";
 import { ParticipantLeaderboard } from "./_components/ParticipantLeaderboard";
 import { ChallengeAnalytics } from "./_components/ChallengeAnalytics";
 import { AddParticipantModal } from "./_components/AddParticipantModal";
+import { ChallengeCommunity } from "./_components/ChallengeCommunity";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
@@ -283,6 +284,12 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
           <ChallengeDetails challenge={challenge} />
         </CardBody>
       </Card>
+
+      {/* Challenge Community */}
+      <ChallengeCommunity
+        challengeId={challenge.id}
+        challengeTitle={challenge.title}
+      />
 
       {/* Add Participant Modal */}
       <AddParticipantModal

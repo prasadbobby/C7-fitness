@@ -74,22 +74,30 @@ export async function POST(request: NextRequest) {
     const { userId: targetUserId, workoutPlanId, notes, assignmentDate: assignmentDateInput } = body;
 
     // Use provided assignment date or default to today
-    const assignmentDate = assignmentDateInput ? new Date(assignmentDateInput) : new Date();
-    const startOfDay = new Date(assignmentDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(assignmentDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    let assignmentDate;
+    if (assignmentDateInput) {
+      // Parse date string and create date in local timezone
+      assignmentDate = new Date(assignmentDateInput + 'T00:00:00');
+    } else {
+      assignmentDate = new Date();
+    }
+
+    // Create date range for the assignment day (using date string comparison to avoid timezone issues)
+    const assignmentDateString = assignmentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    console.log('Assignment validation:', {
+      targetUserId,
+      assignmentDateInput,
+      assignmentDateString,
+      assignmentDate: assignmentDate.toISOString()
+    });
 
     // Note: Removed unique constraint check since same workout can now be assigned on different dates
 
-    // Check if user already has any workout assigned for the same day
-    const existingAssignmentOnSameDay = await prisma.assignedWorkout.findFirst({
+    // Check if user already has any workout assigned for the same day using date string comparison
+    const existingAssignments = await prisma.assignedWorkout.findMany({
       where: {
         userId: targetUserId,
-        assignedAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
       },
       include: {
         workoutPlan: {
@@ -100,13 +108,36 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (existingAssignmentOnSameDay) {
+    // Filter assignments to find the same workout on the same date (prevent exact duplicates only)
+    const duplicateAssignment = existingAssignments.find(assignment => {
+      const existingDateString = assignment.assignedAt.toISOString().split('T')[0];
+      return existingDateString === assignmentDateString && assignment.workoutPlanId === workoutPlanId;
+    });
+
+    console.log('Duplicate assignment check result:', {
+      totalAssignments: existingAssignments.length,
+      assignmentDates: existingAssignments.map(a => ({
+        date: a.assignedAt.toISOString().split('T')[0],
+        workoutPlanId: a.workoutPlanId,
+        workoutName: a.workoutPlan.name
+      })),
+      lookingForDate: assignmentDateString,
+      lookingForWorkoutPlanId: workoutPlanId,
+      found: !!duplicateAssignment,
+      duplicateAssignment: duplicateAssignment ? {
+        id: duplicateAssignment.id,
+        assignedAt: duplicateAssignment.assignedAt.toISOString(),
+        workoutName: duplicateAssignment.workoutPlan.name
+      } : null
+    });
+
+    if (duplicateAssignment) {
       const formattedDate = assignmentDate.toLocaleDateString();
       return NextResponse.json(
         {
-          error: "USER_ALREADY_HAS_WORKOUT_TODAY",
-          message: `User already has "${existingAssignmentOnSameDay.workoutPlan.name}" workout assigned for ${formattedDate}`,
-          existingWorkout: existingAssignmentOnSameDay.workoutPlan.name,
+          error: "DUPLICATE_WORKOUT_ASSIGNMENT",
+          message: `User already has "${duplicateAssignment.workoutPlan.name}" workout assigned for ${formattedDate}. Cannot assign the same workout twice on the same day.`,
+          existingWorkout: duplicateAssignment.workoutPlan.name,
           date: formattedDate
         },
         { status: 400 }

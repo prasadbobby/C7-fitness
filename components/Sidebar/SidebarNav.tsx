@@ -116,12 +116,6 @@ export default function SidebarNav() {
               active={pathname === "/admin/ninety-day-challenge"}
             />
 
-            <NavItem
-              icon={<IconWorldStar size={22} className="shrink-0" />}
-              label="C7 Community"
-              href="/community"
-              active={pathname === "/community"}
-            />
 
             {/* Workout Section for Admin */}
             <SubMenuTitle title="Workout" />
@@ -197,12 +191,6 @@ export default function SidebarNav() {
                   label="90-Day Challenge"
                   href="/ninety-day-challenge"
                   active={pathname === "/ninety-day-challenge"}
-                />
-                <NavItem
-                  icon={<IconWorldStar size={22} className="shrink-0" />}
-                  label="C7 Community"
-                  href="/community"
-                  active={pathname === "/community"}
                 />
               </>
             )}
