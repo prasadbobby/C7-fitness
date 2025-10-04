@@ -81,9 +81,10 @@ interface Post {
 
 interface CommunityFeedProps {
   challengeId?: string;
+  showTodayByDefault?: boolean;
 }
 
-export function CommunityFeed({ challengeId }: CommunityFeedProps = {}) {
+export function CommunityFeed({ challengeId, showTodayByDefault = false }: CommunityFeedProps = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,7 +92,7 @@ export function CommunityFeed({ challengeId }: CommunityFeedProps = {}) {
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [newComments, setNewComments] = useState<Record<string, string>>({});
   const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(showTodayByDefault ? new Date() : null);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState<string>('');
 

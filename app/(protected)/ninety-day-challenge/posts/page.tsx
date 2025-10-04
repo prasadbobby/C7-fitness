@@ -1,0 +1,112 @@
+import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs";
+import PageHeading from "@/components/PageHeading/PageHeading";
+import { CommunityFeed } from "../_components/CommunityFeed";
+import { Button } from "@nextui-org/button";
+import { IconArrowLeft } from "@tabler/icons-react";
+import Link from "next/link";
+import prisma from "@/prisma/prisma";
+
+async function checkChallengeAccess(userId: string) {
+  try {
+    // Check if user is enabled for any active challenge
+    const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
+      where: {
+        userId: userId,
+        isEnabled: true,
+        challenge: {
+          isActive: true,
+        },
+      },
+      include: {
+        challenge: true,
+      },
+    });
+
+    return {
+      isEnabled: !!participant,
+      challengeId: participant?.challengeId || null,
+      challengeTitle: participant?.challenge.title || null,
+    };
+  } catch (error) {
+    console.error("Error checking challenge access:", error);
+    return { isEnabled: false };
+  }
+}
+
+export default async function PostsDashboardPage() {
+  const user = await currentUser();
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  // Check if user has access to any active challenge
+  const accessData = await checkChallengeAccess(user.id);
+
+  if (!accessData.isEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-200">
+            Community Posts Not Available
+          </h1>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            You don't have access to community posts yet. Contact an admin to get enabled for the 90-day challenge.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
+        <Button
+          as={Link}
+          href="/ninety-day-challenge"
+          variant="ghost"
+          startContent={<IconArrowLeft size={16} />}
+        >
+          Back to Challenge
+        </Button>
+        <div>
+          <PageHeading title="Community Posts" />
+          <p className="text-zinc-600 dark:text-zinc-400 mt-2">
+            {accessData.challengeTitle} - Community discussions and daily updates
+          </p>
+        </div>
+      </div>
+
+      {/* Community Guidelines */}
+      <div className="bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20 rounded-lg p-6">
+        <div className="flex items-center space-x-4">
+          <div className="flex-shrink-0">
+            <div className="w-12 h-12 bg-primary-100 dark:bg-primary-800 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2v-2M3 4h12v8H7l-4 4V4z" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
+              Community Guidelines
+            </h3>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+              <ul className="space-y-1">
+                <li>• Be supportive and encouraging to fellow participants</li>
+                <li>• Share your genuine experiences and progress</li>
+                <li>• Celebrate others' achievements and milestones</li>
+                <li>• Keep discussions positive and motivational</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Community Feed */}
+      <CommunityFeed challengeId={accessData.challengeId} showTodayByDefault={true} />
+    </div>
+  );
+}

@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
     }
 
-    // Validate file size (max 1MB for base64 storage to avoid database issues)
-    if (file.size > 1 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size must be less than 1MB for optimal performance" }, { status: 400 });
+    // Validate file size (max 5MB as requested)
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
     }
 
     // Convert file to base64 for database storage (production-friendly)
