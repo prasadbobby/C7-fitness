@@ -30,6 +30,9 @@ import {
   CardHeader,
   Pagination,
   Avatar,
+  Tabs,
+  Tab,
+  Divider,
 } from "@nextui-org/react";
 import {
   IconEdit,
@@ -40,7 +43,16 @@ import {
   IconUser,
   IconChartLine,
   IconArrowDown,
+  IconUserPlus,
+  IconMail,
+  IconX,
+  IconClock,
+  IconShield,
+  IconSettings,
+  IconUserCheck,
 } from "@tabler/icons-react";
+import { InviteUserForm } from "./_components/InviteUserForm";
+import { cancelInvitation, updateUserRole } from "../settings/_actions";
 
 interface User {
   id: string;
@@ -54,6 +66,20 @@ interface User {
   _count: {
     assignedWorkouts: number;
   };
+  // Clerk data
+  email: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  imageUrl: string;
+  name: string;
+}
+
+interface PendingInvitation {
+  email: string;
+  role: "USER" | "ADMIN" | "SUPER_ADMIN";
+  createdAt: string;
+  invitationId: string | null;
 }
 
 export default function UserManagement() {

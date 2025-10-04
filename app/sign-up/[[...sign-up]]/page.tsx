@@ -18,14 +18,15 @@ export default async function Page({ searchParams }: PageProps) {
   // Check if this is an invitation-based signup
   const hasClerkInvitation = __clerk_ticket && __clerk_status === "sign_up";
   const hasCustomInvitation = invitation_token && email;
+  const hasRoleInvitation = role; // Simple role-based invitation
 
   // If no invitation parameters, redirect to sign-in with error
-  if (!hasClerkInvitation && !hasCustomInvitation) {
+  if (!hasClerkInvitation && !hasCustomInvitation && !hasRoleInvitation) {
     redirect("/sign-in?error=invitation_required");
   }
 
   // If this is a Clerk invitation flow, allow it through
-  if (hasClerkInvitation) {
+  if (hasClerkInvitation || hasRoleInvitation) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="w-full max-w-md space-y-4">
@@ -49,6 +50,7 @@ export default async function Page({ searchParams }: PageProps) {
                 card: "shadow-lg"
               }
             }}
+            afterSignUpUrl="/dashboard"
             redirectUrl="/dashboard"
           />
         </div>
@@ -88,6 +90,7 @@ export default async function Page({ searchParams }: PageProps) {
                 card: "shadow-lg"
               }
             }}
+            afterSignUpUrl="/dashboard"
             redirectUrl="/dashboard"
           />
         </div>
