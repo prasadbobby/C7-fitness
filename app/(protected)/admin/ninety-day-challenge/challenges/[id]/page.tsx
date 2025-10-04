@@ -6,7 +6,6 @@ import { ChallengeDetails } from "./_components/ChallengeDetails";
 import { ParticipantLeaderboard } from "./_components/ParticipantLeaderboard";
 import { ChallengeAnalytics } from "./_components/ChallengeAnalytics";
 import { AddParticipantModal } from "./_components/AddParticipantModal";
-import { ChallengeCommunity } from "./_components/ChallengeCommunity";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
@@ -17,6 +16,7 @@ import {
   IconUsers,
   IconCalendarEvent,
   IconUserPlus,
+  IconMessageCircle,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -133,6 +133,17 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <Button
+              as={Link}
+              href={`/ninety-day-challenge/posts?challengeId=${challenge.id}`}
+              color="primary"
+              variant="shadow"
+              size="lg"
+              startContent={<IconMessageCircle size={18} />}
+              className="w-full sm:w-auto min-h-12 px-4"
+            >
+              View All Posts
+            </Button>
             <Button
               color="secondary"
               variant="shadow"
@@ -299,11 +310,6 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
         </CardBody>
       </Card>
 
-      {/* Challenge Community */}
-      <ChallengeCommunity
-        challengeId={challenge.id}
-        challengeTitle={challenge.title}
-      />
 
       {/* Add Participant Modal */}
       <AddParticipantModal

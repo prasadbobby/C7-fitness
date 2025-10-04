@@ -2,31 +2,32 @@
 
 import { useState } from "react";
 import { Button } from "@nextui-org/button";
-import { useDisclosure } from "@nextui-org/modal";
-import { Textarea, Input } from "@nextui-org/input";
-import { IconPlus, IconPhoto, IconX, IconWorldStar, IconMessageCircle } from "@tabler/icons-react";
-import { Card, CardBody, CardHeader } from "@nextui-org/card";
+import { IconPlus } from "@tabler/icons-react";
+import { CommunityFeed } from "../../_components/CommunityFeed";
 import BottomSheet from "@/components/UI/BottomSheet";
-import Link from "next/link";
+import { Textarea, Input } from "@nextui-org/input";
+import { IconCamera, IconX } from "@tabler/icons-react";
 
-interface ChallengeCommunityProps {
-  challengeId: string;
+interface PostsClientWrapperProps {
+  challengeId: string | null;
   challengeTitle: string;
+  isAdmin: boolean;
+  showTodayByDefault: boolean;
 }
 
-interface NewPostFormData {
-  date: string;
-  dayDescription: string;
-  photos: File[];
-}
-
-export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCommunityProps) {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+export function PostsClientWrapper({
+  challengeId,
+  challengeTitle,
+  isAdmin,
+  showTodayByDefault
+}: PostsClientWrapperProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<NewPostFormData>({
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     dayDescription: "",
-    photos: [],
+    photos: [] as File[],
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +53,17 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
   };
 
   const handleSubmit = async () => {
+    console.log('Admin post submit:', {
+      challengeId,
+      challengeTitle,
+      formData
+    });
+
+    if (!challengeId) {
+      alert('No challenge selected');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const submitData = new FormData();
@@ -59,8 +71,14 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
       submitData.append('date', formData.date);
       submitData.append('dayDescription', formData.dayDescription);
 
+      console.log('FormData being sent:', {
+        challengeId: submitData.get('challengeId'),
+        date: submitData.get('date'),
+        dayDescription: submitData.get('dayDescription')
+      });
+
       // Add photos
-      formData.photos.forEach((photo, index) => {
+      formData.photos.forEach((photo) => {
         submitData.append(`photos`, photo);
       });
 
@@ -71,7 +89,7 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
 
       if (response.ok) {
         resetForm();
-        onClose();
+        setIsModalOpen(false);
         // Refresh the page to show new post
         window.location.reload();
       } else {
@@ -88,70 +106,27 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
 
   return (
     <>
-      <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
-        <CardHeader className="flex items-center justify-between pb-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl shadow-lg">
-              <IconWorldStar className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">
-                Community Posts
-              </h2>
-              <p className="text-sm text-foreground-500">
-                {challengeTitle} participant discussions and updates
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              as={Link}
-              href={`/ninety-day-challenge/posts?challengeId=${challengeId}`}
-              color="secondary"
-              variant="flat"
-              startContent={<IconMessageCircle size={18} />}
-              className="font-medium"
-            >
-              View All Posts
-            </Button>
-            <Button
-              color="primary"
-              startContent={<IconPlus size={18} />}
-              className="font-medium"
-              onPress={onOpen}
-            >
-              New Post
-            </Button>
-          </div>
-        </CardHeader>
-        <CardBody className="pt-0">
-          {/* Welcome Message */}
-          <div className="bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20 rounded-lg p-6">
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-800 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2v-2M3 4h12v8H7l-4 4V4z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-                  Challenge Community
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Manage community posts and participant discussions. Use "View All Posts" to see the complete community feed or "New Post" to create announcements.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+      {/* New Post Button for Admins */}
+      {isAdmin && challengeId && (
+        <div className="flex justify-end mb-4">
+          <Button
+            color="primary"
+            size="sm"
+            startContent={<IconPlus size={16} />}
+            onPress={() => setIsModalOpen(true)}
+          >
+            New Post
+          </Button>
+        </div>
+      )}
 
-      {/* Create Post Modal */}
+      {/* Community Feed */}
+      <CommunityFeed challengeId={challengeId} showTodayByDefault={showTodayByDefault} />
+
+      {/* Admin Post Modal */}
       <BottomSheet
-        isOpen={isOpen}
-        onClose={onClose}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title="Create New Post"
         subtitle={`Share an update with ${challengeTitle} participants`}
         size="2xl"
@@ -159,7 +134,7 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
           <>
             <Button
               variant="light"
-              onPress={onClose}
+              onPress={() => setIsModalOpen(false)}
               isDisabled={isSubmitting}
             >
               Cancel
@@ -205,7 +180,7 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
           {/* Photo Upload */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <IconPhoto size={20} className="text-zinc-500" />
+              <IconCamera size={20} className="text-zinc-500" />
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Add Photos (Optional)
               </label>

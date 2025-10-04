@@ -1,11 +1,17 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs";
 import PageHeading from "@/components/PageHeading/PageHeading";
-import { CommunityFeed } from "../_components/CommunityFeed";
 import { Button } from "@nextui-org/button";
 import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import prisma from "@/prisma/prisma";
+import { PostsClientWrapper } from "./_components/PostsClientWrapper";
+
+interface PageProps {
+  searchParams: {
+    challengeId?: string;
+  };
+}
 
 async function checkChallengeAccess(userId: string) {
   try {
@@ -34,15 +40,49 @@ async function checkChallengeAccess(userId: string) {
   }
 }
 
-export default async function PostsDashboardPage() {
+export default async function PostsDashboardPage({ searchParams }: PageProps) {
   const user = await currentUser();
 
   if (!user) {
     redirect("/sign-in");
   }
 
-  // Check if user has access to any active challenge
-  const accessData = await checkChallengeAccess(user.id);
+  const requestedChallengeId = searchParams.challengeId;
+
+  // Check if user is admin
+  const userInfo = await prisma.userInfo.findUnique({
+    where: { userId: user.id },
+    select: { role: true }
+  });
+
+  const isAdmin = userInfo?.role === 'ADMIN' || userInfo?.role === 'SUPER_ADMIN';
+
+  // If a specific challengeId is requested and user is admin, use that
+  let accessData;
+  let challengeTitle = "";
+
+  if (requestedChallengeId && isAdmin) {
+    // Admin accessing specific challenge
+    const challenge = await prisma.ninetyDayChallenge.findUnique({
+      where: { id: requestedChallengeId },
+      select: { id: true, title: true, isActive: true }
+    });
+
+    if (challenge) {
+      accessData = {
+        isEnabled: true,
+        challengeId: challenge.id,
+        challengeTitle: challenge.title
+      };
+      challengeTitle = challenge.title;
+    } else {
+      accessData = { isEnabled: false };
+    }
+  } else {
+    // Regular user or admin without specific challenge
+    accessData = await checkChallengeAccess(user.id);
+    challengeTitle = accessData.challengeTitle || "";
+  }
 
   if (!accessData.isEnabled) {
     return (
@@ -65,16 +105,19 @@ export default async function PostsDashboardPage() {
       <div className="flex items-center gap-4">
         <Button
           as={Link}
-          href="/ninety-day-challenge"
+          href={requestedChallengeId && isAdmin
+            ? `/admin/ninety-day-challenge/challenges/${requestedChallengeId}`
+            : "/ninety-day-challenge"
+          }
           variant="ghost"
           startContent={<IconArrowLeft size={16} />}
         >
-          Back to Challenge
+          {requestedChallengeId && isAdmin ? "Back to Challenge Dashboard" : "Back to Challenge"}
         </Button>
         <div>
           <PageHeading title="Community Posts" />
           <p className="text-zinc-600 dark:text-zinc-400 mt-2">
-            {accessData.challengeTitle} - Community discussions and daily updates
+            {challengeTitle} - Community discussions and daily updates
           </p>
         </div>
       </div>
@@ -105,8 +148,13 @@ export default async function PostsDashboardPage() {
         </div>
       </div>
 
-      {/* Community Feed */}
-      <CommunityFeed challengeId={accessData.challengeId} showTodayByDefault={true} />
+      {/* Community Feed with Admin Post Modal */}
+      <PostsClientWrapper
+        challengeId={accessData.challengeId}
+        challengeTitle={challengeTitle}
+        isAdmin={isAdmin}
+        showTodayByDefault={true}
+      />
     </div>
   );
 }

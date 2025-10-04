@@ -146,6 +146,14 @@ export async function POST(request: NextRequest) {
       var energy = formData.get('energy') as string;
       var achievements = formData.get('achievements') as string;
       var challenges = formData.get('challenges') as string;
+      var requestedChallengeId = formData.get('challengeId') as string;
+
+      console.log('FormData extracted values:', {
+        date,
+        dayDescription,
+        requestedChallengeId,
+        photoCount: formData.getAll('photos').length
+      });
 
       // Handle photo files
       var photos: string[] = [];
@@ -163,7 +171,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Handle JSON (from existing forms)
       const jsonData = await request.json();
-      var { date, sleepHours, sleepQuality, mealTracking, dayDescription, mood, energy, achievements, challenges, photos } = jsonData;
+      var { date, sleepHours, sleepQuality, mealTracking, dayDescription, mood, energy, achievements, challenges, photos, challengeId: requestedChallengeId } = jsonData;
     }
 
     // Check if user is admin
@@ -188,7 +196,48 @@ export async function POST(request: NextRequest) {
     let challengeId;
     let participantId;
 
-    if (participant) {
+    // If admin provides a specific challengeId, use that
+    if (isAdmin && requestedChallengeId) {
+      console.log('Admin posting with specific challengeId:', requestedChallengeId);
+
+      // Verify the challenge exists
+      const challenge = await prisma.ninetyDayChallenge.findUnique({
+        where: { id: requestedChallengeId }
+      });
+
+      if (!challenge) {
+        console.log('Challenge not found:', requestedChallengeId);
+        return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
+      }
+
+      console.log('Challenge found:', challenge.title);
+
+      // Create or get admin participant record for this challenge
+      const adminParticipant = await prisma.ninetyDayChallengeParticipant.upsert({
+        where: {
+          userId_challengeId: {
+            userId: user.id,
+            challengeId: requestedChallengeId,
+          },
+        },
+        update: {
+          isEnabled: true,
+        },
+        create: {
+          userId: user.id,
+          challengeId: requestedChallengeId,
+          isEnabled: true,
+        },
+      });
+
+      challengeId = requestedChallengeId;
+      participantId = adminParticipant.id;
+
+      console.log('Admin participant created/updated:', {
+        participantId: adminParticipant.id,
+        challengeId: requestedChallengeId
+      });
+    } else if (participant) {
       challengeId = participant.challengeId;
       participantId = participant.id;
     } else if (isAdmin) {
@@ -261,6 +310,14 @@ export async function POST(request: NextRequest) {
       postDate.setSeconds(existingPosts.length);
     }
 
+    console.log('Creating post with final values:', {
+      userId: user.id,
+      challengeId: challengeId,
+      participantId: participantId,
+      dayDescription,
+      isAdmin
+    });
+
     const post = await prisma.ninetyDayChallengePost.create({
       data: {
         userId: user.id,
@@ -277,6 +334,12 @@ export async function POST(request: NextRequest) {
         challenges,
         photos: photos || [],
       },
+    });
+
+    console.log('Post created successfully:', {
+      postId: post.id,
+      challengeId: post.challengeId,
+      participantId: post.participantId
     });
 
     // Update participant's completed days and last active date
