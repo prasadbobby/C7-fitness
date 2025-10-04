@@ -522,55 +522,15 @@ export default function StepTrackingAdmin() {
         <div className="space-y-6">
               {/* User Selection */}
               <div className="space-y-2">
-                <Select
-                  label="Select User"
-                  placeholder={dataLoading ? "Loading users..." : userLoadError ? "Error loading users" : "Choose a user to assign step goal"}
-                  selectedKeys={selectedUser ? [selectedUser] : []}
-                  onSelectionChange={(keys) => setSelectedUser(Array.from(keys)[0] as string)}
-                  classNames={{
-                    trigger: "min-h-14",
-                  }}
-                  startContent={<IconUsers size={20} className="text-foreground-500" />}
+                <label className="text-sm font-medium text-foreground">Select User</label>
+                <CustomUserDropdown
+                  users={users.filter(user => user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")}
+                  selectedUser={selectedUser}
+                  onUserSelect={setSelectedUser}
                   isLoading={dataLoading}
                   isDisabled={dataLoading || !!userLoadError}
-                >
-                  {users.filter(user => user.role !== "ADMIN" && user.role !== "SUPER_ADMIN").map((user) => (
-                    <SelectItem
-                      key={user.userId}
-                      value={user.userId}
-                      textValue={user.username || user.firstName || user.email || "Unknown User"}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={(() => {
-                            const name = user.username || user.firstName || user.email;
-                            if (name) {
-                              if (name.includes('@')) {
-                                return name.split('@')[0].charAt(0).toUpperCase();
-                              }
-                              return name.charAt(0).toUpperCase();
-                            }
-                            return "U";
-                          })()}
-                          size="sm"
-                          classNames={{
-                            name: "font-bold"
-                          }}
-                          color="primary"
-                          showFallback
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {user.username || user.firstName || user.email || "Unknown User"}
-                          </span>
-                          {user.email && (user.email !== (user.username || user.firstName)) && (
-                            <span className="text-xs text-foreground-500">{user.email}</span>
-                          )}
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </Select>
+                  placeholder={dataLoading ? "Loading users..." : userLoadError ? "Error loading users" : "Choose a user to assign step goal"}
+                />
                 {userLoadError && (
                   <div className="bg-danger/10 border border-danger/20 rounded-lg p-3">
                     <div className="flex items-center justify-between">
@@ -767,6 +727,168 @@ export default function StepTrackingAdmin() {
           </div>
         )}
       </BottomSheet>
+    </div>
+  );
+}
+
+// Custom User Dropdown Component
+interface CustomUserDropdownProps {
+  users: User[];
+  selectedUser: string;
+  onUserSelect: (userId: string) => void;
+  isLoading: boolean;
+  isDisabled: boolean;
+  placeholder: string;
+}
+
+function CustomUserDropdown({
+  users,
+  selectedUser,
+  onUserSelect,
+  isLoading,
+  isDisabled,
+  placeholder
+}: CustomUserDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedUserData = users.find(user => user.userId === selectedUser);
+
+  const handleUserSelect = (user: User) => {
+    console.log('User selected:', user);
+    onUserSelect(user.userId);
+    setIsOpen(false);
+  };
+
+  const handleToggle = () => {
+    if (!isDisabled && !isLoading) {
+      console.log('Toggling dropdown, current state:', isOpen);
+      setIsOpen(!isOpen);
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Dropdown Trigger */}
+      <button
+        type="button"
+        onClick={handleToggle}
+        disabled={isDisabled || isLoading}
+        className={`
+          w-full min-h-14 px-4 py-3 bg-content1 border-2 border-content3 rounded-xl
+          flex items-center justify-between gap-3 transition-colors
+          ${isDisabled || isLoading
+            ? 'opacity-50 cursor-not-allowed'
+            : 'hover:border-content4 focus:border-primary cursor-pointer'
+          }
+          ${isOpen ? 'border-primary' : ''}
+        `}
+      >
+        <div className="flex items-center gap-3 flex-1">
+          <IconUsers size={20} className="text-foreground-500" />
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-foreground-500">{placeholder}</span>
+            </div>
+          ) : selectedUserData ? (
+            <div className="flex items-center gap-3">
+              <Avatar
+                name={(() => {
+                  const name = selectedUserData.username || selectedUserData.firstName || selectedUserData.email;
+                  if (name) {
+                    if (name.includes('@')) {
+                      return name.split('@')[0].charAt(0).toUpperCase();
+                    }
+                    return name.charAt(0).toUpperCase();
+                  }
+                  return "U";
+                })()}
+                size="sm"
+                classNames={{
+                  name: "font-bold"
+                }}
+                color="primary"
+                showFallback
+              />
+              <div className="text-left">
+                <div className="font-medium text-foreground">
+                  {selectedUserData.username || selectedUserData.firstName || selectedUserData.email || "Unknown User"}
+                </div>
+                {selectedUserData.email && (selectedUserData.email !== (selectedUserData.username || selectedUserData.firstName)) && (
+                  <div className="text-xs text-foreground-500">{selectedUserData.email}</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <span className="text-foreground-500">{placeholder}</span>
+          )}
+        </div>
+        <div className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-foreground-400">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && !isLoading && !isDisabled && (
+        <div className="absolute z-50 w-full mt-2 bg-content1 border border-content3 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+          {users.length === 0 ? (
+            <div className="p-4 text-center text-foreground-500">
+              No users available
+            </div>
+          ) : (
+            users.map((user) => (
+              <button
+                key={user.userId}
+                type="button"
+                onClick={() => handleUserSelect(user)}
+                className={`
+                  w-full p-3 text-left hover:bg-content2 transition-colors border-b border-content2 last:border-b-0
+                  ${selectedUser === user.userId ? 'bg-primary/10 text-primary' : 'text-foreground'}
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    name={(() => {
+                      const name = user.username || user.firstName || user.email;
+                      if (name) {
+                        if (name.includes('@')) {
+                          return name.split('@')[0].charAt(0).toUpperCase();
+                        }
+                        return name.charAt(0).toUpperCase();
+                      }
+                      return "U";
+                    })()}
+                    size="sm"
+                    classNames={{
+                      name: "font-bold"
+                    }}
+                    color="primary"
+                    showFallback
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {user.username || user.firstName || user.email || "Unknown User"}
+                    </span>
+                    {user.email && (user.email !== (user.username || user.firstName)) && (
+                      <span className="text-xs text-foreground-500">{user.email}</span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Backdrop to close dropdown */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
     </div>
   );
 }
