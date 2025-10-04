@@ -18,6 +18,7 @@ export default async function DashboardPage({
     chart2?: string;
     chart3?: string;
     chart4?: string;
+    role?: string;
   };
 }) {
   // Check if user is admin and redirect to admin dashboard
