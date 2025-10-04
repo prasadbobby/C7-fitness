@@ -84,8 +84,12 @@ export function AddParticipantModal({
   };
 
   const handleAddParticipant = async () => {
-    if (!selectedUser || !challengeId) return;
+    if (!selectedUser || !challengeId) {
+      console.error('Missing required data:', { selectedUser, challengeId });
+      return;
+    }
 
+    console.log('Adding participant:', { selectedUser, challengeId });
     setAdding(true);
     try {
       const response = await fetch('/api/admin/ninety-day-challenge/participants', {
@@ -99,12 +103,24 @@ export function AddParticipantModal({
         }),
       });
 
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
       if (response.ok) {
+        console.log('Participant added successfully');
+        if (data.message) {
+          alert(data.message); // Show success message if participant was enabled
+        }
         onParticipantAdded();
         handleClose();
+      } else {
+        console.error('Failed to add participant:', data);
+        alert(`Failed to add participant: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding participant:', error);
+      alert(`Error adding participant: ${error.message}`);
     } finally {
       setAdding(false);
     }
@@ -144,11 +160,13 @@ export function AddParticipantModal({
               <div
                 key={user.id}
                 className={`p-4 hover:bg-content2 cursor-pointer border-b border-divider last:border-b-0 transition-colors ${
-                  selectedUser === user.id ? 'bg-primary/10 border-primary/20' : ''
+                  selectedUser === user.userId ? 'bg-primary/10 border-primary/20' : ''
                 }`}
                 onClick={() => {
-                  setSelectedUser(user.id);
+                  console.log('Selecting user:', user);
+                  setSelectedUser(user.userId); // Use userId instead of id for API consistency
                   setUserSearchTerm(`${user.firstName} ${user.lastName} (${user.email})`);
+                  setSearchResults([]); // Clear search results to prevent further API calls
                 }}
               >
                 <div className="flex items-center gap-3">
@@ -170,7 +188,7 @@ export function AddParticipantModal({
                       </div>
                     )}
                   </div>
-                  {selectedUser === user.id && (
+                  {selectedUser === user.userId && (
                     <div className="text-primary">
                       <IconUserPlus size={20} />
                     </div>

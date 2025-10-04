@@ -10,8 +10,6 @@ import {
   Button,
   Chip,
   Progress,
-  Tabs,
-  Tab,
   Divider,
   useDisclosure,
 } from "@nextui-org/react";
@@ -121,6 +119,7 @@ export default function UserProgressDashboard() {
   const [editWorkoutDuration, setEditWorkoutDuration] = useState("");
   const [editWorkoutSets, setEditWorkoutSets] = useState<any[][]>([]);
   const [editLoading, setEditLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"assignments" | "workouts">("assignments");
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
 
@@ -607,9 +606,44 @@ export default function UserProgressDashboard() {
         </CardBody>
       </Card>
 
-      {/* Tabs for detailed data */}
-      <Tabs aria-label="Progress details">
-        <Tab key="assignments" title="Assignments">
+      {/* Custom Tabs for detailed data */}
+      <div className="space-y-4">
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 bg-default-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab("assignments")}
+            className={`
+              flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors
+              ${activeTab === "assignments"
+                ? "bg-white text-primary shadow-sm"
+                : "text-foreground-600 hover:text-foreground-800"
+              }
+            `}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <IconTarget size={16} />
+              Assignments
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab("workouts")}
+            className={`
+              flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors
+              ${activeTab === "workouts"
+                ? "bg-white text-primary shadow-sm"
+                : "text-foreground-600 hover:text-foreground-800"
+              }
+            `}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <IconBarbell size={16} />
+              Workout History
+            </div>
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "assignments" && (
           <Card>
             <CardBody>
               <div className="space-y-4">
@@ -652,9 +686,9 @@ export default function UserProgressDashboard() {
               </div>
             </CardBody>
           </Card>
-        </Tab>
+        )}
 
-        <Tab key="workouts" title="Workout History">
+        {activeTab === "workouts" && (
           <Card>
             <CardBody>
               <div className="space-y-4">
@@ -698,8 +732,8 @@ export default function UserProgressDashboard() {
               </div>
             </CardBody>
           </Card>
-        </Tab>
-      </Tabs>
+        )}
+      </div>
 
       {/* Edit Workout Modal */}
       <BottomSheet

@@ -149,16 +149,22 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
   } catch (error) {
+    console.error('Admin authorization failed:', error);
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   try {
+    const body = await request.json();
+    console.log('Received request body:', body);
 
-    const { userId, challengeId } = await request.json();
+    const { userId, challengeId } = body;
 
     if (!userId || !challengeId) {
+      console.error('Missing required fields:', { userId, challengeId });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    console.log('Adding participant:', { userId, challengeId });
 
     // Check if participant already exists
     const existingParticipant = await prisma.ninetyDayChallengeParticipant.findUnique({
@@ -171,9 +177,30 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingParticipant) {
-      return NextResponse.json({ error: "User is already a participant" }, { status: 400 });
+      console.log('Participant already exists:', existingParticipant);
+
+      // If participant exists but is disabled, enable them instead of returning error
+      if (!existingParticipant.isEnabled) {
+        console.log('Enabling existing disabled participant...');
+        const enabledParticipant = await prisma.ninetyDayChallengeParticipant.update({
+          where: {
+            id: existingParticipant.id,
+          },
+          data: {
+            isEnabled: true,
+          },
+        });
+        console.log('Participant enabled successfully:', enabledParticipant);
+        return NextResponse.json({
+          participant: enabledParticipant,
+          message: "Participant was already in challenge and has been enabled"
+        });
+      } else {
+        return NextResponse.json({ error: "User is already an active participant" }, { status: 400 });
+      }
     }
 
+    console.log('Creating new participant...');
     const participant = await prisma.ninetyDayChallengeParticipant.create({
       data: {
         userId,
@@ -182,6 +209,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('Participant created successfully:', participant);
     return NextResponse.json({ participant });
   } catch (error) {
     console.error("Error adding participant:", error);

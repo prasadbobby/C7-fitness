@@ -50,9 +50,22 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
   const fetchChallengeData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}`);
+      console.log('Fetching challenge data for ID:', params.id);
+      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (response.ok) {
         const data = await response.json();
+        console.log('Challenge data received:', {
+          challengeId: data.challenge.id,
+          participantCount: data.challenge.participants.length,
+          participants: data.challenge.participants.map(p => ({
+            id: p.id,
+            userId: p.userId,
+            isEnabled: p.isEnabled,
+            name: `${p.user.firstName} ${p.user.lastName}`
+          }))
+        });
         setChallenge(data.challenge);
       } else if (response.status === 404) {
         router.push("/admin/ninety-day-challenge");
@@ -65,6 +78,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
   };
 
   const handleParticipantAdded = () => {
+    console.log('Participant added, refreshing challenge data...');
     fetchChallengeData(); // Refresh the data
   };
 
