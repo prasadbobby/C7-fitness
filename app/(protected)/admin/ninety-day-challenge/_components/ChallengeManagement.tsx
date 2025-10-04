@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@nextui-org/button";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Input } from "@nextui-org/input";
@@ -21,7 +21,7 @@ interface Challenge {
   createdAt: string;
 }
 
-export function ChallengeManagement() {
+export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => void }>((props, ref) => {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -39,6 +39,12 @@ export function ChallengeManagement() {
   useEffect(() => {
     fetchChallenges();
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    triggerCreateChallenge: () => {
+      setShowCreateForm(true);
+    }
+  }));
 
   const fetchChallenges = async () => {
     try {
@@ -194,18 +200,6 @@ export function ChallengeManagement() {
         </Card>
       )}
 
-      {/* Create Button */}
-      {!showCreateForm && (
-        <Button
-          color="primary"
-          variant="shadow"
-          startContent={<IconPlus size={20} />}
-          onPress={() => setShowCreateForm(true)}
-          className="font-medium"
-        >
-          Create New Challenge
-        </Button>
-      )}
 
       {/* Challenges List */}
       <div className="space-y-3">
@@ -305,4 +299,6 @@ export function ChallengeManagement() {
       </div>
     </div>
   );
-}
+});
+
+ChallengeManagement.displayName = 'ChallengeManagement';

@@ -48,7 +48,7 @@ export default function SidebarWrapper({
 
   // Desktop sidebar - responsive width based on collapse state
   const desktopSidebarClass = clsx({
-    "fixed top-0 left-0 h-full bg-white dark:bg-zinc-900 hidden md:block shadow-md overflow-hidden transition-all duration-300 ease-in-out z-30":
+    "fixed top-0 left-0 h-full bg-white dark:bg-zinc-900 hidden md:block shadow-md overflow-x-hidden overflow-y-auto transition-all duration-300 ease-in-out z-30":
       true,
     "w-20": sidebarCollapse,
     "w-64": !sidebarCollapse,
@@ -56,7 +56,7 @@ export default function SidebarWrapper({
 
   // Mobile sidebar
   const mobileSidebarClass = clsx({
-    "mobile-sidebar fixed top-0 left-0 h-full bg-white dark:bg-zinc-900 md:hidden shadow-lg overflow-hidden transition-transform duration-300 ease-in-out z-[9999] w-64":
+    "mobile-sidebar fixed top-0 left-0 h-full bg-white dark:bg-zinc-900 md:hidden shadow-lg overflow-x-hidden overflow-y-auto transition-transform duration-300 ease-in-out z-[9999] w-64":
       true,
     "transform translate-x-0": mobileMenuOpen,
     "transform -translate-x-full": !mobileMenuOpen,

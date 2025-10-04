@@ -77,7 +77,7 @@ export default async function Page({ searchParams }: PageProps) {
               Welcome to C7 Personal Fitness Studio
             </h1>
             <p className="text-gray-600 mb-4">
-              You've been invited to join FitForge. Complete your registration below.
+              You've been invited to join C7. Complete your registration below.
             </p>
             <p className="text-sm text-blue-600 mb-6">
               Invitation for: {decodeURIComponent(email)}

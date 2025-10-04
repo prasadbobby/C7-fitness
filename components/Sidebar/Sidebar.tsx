@@ -20,14 +20,20 @@ export default async function Sidebar() {
 
   return (
     <SidebarWrapper>
-      <SidebarBrand />
-      <SidebarUser username={username} userImage={userImage} />
-      {/* <SidebarSearch /> */}
-      <SidebarNav />
-      {/* <SidebarWorkoutControls /> */}
-      <div className="absolute bottom-0 left-0 right-0 py-5 px-5 flex flex-col items-center">
-        <ThemeSwitcher />
-        {/* <SidebarSocials /> */}
+      <div className="flex flex-col h-full">
+        <div className="flex-shrink-0">
+          <SidebarBrand />
+          <SidebarUser username={username} userImage={userImage} />
+          {/* <SidebarSearch /> */}
+        </div>
+        <div className="flex-1 overflow-y-auto pb-20">
+          <SidebarNav />
+          {/* <SidebarWorkoutControls /> */}
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 py-5 px-5 flex flex-col items-center bg-white dark:bg-zinc-900">
+          <ThemeSwitcher />
+          {/* <SidebarSocials /> */}
+        </div>
       </div>
     </SidebarWrapper>
   );

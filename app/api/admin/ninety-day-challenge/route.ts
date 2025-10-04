@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/utils/adminAuth";
 import prisma from "@/prisma/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
   } catch (error) {
@@ -10,6 +10,40 @@ export async function GET() {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const getStats = searchParams.get('stats');
+
+    if (getStats === 'true') {
+      // Get stats for dashboard
+      const activeChallenges = await prisma.ninetyDayChallenge.count({
+        where: { isActive: true }
+      });
+
+      const totalParticipants = await prisma.ninetyDayChallengeParticipant.count({
+        where: { isEnabled: true }
+      });
+
+      const participants = await prisma.ninetyDayChallengeParticipant.findMany({
+        where: { isEnabled: true },
+        select: { completedDays: true }
+      });
+
+      const completedChallenges = participants.filter(p => p.completedDays >= 90).length;
+      const completionRate = totalParticipants > 0 ? Math.round((completedChallenges / totalParticipants) * 100) : 0;
+
+      const avgProgress = totalParticipants > 0
+        ? Math.round(participants.reduce((sum, p) => sum + p.completedDays, 0) / totalParticipants)
+        : 0;
+
+      return NextResponse.json({
+        stats: {
+          activeChallenges,
+          totalParticipants,
+          completionRate,
+          avgProgress
+        }
+      });
+    }
 
     const challenges = await prisma.ninetyDayChallenge.findMany({
       include: {

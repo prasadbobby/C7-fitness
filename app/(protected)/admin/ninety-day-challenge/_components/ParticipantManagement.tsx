@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@nextui-org/button";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Input } from "@nextui-org/input";
@@ -45,7 +45,7 @@ interface User {
   username: string;
 }
 
-export function ParticipantManagement() {
+export const ParticipantManagement = forwardRef<{ triggerAddParticipant: () => void }>((props, ref) => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -57,7 +57,6 @@ export function ParticipantManagement() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -70,6 +69,12 @@ export function ParticipantManagement() {
       setSearchResults([]);
     }
   }, [userSearchTerm]);
+
+  useImperativeHandle(ref, () => ({
+    triggerAddParticipant: () => {
+      setShowAddForm(true);
+    }
+  }));
 
   const searchUsers = async () => {
     if (!userSearchTerm || userSearchTerm.length < 2) {
@@ -166,22 +171,6 @@ export function ParticipantManagement() {
     }
   };
 
-  const handleCleanupOrphanedRecords = async () => {
-    setIsCleaningUp(true);
-    try {
-      const response = await fetch(`/api/admin/ninety-day-challenge/participants?cleanup=true`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`Cleaned up ${data.cleanedUp} orphaned records`);
-        // Refresh the data
-        await fetchData();
-      }
-    } catch (error) {
-      console.error('Error cleaning up orphaned records:', error);
-    } finally {
-      setIsCleaningUp(false);
-    }
-  };
 
   const filteredParticipants = participants.filter(participant =>
     participant.user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -323,27 +312,6 @@ export function ParticipantManagement() {
         </Card>
       )}
 
-      {/* Action Buttons */}
-      {!showAddForm && (
-        <div className="flex gap-2">
-          <Button
-            color="primary"
-            startContent={<IconUserPlus size={20} />}
-            onPress={() => setShowAddForm(true)}
-          >
-            Add Participant
-          </Button>
-          <Button
-            color="warning"
-            variant="flat"
-            startContent={<IconTrash size={20} />}
-            onPress={handleCleanupOrphanedRecords}
-            isLoading={isCleaningUp}
-          >
-            {isCleaningUp ? "Cleaning Up..." : "Cleanup Orphaned Records"}
-          </Button>
-        </div>
-      )}
 
       {/* Participants List */}
       <div className="space-y-3">
@@ -415,4 +383,6 @@ export function ParticipantManagement() {
       </div>
     </div>
   );
-}
+});
+
+ParticipantManagement.displayName = 'ParticipantManagement';

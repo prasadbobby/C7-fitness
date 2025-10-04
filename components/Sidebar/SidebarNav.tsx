@@ -68,17 +68,6 @@ export default function SidebarNav() {
 
   return (
     <div className="px-5">
-      {/* Mobile Close Button */}
-      <div className="md:hidden flex justify-end py-4">
-        <button
-          onClick={toggleMobileMenu}
-          className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-          aria-label="Close menu"
-        >
-          <IconX size={20} />
-        </button>
-      </div>
-
       <ul className="text-sm">
         {isAdmin ? (
           <>
@@ -160,13 +149,6 @@ export default function SidebarNav() {
 
             {/* Data Section for Admin */}
             <SubMenuTitle title="Data" />
-
-            <NavItem
-              icon={<IconActivity size={22} className="shrink-0" />}
-              label="Activity Log"
-              href="/activity"
-              active={pathname === "/activity"}
-            />
 
             <NavItem
               icon={<IconUser size={22} className="shrink-0" />}

@@ -1,9 +1,11 @@
-import { redirect } from "next/navigation";
-import { checkAdminAuth } from "@/utils/adminAuth";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import { ChallengeManagement } from "./_components/ChallengeManagement";
 import { ParticipantManagement } from "./_components/ParticipantManagement";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Chip } from "@nextui-org/chip";
+import { Button } from "@nextui-org/button";
 import {
   IconCalendarEvent,
   IconUsers,
@@ -13,12 +15,51 @@ import {
   IconFlame
 } from "@tabler/icons-react";
 
-export default async function NinetyDayChallengePage() {
-  const { isAdmin } = await checkAdminAuth();
+interface Stats {
+  activeChallenges: number;
+  totalParticipants: number;
+  completionRate: number;
+  avgProgress: number;
+}
 
-  if (!isAdmin) {
-    redirect("/");
-  }
+export default function NinetyDayChallengePage() {
+  const [stats, setStats] = useState<Stats>({
+    activeChallenges: 0,
+    totalParticipants: 0,
+    completionRate: 0,
+    avgProgress: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Refs to trigger actions in child components
+  const challengeManagementRef = useRef<{ triggerCreateChallenge: () => void }>(null);
+  const participantManagementRef = useRef<{ triggerAddParticipant: () => void }>(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/admin/ninety-day-challenge?stats=true');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateChallenge = () => {
+    challengeManagementRef.current?.triggerCreateChallenge();
+  };
+
+  const handleAddParticipant = () => {
+    participantManagementRef.current?.triggerAddParticipant();
+  };
 
   return (
     <div className="space-y-6">
@@ -39,116 +80,157 @@ export default async function NinetyDayChallengePage() {
         </div>
       </div>
 
-      {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card shadow="none" className="shadow-md border-none">
-          <CardHeader className="flex gap-3 pb-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <IconCalendarEvent className="w-5 h-5 text-primary" />
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <Card shadow="none" className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase text-primary/70 font-bold tracking-wider mb-1">Active Challenges</p>
+                <p className="text-4xl font-black text-primary mb-2">{stats.activeChallenges}</p>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <p className="text-xs text-primary/60">Currently running</p>
+                </div>
+              </div>
+              <div className="p-4 bg-primary/15 rounded-2xl">
+                <IconCalendarEvent className="w-8 h-8 text-primary" />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <p className="text-xs uppercase text-zinc-500 font-medium">Active Challenges</p>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <p className="text-3xl font-bold text-primary">2</p>
           </CardBody>
         </Card>
 
-        <Card shadow="none" className="shadow-md border-none">
-          <CardHeader className="flex gap-3 pb-2">
-            <div className="p-2 bg-secondary/10 rounded-lg">
-              <IconUsers className="w-5 h-5 text-secondary" />
+        <Card shadow="none" className="bg-gradient-to-br from-secondary/5 to-secondary/10 border border-secondary/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase text-secondary/70 font-bold tracking-wider mb-1">Total Participants</p>
+                <p className="text-4xl font-black text-secondary mb-2">{stats.totalParticipants}</p>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-secondary rounded-full animate-pulse"></div>
+                  <p className="text-xs text-secondary/60">Active members</p>
+                </div>
+              </div>
+              <div className="p-4 bg-secondary/15 rounded-2xl">
+                <IconUsers className="w-8 h-8 text-secondary" />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <p className="text-xs uppercase text-zinc-500 font-medium">Total Participants</p>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <p className="text-3xl font-bold text-secondary">48</p>
           </CardBody>
         </Card>
 
-        <Card shadow="none" className="shadow-md border-none">
-          <CardHeader className="flex gap-3 pb-2">
-            <div className="p-2 bg-success/10 rounded-lg">
-              <IconTrendingUp className="w-5 h-5 text-success" />
+        <Card shadow="none" className="bg-gradient-to-br from-success/5 to-success/10 border border-success/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase text-success/70 font-bold tracking-wider mb-1">Completion Rate</p>
+                <p className="text-4xl font-black text-success mb-2">{stats.completionRate}%</p>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                  <p className="text-xs text-success/60">Success rate</p>
+                </div>
+              </div>
+              <div className="p-4 bg-success/15 rounded-2xl">
+                <IconTrendingUp className="w-8 h-8 text-success" />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <p className="text-xs uppercase text-zinc-500 font-medium">Completion Rate</p>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <p className="text-3xl font-bold text-success">74%</p>
           </CardBody>
         </Card>
 
-        <Card shadow="none" className="shadow-md border-none">
-          <CardHeader className="flex gap-3 pb-2">
-            <div className="p-2 bg-warning/10 rounded-lg">
-              <IconTarget className="w-5 h-5 text-warning" />
+        <Card shadow="none" className="bg-gradient-to-br from-warning/5 to-warning/10 border border-warning/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase text-warning/70 font-bold tracking-wider mb-1">Avg Progress</p>
+                <p className="text-4xl font-black text-warning mb-2">{stats.avgProgress}</p>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-warning rounded-full animate-pulse"></div>
+                  <p className="text-xs text-warning/60">days completed</p>
+                </div>
+              </div>
+              <div className="p-4 bg-warning/15 rounded-2xl">
+                <IconTarget className="w-8 h-8 text-warning" />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <p className="text-xs uppercase text-zinc-500 font-medium">Avg Progress</p>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <p className="text-3xl font-bold text-warning">67</p>
-            <p className="text-xs text-zinc-500">days completed</p>
           </CardBody>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Challenge Management - Takes 2/3 width on xl screens */}
-        <div className="xl:col-span-2">
-          <Card shadow="none" className="shadow-md border-none h-full">
-            <CardHeader className="flex items-center gap-4 pb-4">
-              <div className="p-3 bg-primary/10 rounded-xl">
-                <IconCalendarEvent className="w-6 h-6 text-primary" />
+      {/* Main Content - Modern Vertical Layout */}
+      <div className="space-y-8">
+        {/* Challenge Management Section */}
+        <div className="w-full">
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl shadow-lg">
+                  <IconCalendarEvent className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    Challenge Management
+                  </h2>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Create and manage 90-day transformation challenges
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-foreground">
-                  Challenge Management
-                </h2>
-                <p className="text-sm text-zinc-500">
-                  Create and manage 90-day transformation challenges
-                </p>
+              <div className="flex justify-end sm:ml-auto">
+                <Button
+                  color="primary"
+                  variant="shadow"
+                  size="lg"
+                  startContent={<IconCalendarEvent className="w-4 h-4" />}
+                  className="px-6 py-2 font-semibold w-full sm:w-auto"
+                  onPress={handleCreateChallenge}
+                >
+                  Create New Challenge
+                </Button>
               </div>
-              <Chip
-                color="primary"
-                variant="flat"
-                size="sm"
-                startContent={<IconChartBar className="w-3 h-3" />}
-              >
-                Management Hub
-              </Chip>
-            </CardHeader>
-            <CardBody className="pt-0">
-              <ChallengeManagement />
+            </div>
+          </div>
+
+          <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
+            <CardBody className="p-8">
+              <ChallengeManagement ref={challengeManagementRef} />
             </CardBody>
           </Card>
         </div>
 
-        {/* Participant Management - Takes 1/3 width on xl screens */}
-        <div className="xl:col-span-1">
-          <Card shadow="none" className="shadow-md border-none h-full">
-            <CardHeader className="flex items-center gap-4 pb-4">
-              <div className="p-3 bg-secondary/10 rounded-xl">
-                <IconUsers className="w-6 h-6 text-secondary" />
+        {/* Participants Management Section */}
+        <div className="w-full">
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="p-3 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-xl shadow-lg">
+                  <IconUsers className="w-7 h-7 text-secondary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    Participant Management
+                  </h2>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Monitor and manage challenge participants
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-foreground">
-                  Participants
-                </h2>
-                <p className="text-sm text-zinc-500">
-                  Manage challenge participants
-                </p>
+              <div className="flex justify-end sm:ml-auto">
+                <Button
+                  color="secondary"
+                  variant="shadow"
+                  size="lg"
+                  startContent={<IconUsers className="w-4 h-4" />}
+                  className="px-6 py-2 font-semibold w-full sm:w-auto"
+                  onPress={handleAddParticipant}
+                >
+                  Add Participants
+                </Button>
               </div>
-            </CardHeader>
-            <CardBody className="pt-0">
-              <ParticipantManagement />
+            </div>
+          </div>
+
+          <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
+            <CardBody className="p-8">
+              <ParticipantManagement ref={participantManagementRef} />
             </CardBody>
           </Card>
         </div>
