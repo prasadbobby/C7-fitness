@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import BottomSheet from "@/components/UI/BottomSheet";
 import DatePicker from "@/components/UI/DatePicker";
 import {
@@ -524,12 +524,13 @@ export default function StepTrackingAdmin() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Select User</label>
                 <CustomUserDropdown
-                  users={users.filter(user => user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")}
+                  users={users} // Show all users (including admins) since that's what's available in production
                   selectedUser={selectedUser}
                   onUserSelect={setSelectedUser}
                   isLoading={dataLoading}
                   isDisabled={dataLoading || !!userLoadError}
                   placeholder={dataLoading ? "Loading users..." : userLoadError ? "Error loading users" : "Choose a user to assign step goal"}
+                  allUsers={users} // Pass all users for debugging
                 />
                 {userLoadError && (
                   <div className="bg-danger/10 border border-danger/20 rounded-lg p-3">
@@ -553,6 +554,11 @@ export default function StepTrackingAdmin() {
                 {selectedUser && !userLoadError && (
                   <div className="text-xs text-foreground-500 px-3">
                     ✓ Selected user will receive daily step tracking with carry-over system
+                  </div>
+                )}
+                {!userLoadError && users.length > 0 && (
+                  <div className="text-xs text-foreground-400 px-3">
+                    Note: All users including administrators are shown since step goals can be assigned to any user
                   </div>
                 )}
               </div>
@@ -739,6 +745,7 @@ interface CustomUserDropdownProps {
   isLoading: boolean;
   isDisabled: boolean;
   placeholder: string;
+  allUsers?: User[]; // For debugging
 }
 
 function CustomUserDropdown({
@@ -747,9 +754,17 @@ function CustomUserDropdown({
   onUserSelect,
   isLoading,
   isDisabled,
-  placeholder
+  placeholder,
+  allUsers = []
 }: CustomUserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('CustomUserDropdown - All users received:', allUsers);
+    console.log('CustomUserDropdown - Filtered users:', users);
+    console.log('CustomUserDropdown - User roles:', allUsers.map(u => ({ name: u.username || u.firstName || u.email, role: u.role })));
+  }, [allUsers, users]);
 
   const selectedUserData = users.find(user => user.userId === selectedUser);
 
@@ -834,8 +849,15 @@ function CustomUserDropdown({
       {isOpen && !isLoading && !isDisabled && (
         <div className="absolute z-50 w-full mt-2 bg-content1 border border-content3 rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {users.length === 0 ? (
-            <div className="p-4 text-center text-foreground-500">
-              No users available
+            <div className="p-4 text-center">
+              <p className="text-foreground-500 mb-2">No users available</p>
+              <div className="text-xs text-foreground-400 space-y-1">
+                <p>Total users loaded: {allUsers.length}</p>
+                <p>Filtered users: {users.length}</p>
+                {allUsers.length > 0 && (
+                  <p>User roles: {allUsers.map(u => u.role).join(', ')}</p>
+                )}
+              </div>
             </div>
           ) : (
             users.map((user) => (
@@ -867,10 +889,17 @@ function CustomUserDropdown({
                     color="primary"
                     showFallback
                   />
-                  <div className="flex flex-col">
-                    <span className="font-medium">
-                      {user.username || user.firstName || user.email || "Unknown User"}
-                    </span>
+                  <div className="flex flex-col flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {user.username || user.firstName || user.email || "Unknown User"}
+                      </span>
+                      {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-md">
+                          {user.role.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
                     {user.email && (user.email !== (user.username || user.firstName)) && (
                       <span className="text-xs text-foreground-500">{user.email}</span>
                     )}
