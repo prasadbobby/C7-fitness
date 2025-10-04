@@ -30,6 +30,7 @@ export function DailyPostForm() {
   const [loading, setLoading] = useState(false);
   const [todaysPost, setTodaysPost] = useState<TodaysPost | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [formData, setFormData] = useState({
     sleepHours: 8,
@@ -44,8 +45,21 @@ export function DailyPostForm() {
   });
 
   useEffect(() => {
+    checkUserRole();
     checkTodaysPost();
   }, []);
+
+  const checkUserRole = async () => {
+    try {
+      const response = await fetch('/api/user/role');
+      if (response.ok) {
+        const data = await response.json();
+        setIsAdmin(data.role === 'ADMIN' || data.role === 'SUPER_ADMIN');
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const checkTodaysPost = async () => {
     try {
@@ -53,7 +67,8 @@ export function DailyPostForm() {
       const response = await fetch(`/api/ninety-day-challenge/posts/today?date=${today}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.post) {
+        if (data.post && !isAdmin) {
+          // Only set hasPostedToday for non-admin users
           setTodaysPost(data.post);
           setHasPostedToday(true);
           setFormData({
@@ -68,6 +83,7 @@ export function DailyPostForm() {
             photos: data.post.photos || [],
           });
         }
+        // For admins, always allow new posts regardless of existing posts
       }
     } catch (error) {
       console.error('Error checking today\'s post:', error);
@@ -80,8 +96,8 @@ export function DailyPostForm() {
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      const method = hasPostedToday ? 'PUT' : 'POST';
-      const url = hasPostedToday
+      const method = (hasPostedToday && !isAdmin) ? 'PUT' : 'POST';
+      const url = (hasPostedToday && !isAdmin)
         ? `/api/ninety-day-challenge/posts/${todaysPost?.id}`
         : '/api/ninety-day-challenge/posts';
 
@@ -98,9 +114,25 @@ export function DailyPostForm() {
 
       if (response.ok) {
         const data = await response.json();
-        setTodaysPost(data.post);
-        setHasPostedToday(true);
-        setIsEditing(false);
+        if (isAdmin) {
+          // For admins, reset the form after successful post creation
+          setFormData({
+            sleepHours: 8,
+            sleepQuality: "",
+            mealTracking: "",
+            dayDescription: "",
+            mood: "",
+            energy: "",
+            achievements: "",
+            challenges: "",
+            photos: [],
+          });
+          alert('Post created successfully! You can create another post.');
+        } else {
+          setTodaysPost(data.post);
+          setHasPostedToday(true);
+          setIsEditing(false);
+        }
       }
     } catch (error) {
       console.error('Error submitting post:', error);
@@ -183,9 +215,9 @@ export function DailyPostForm() {
     <Card>
       <CardHeader className="flex justify-between">
         <h3 className="text-lg font-semibold">
-          {hasPostedToday ? "Today's Update" : "Create Today's Post"}
+          {isAdmin ? "Create New Post" : (hasPostedToday ? "Today's Update" : "Create Today's Post")}
         </h3>
-        {hasPostedToday && (
+        {hasPostedToday && !isAdmin && (
           <div className="flex gap-2">
             <Chip color="success" size="sm" startContent={<IconCheck size={16} />}>
               Posted
@@ -202,10 +234,15 @@ export function DailyPostForm() {
             )}
           </div>
         )}
+        {isAdmin && (
+          <Chip color="primary" size="sm">
+            Admin Mode
+          </Chip>
+        )}
       </CardHeader>
 
       <CardBody>
-        {hasPostedToday && !isEditing ? (
+        {hasPostedToday && !isEditing && !isAdmin ? (
           // Display Mode
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">

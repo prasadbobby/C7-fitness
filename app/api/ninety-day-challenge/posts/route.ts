@@ -225,19 +225,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
     }
 
-    // Check if user already posted for this date
-    const existingPost = await prisma.ninetyDayChallengePost.findUnique({
-      where: {
-        userId_challengeId_date: {
+    // Check if user already posted for this date (skip check for admins)
+    if (!isAdmin) {
+      const existingPost = await prisma.ninetyDayChallengePost.findUnique({
+        where: {
+          userId_challengeId_date: {
+            userId: user.id,
+            challengeId: challengeId,
+            date: new Date(date),
+          },
+        },
+      });
+
+      if (existingPost) {
+        return NextResponse.json({ error: "Post already exists for this date" }, { status: 400 });
+      }
+    }
+
+    // For admins, adjust the date by a few seconds to bypass unique constraint while keeping the same display date
+    let postDate = new Date(date);
+    if (isAdmin) {
+      // Check if there are existing posts for this date and add seconds to make it unique
+      const existingPosts = await prisma.ninetyDayChallengePost.findMany({
+        where: {
           userId: user.id,
           challengeId: challengeId,
-          date: new Date(date),
-        },
-      },
-    });
+          date: {
+            gte: new Date(date + 'T00:00:00.000Z'),
+            lt: new Date(date + 'T23:59:59.999Z')
+          }
+        }
+      });
 
-    if (existingPost) {
-      return NextResponse.json({ error: "Post already exists for this date" }, { status: 400 });
+      // Add seconds equal to the number of existing posts to make the timestamp unique
+      postDate.setSeconds(existingPosts.length);
     }
 
     const post = await prisma.ninetyDayChallengePost.create({
@@ -245,7 +266,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         challengeId: challengeId,
         participantId: participantId,
-        date: new Date(date),
+        date: postDate,
         sleepHours,
         sleepQuality: sleepQuality || null,
         mealTracking,
