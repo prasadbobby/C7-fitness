@@ -13,22 +13,15 @@ import { Avatar } from "@nextui-org/avatar";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/dropdown";
 import { formatDistanceToNow, format } from "date-fns";
 import {
-  IconHeart,
-  IconFlame,
-  IconTrendingUp,
-  IconHandRock,
-  IconHandStop,
-  IconSparkles,
   IconMessage2,
   IconSend,
   IconDots,
   IconTrash,
   IconCalendar,
-  IconHeartFilled,
   IconPhoto,
   IconX
 } from "@tabler/icons-react";
-import AnimatedHeart from "@/components/UI/AnimatedHeart";
+import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 
 interface PostReaction {
   id: string;
@@ -78,6 +71,7 @@ interface Post {
     reactions: number;
     comments: number;
   };
+  reactionCounts: Record<string, number>;
   userReaction: {
     id: string;
     type: string;
@@ -124,7 +118,7 @@ export function CommunityFeed() {
     }
   };
 
-  const handleReaction = async (postId: string, reactionType: string) => {
+  const handleReaction = async (postId: string, reactionType: ReactionType) => {
     try {
       const response = await fetch('/api/ninety-day-challenge/reactions', {
         method: 'POST',
@@ -206,29 +200,6 @@ export function CommunityFeed() {
     setCurrentPage(1);
   };
 
-  const getReactionIcon = (type: string, isActive: boolean) => {
-    const iconProps = {
-      size: 18,
-      className: isActive ? 'text-primary' : 'text-zinc-400'
-    };
-
-    switch (type) {
-      case 'LIKE':
-        return <IconHeart {...iconProps} fill={isActive ? "currentColor" : "none"} />;
-      case 'LOVE':
-        return <IconSparkles {...iconProps} />;
-      case 'SUPPORT':
-        return <IconHandStop {...iconProps} />;
-      case 'STRONG':
-        return <IconHandRock {...iconProps} />;
-      case 'FIRE':
-        return <IconFlame {...iconProps} />;
-      case 'CLAP':
-        return <IconTrendingUp {...iconProps} />;
-      default:
-        return <IconHeart {...iconProps} />;
-    }
-  };
 
   const getMoodColor = (mood: string) => {
     switch (mood) {
@@ -481,16 +452,17 @@ export function CommunityFeed() {
                     )}
                   </div>
 
-                  {/* Actions Bar - Twitter-like */}
+                  {/* Actions Bar - DEV Community Style */}
                   <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-700">
                     <div className="flex items-center gap-6">
-                      {/* Heart Reaction */}
-                      <AnimatedHeart
-                        isLiked={post.userReaction?.type === 'LIKE'}
-                        onToggle={() => handleReaction(post.id, 'LIKE')}
-                        likeCount={post._count.reactions}
-                        size={18}
-                        className="text-zinc-500 hover:text-red-500 transition-colors"
+                      {/* Enhanced Reactions */}
+                      <PostReactions
+                        postId={post.id}
+                        reactions={post.reactionCounts || {}}
+                        userReaction={post.userReaction?.type as ReactionType || null}
+                        onReactionToggle={handleReaction}
+                        size="sm"
+                        showCounts={true}
                       />
 
                       {/* Comments */}
@@ -501,19 +473,6 @@ export function CommunityFeed() {
                         <IconMessage2 size={18} className="group-hover:text-blue-500" />
                         <span className="text-sm">{post._count.comments}</span>
                       </button>
-
-                      {/* Additional Reactions */}
-                      <div className="flex items-center gap-1">
-                        {['FIRE', 'STRONG', 'SUPPORT'].map((reactionType) => (
-                          <button
-                            key={reactionType}
-                            onClick={() => handleReaction(post.id, reactionType)}
-                            className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                          >
-                            {getReactionIcon(reactionType, post.userReaction?.type === reactionType)}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
 

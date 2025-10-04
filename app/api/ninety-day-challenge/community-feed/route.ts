@@ -161,6 +161,12 @@ export async function GET(request: NextRequest) {
         reaction.userId === user.id
       );
 
+      // Calculate reaction counts by type
+      const reactionCounts = post.reactions.reduce((acc, reaction) => {
+        acc[reaction.reactionType] = (acc[reaction.reactionType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       // Enhance comments with user info
       const enhancedComments = post.comments.map(comment => ({
         ...comment,
@@ -177,6 +183,7 @@ export async function GET(request: NextRequest) {
         ...post,
         author: userInfo,
         comments: enhancedComments,
+        reactionCounts,
         userReaction: userReaction ? {
           id: userReaction.id,
           type: userReaction.reactionType,

@@ -31,137 +31,136 @@
   display: none;
 }
 
-.heart-checkbox:checked + .heart-label .heart-svg {
-  .heart-path {
-    transform: scale(0.2);
-    fill: #E2264D;
-    animation: animateHeart 0.3s linear forwards 0.25s;
-  }
+/* Flattened CSS to avoid nesting issues */
+.heart-checkbox:checked + .heart-label .heart-svg .heart-path {
+  transform: scale(0.2);
+  fill: #E2264D;
+  animation: animateHeart 0.3s linear forwards 0.25s;
+}
 
-  .main-circ {
-    transition: all 2s;
-    animation: animateCircle 0.3s linear forwards;
-    opacity: 1;
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .main-circ {
+  transition: all 2s;
+  animation: animateCircle 0.3s linear forwards;
+  opacity: 1;
+}
 
-  .grp1 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp1 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(0, -30px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp1 circle:nth-child(1) {
+  transform: scale(0) translate(0, -30px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(10px, -50px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp1 circle:nth-child(2) {
+  transform: scale(0) translate(10px, -50px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp2 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp2 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(30px, -15px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp2 circle:nth-child(1) {
+  transform: scale(0) translate(30px, -15px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(60px, -15px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp2 circle:nth-child(2) {
+  transform: scale(0) translate(60px, -15px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp3 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp3 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(30px, 0px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp3 circle:nth-child(1) {
+  transform: scale(0) translate(30px, 0px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(60px, 10px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp3 circle:nth-child(2) {
+  transform: scale(0) translate(60px, 10px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp4 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp4 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(30px, 15px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp4 circle:nth-child(1) {
+  transform: scale(0) translate(30px, 15px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(40px, 50px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp4 circle:nth-child(2) {
+  transform: scale(0) translate(40px, 50px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp5 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp5 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(-10px, 20px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp5 circle:nth-child(1) {
+  transform: scale(0) translate(-10px, 20px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(-60px, 30px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp5 circle:nth-child(2) {
+  transform: scale(0) translate(-60px, 30px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp6 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp6 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(-30px, 0px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp6 circle:nth-child(1) {
+  transform: scale(0) translate(-30px, 0px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(-60px, -5px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp6 circle:nth-child(2) {
+  transform: scale(0) translate(-60px, -5px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
+}
 
-  .grp7 {
-    opacity: 1;
-    transition: 0.1s all 0.3s;
+.heart-checkbox:checked + .heart-label .heart-svg .grp7 {
+  opacity: 1;
+  transition: 0.1s all 0.3s;
+}
 
-    circle:nth-child(1) {
-      transform: scale(0) translate(-30px, -15px);
-      transform-origin: 0 0 0;
-      transition: 0.5s transform 0.3s;
-    }
+.heart-checkbox:checked + .heart-label .heart-svg .grp7 circle:nth-child(1) {
+  transform: scale(0) translate(-30px, -15px);
+  transform-origin: 0 0 0;
+  transition: 0.5s transform 0.3s;
+}
 
-    circle:nth-child(2) {
-      transform: scale(0) translate(-55px, -30px);
-      transform-origin: 0 0 0;
-      transition: 1.5s transform 0.3s;
-    }
-  }
+.heart-checkbox:checked + .heart-label .heart-svg .grp7 circle:nth-child(2) {
+  transform: scale(0) translate(-55px, -30px);
+  transform-origin: 0 0 0;
+  transition: 1.5s transform 0.3s;
 }
 
 @keyframes animateCircle {
