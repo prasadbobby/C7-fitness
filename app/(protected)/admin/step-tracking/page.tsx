@@ -78,6 +78,8 @@ export default function StepTrackingAdmin() {
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingGoal, setEditingGoal] = useState<StepGoal | null>(null);
 
@@ -90,20 +92,53 @@ export default function StepTrackingAdmin() {
 
   const fetchData = async () => {
     try {
+      setDataLoading(true);
+      setUserLoadError(null);
+      console.log("Fetching users and step goals...");
+
       const [usersRes, goalsRes] = await Promise.all([
         fetch("/api/admin/users?limit=1000"),
         fetch("/api/admin/step-goals"),
       ]);
 
+      console.log("Users response status:", usersRes.status);
+      console.log("Goals response status:", goalsRes.status);
+
+      if (!usersRes.ok) {
+        console.error("Users API error:", usersRes.status, usersRes.statusText);
+        const errorText = await usersRes.text();
+        console.error("Users API error details:", errorText);
+        setUserLoadError(`Failed to load users: ${usersRes.status} ${usersRes.statusText}`);
+      }
+
+      if (!goalsRes.ok) {
+        console.error("Goals API error:", goalsRes.status, goalsRes.statusText);
+        const errorText = await goalsRes.text();
+        console.error("Goals API error details:", errorText);
+      }
+
       const [usersData, goalsData] = await Promise.all([
-        usersRes.json(),
-        goalsRes.json(),
+        usersRes.ok ? usersRes.json() : { users: [] },
+        goalsRes.ok ? goalsRes.json() : { stepGoals: [] },
       ]);
+
+      console.log("Users data received:", usersData);
+      console.log("Goals data received:", goalsData);
 
       setUsers(usersData.users || []);
       setStepGoals(goalsData.stepGoals || []);
+
+      if (usersData.users && usersData.users.length === 0) {
+        setUserLoadError("No users found in the system");
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
+      setUserLoadError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Set empty arrays to prevent undefined errors
+      setUsers([]);
+      setStepGoals([]);
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -489,13 +524,15 @@ export default function StepTrackingAdmin() {
               <div className="space-y-2">
                 <Select
                   label="Select User"
-                  placeholder="Choose a user to assign step goal"
+                  placeholder={dataLoading ? "Loading users..." : userLoadError ? "Error loading users" : "Choose a user to assign step goal"}
                   selectedKeys={selectedUser ? [selectedUser] : []}
                   onSelectionChange={(keys) => setSelectedUser(Array.from(keys)[0] as string)}
                   classNames={{
                     trigger: "min-h-14",
                   }}
                   startContent={<IconUsers size={20} className="text-foreground-500" />}
+                  isLoading={dataLoading}
+                  isDisabled={dataLoading || !!userLoadError}
                 >
                   {users.filter(user => user.role !== "ADMIN" && user.role !== "SUPER_ADMIN").map((user) => (
                     <SelectItem
@@ -534,7 +571,26 @@ export default function StepTrackingAdmin() {
                     </SelectItem>
                   ))}
                 </Select>
-                {selectedUser && (
+                {userLoadError && (
+                  <div className="bg-danger/10 border border-danger/20 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-danger">⚠️</span>
+                        <span className="text-sm text-danger">{userLoadError}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        onPress={fetchData}
+                        isLoading={dataLoading}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {selectedUser && !userLoadError && (
                   <div className="text-xs text-foreground-500 px-3">
                     ✓ Selected user will receive daily step tracking with carry-over system
                   </div>
@@ -641,6 +697,20 @@ export default function StepTrackingAdmin() {
                   These notes will be visible to the user in their step tracking dashboard
                 </div>
               </div>
+
+              {/* Debug Info (only show in development or when there are issues) */}
+              {(process.env.NODE_ENV === 'development' || userLoadError) && (
+                <div className="bg-content2 border border-divider rounded-lg p-3">
+                  <p className="text-xs font-medium text-foreground-600 mb-2">Debug Information:</p>
+                  <div className="space-y-1 text-xs text-foreground-500">
+                    <p>• Users loaded: {users.length}</p>
+                    <p>• Data loading: {dataLoading ? 'Yes' : 'No'}</p>
+                    <p>• Environment: {process.env.NODE_ENV || 'unknown'}</p>
+                    <p>• API Base URL: {window.location.origin}</p>
+                    {userLoadError && <p className="text-danger">• Error: {userLoadError}</p>}
+                  </div>
+                </div>
+              )}
             </div>
       </BottomSheet>
 

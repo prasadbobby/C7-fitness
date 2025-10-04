@@ -7,7 +7,8 @@ import { Input } from "@nextui-org/input";
 import { Textarea } from "@nextui-org/input";
 import { Switch } from "@nextui-org/switch";
 import { Chip } from "@nextui-org/chip";
-import { IconPlus, IconCalendarEvent, IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconCalendarEvent, IconEdit, IconTrash, IconEye } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import DatePicker from "@/components/UI/DatePicker";
 
 interface Challenge {
@@ -22,6 +23,7 @@ interface Challenge {
 }
 
 export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => void }>((props, ref) => {
+  const router = useRouter();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -253,6 +255,16 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
                 </div>
 
                 <div className="flex gap-2 ml-6">
+                  <Button
+                    size="sm"
+                    color="primary"
+                    variant="flat"
+                    startContent={<IconEye size={16} />}
+                    onPress={() => router.push(`/admin/ninety-day-challenge/challenges/${challenge.id}`)}
+                    className="font-medium"
+                  >
+                    View Challenge
+                  </Button>
                   <Button
                     size="sm"
                     color="secondary"

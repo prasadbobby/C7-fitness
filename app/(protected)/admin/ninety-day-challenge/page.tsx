@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChallengeManagement } from "./_components/ChallengeManagement";
-import { ParticipantManagement } from "./_components/ParticipantManagement";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Chip } from "@nextui-org/chip";
 import { Button } from "@nextui-org/button";
@@ -33,7 +32,6 @@ export default function NinetyDayChallengePage() {
 
   // Refs to trigger actions in child components
   const challengeManagementRef = useRef<{ triggerCreateChallenge: () => void }>(null);
-  const participantManagementRef = useRef<{ triggerAddParticipant: () => void }>(null);
 
   useEffect(() => {
     fetchStats();
@@ -55,10 +53,6 @@ export default function NinetyDayChallengePage() {
 
   const handleCreateChallenge = () => {
     challengeManagementRef.current?.triggerCreateChallenge();
-  };
-
-  const handleAddParticipant = () => {
-    participantManagementRef.current?.triggerAddParticipant();
   };
 
   return (
@@ -196,44 +190,6 @@ export default function NinetyDayChallengePage() {
           </Card>
         </div>
 
-        {/* Participants Management Section */}
-        <div className="w-full">
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="p-3 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-xl shadow-lg">
-                  <IconUsers className="w-7 h-7 text-secondary" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">
-                    Participant Management
-                  </h2>
-                  <p className="text-sm text-zinc-500 mt-1">
-                    Monitor and manage challenge participants
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end sm:ml-auto">
-                <Button
-                  color="secondary"
-                  variant="shadow"
-                  size="lg"
-                  startContent={<IconUsers className="w-4 h-4" />}
-                  className="px-6 py-2 font-semibold w-full sm:w-auto"
-                  onPress={handleAddParticipant}
-                >
-                  Add Participants
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
-            <CardBody className="p-8">
-              <ParticipantManagement ref={participantManagementRef} />
-            </CardBody>
-          </Card>
-        </div>
       </div>
     </div>
   );

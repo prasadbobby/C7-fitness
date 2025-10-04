@@ -204,6 +204,7 @@ export const ParticipantManagement = forwardRef<{ triggerAddParticipant: () => v
 
             <Select
               placeholder="Filter by challenge"
+              aria-label="Filter participants by challenge"
               selectedKeys={selectedChallenge ? [selectedChallenge] : []}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
@@ -231,6 +232,7 @@ export const ParticipantManagement = forwardRef<{ triggerAddParticipant: () => v
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
                 placeholder="Select Challenge"
+                aria-label="Select challenge for participant"
                 selectedKeys={selectedChallenge ? [selectedChallenge] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
