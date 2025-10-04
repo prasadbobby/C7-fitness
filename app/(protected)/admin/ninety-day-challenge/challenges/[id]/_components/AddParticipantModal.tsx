@@ -13,6 +13,7 @@ import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/input";
 import BottomSheet from "@/components/UI/BottomSheet";
 import { IconSearch, IconUserPlus } from "@tabler/icons-react";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -110,17 +111,19 @@ export function AddParticipantModal({
       if (response.ok) {
         console.log('Participant added successfully');
         if (data.message) {
-          alert(data.message); // Show success message if participant was enabled
+          toast.success(data.message); // Show success message if participant was enabled
+        } else {
+          toast.success('Participant has been added to the challenge successfully!');
         }
         onParticipantAdded();
         handleClose();
       } else {
         console.error('Failed to add participant:', data);
-        alert(`Failed to add participant: ${data.error || 'Unknown error'}`);
+        toast.error(`Failed to add participant: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding participant:', error);
-      alert(`Error adding participant: ${error.message}`);
+      toast.error(`Error adding participant: ${error.message}`);
     } finally {
       setAdding(false);
     }

@@ -72,9 +72,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (dateFilter) {
-      const filterDate = new Date(dateFilter);
-      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+      // Parse the date string in local timezone to avoid timezone shifting
+      const [year, month, day] = dateFilter.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
 
       whereClause.date = {
         gte: startOfDay,
