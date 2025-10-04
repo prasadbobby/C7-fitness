@@ -115,6 +115,7 @@ export default function StepDashboard() {
       if (response.ok) {
         await fetchStepData();
         setLogSteps("");
+        setLogDate(new Date().toISOString().split('T')[0]); // Reset to today's date
         onClose();
       }
     } catch (error) {
@@ -152,7 +153,10 @@ export default function StepDashboard() {
         <Button
           color="primary"
           startContent={<IconPlus size={20} />}
-          onPress={onOpen}
+          onPress={() => {
+            setLogDate(new Date().toISOString().split('T')[0]); // Reset to today when opening
+            onOpen();
+          }}
         >
           Log Steps
         </Button>

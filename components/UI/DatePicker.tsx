@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
@@ -34,6 +34,11 @@ export default function DatePicker({
   placement = "bottom"
 }: DatePickerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(value);
+
+  // Sync selectedDate with value prop changes
+  useEffect(() => {
+    setSelectedDate(value);
+  }, [value]);
 
   const handleDateChange = (date: Date | undefined) => {
     setSelectedDate(date);

@@ -89,11 +89,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate target steps including carry-over logic
+    console.log('Calculating daily target for:', {
+      userId,
+      logDate: logDate.toISOString(),
+      baseDailyTarget: activeGoal?.dailyTarget || 10000
+    });
+
     const { targetSteps, carryOverSteps, excessSteps, weeklyProgress } = await calculateDailyTarget(
       userId,
       logDate,
       activeGoal?.dailyTarget || 10000
     );
+
+    console.log('Daily target calculation result:', {
+      targetSteps,
+      carryOverSteps,
+      excessSteps,
+      weeklyProgress
+    });
 
     // Create or update step log
     const stepLog = await prisma.stepLog.upsert({
@@ -144,6 +157,8 @@ async function calculateDailyTarget(
   date: Date,
   baseDailyTarget: number
 ) {
+  console.log('=== Daily Target Calculation ===');
+  console.log('Input parameters:', { userId, date: date.toISOString(), baseDailyTarget });
   // Get the current week's range (Sunday to Saturday)
   const currentWeekStart = new Date(date);
   const dayOfWeek = currentWeekStart.getDay(); // 0 = Sunday, 6 = Saturday
@@ -154,13 +169,13 @@ async function calculateDailyTarget(
   currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
   currentWeekEnd.setHours(23, 59, 59, 999);
 
-  // Get all logs for the current week up to yesterday
+  // Get all logs for the current week up to the day before the log date
   const weekLogs = await prisma.stepLog.findMany({
     where: {
       userId,
       date: {
         gte: currentWeekStart,
-        lt: date, // Only logs before today
+        lt: date, // Only logs before the target date
       },
     },
     orderBy: { date: "asc" },
@@ -180,6 +195,11 @@ async function calculateDailyTarget(
   const previousDate = new Date(date);
   previousDate.setDate(previousDate.getDate() - 1);
 
+  console.log('Previous date calculation:', {
+    targetDate: date.toISOString(),
+    previousDate: previousDate.toISOString()
+  });
+
   const previousLog = await prisma.stepLog.findUnique({
     where: {
       userId_date: {
@@ -188,6 +208,12 @@ async function calculateDailyTarget(
       },
     },
   });
+
+  console.log('Previous log found:', previousLog ? {
+    date: previousLog.date.toISOString(),
+    actualSteps: previousLog.actualSteps,
+    targetSteps: previousLog.targetSteps
+  } : null);
 
   let dailyCarryOver = 0;
   let dailyCredit = 0;
