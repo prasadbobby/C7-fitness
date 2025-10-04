@@ -45,6 +45,7 @@ import {
   IconFilterX,
   IconChevronDown,
   IconChevronUp,
+  IconTrash,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,11 @@ interface User {
   id: string;
   userId: string;
   role: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  imageUrl?: string;
   age?: number;
   height?: number;
   weight?: number;
@@ -72,6 +78,10 @@ interface WorkoutPlan {
     reps?: number;
     exerciseDuration?: number;
   }>;
+  _count?: {
+    assignedWorkouts: number;
+    logs: number;
+  };
 }
 
 interface Assignment {
@@ -129,6 +139,7 @@ export default function WorkoutAssignment() {
   const [assignedDateFrom, setAssignedDateFrom] = useState("");
   const [assignedDateTo, setAssignedDateTo] = useState("");
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState("workouts");
 
   const { isOpen: isAssignOpen, onOpen: onAssignOpen, onClose: onAssignClose } = useDisclosure();
 
@@ -294,6 +305,65 @@ export default function WorkoutAssignment() {
     }
   };
 
+  const handleDeleteWorkout = async (workoutId: string, workoutName: string) => {
+    if (!confirm(`Are you sure you want to delete the workout "${workoutName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/workouts?id=${workoutId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchData();
+        toast.success("Workout deleted successfully!");
+      } else {
+        if (data.error === "Cannot delete workout with existing assignments or logs") {
+          toast.error(
+            `Cannot delete workout: It has ${data.details.assignments} assignments and ${data.details.logs} workout logs. Remove all assignments and logs first.`
+          );
+        } else {
+          toast.error(data.error || "Failed to delete workout");
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting workout:", error);
+      toast.error("Failed to delete workout. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: string, userName: string, workoutName: string) => {
+    if (!confirm(`Are you sure you want to delete the assignment for "${userName}" - "${workoutName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/assignments/${assignmentId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await fetchData();
+        toast.success("Assignment deleted successfully!");
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete assignment");
+      }
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -313,7 +383,7 @@ export default function WorkoutAssignment() {
 
   // Helper function to clear all filters
   const clearAllFilters = () => {
-    setSearchTerm("");
+    updateURLParams({ search: "", page: 1 });
     setStatusFilter(new Set());
     setUserRoleFilter(new Set());
     setWorkoutTypeFilter(new Set());
@@ -324,13 +394,13 @@ export default function WorkoutAssignment() {
   };
 
   // Get unique categories from workout plans
-  const uniqueCategories = [...new Set(workoutPlans
+  const uniqueCategories = Array.from(new Set(workoutPlans
     .filter(wp => wp.systemRoutineCategory)
     .map(wp => wp.systemRoutineCategory!)
-  )];
+  ));
 
   // Get unique user roles
-  const uniqueUserRoles = [...new Set(users.map(u => u.role))];
+  const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
 
   // Check if any advanced filters are active
   const hasActiveFilters =
@@ -426,9 +496,9 @@ export default function WorkoutAssignment() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Workout Assignment</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Workout Management</h1>
           <p className="text-foreground-500 mt-2">
-            Assign personalized workouts to users and track their progress.
+            Manage workout plans, assign workouts to users, and track progress.
           </p>
         </div>
         <Button
@@ -529,8 +599,139 @@ export default function WorkoutAssignment() {
         </Card>
       </div>
 
-      {/* Advanced Search and Filter */}
+      {/* Tab Navigation */}
       <Card>
+        <CardBody className="p-4">
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key) => setActiveTab(key as string)}
+            variant="underlined"
+            classNames={{
+              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
+              cursor: "w-full bg-primary",
+              tab: "max-w-fit px-0 h-12",
+              tabContent: "group-data-[selected=true]:text-primary"
+            }}
+          >
+            <Tab
+              key="workouts"
+              title={
+                <div className="flex items-center space-x-2">
+                  <IconBarbell size={20} />
+                  <span>Workout Plans</span>
+                </div>
+              }
+            />
+            <Tab
+              key="assignments"
+              title={
+                <div className="flex items-center space-x-2">
+                  <IconUsers size={20} />
+                  <span>Assignment History</span>
+                </div>
+              }
+            />
+          </Tabs>
+        </CardBody>
+      </Card>
+
+      {/* Workouts Tab Content */}
+      {activeTab === "workouts" && (
+        <>
+          {/* Workouts Table */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Workout Plans</h3>
+            </CardHeader>
+            <CardBody className="p-0">
+              <Table aria-label="Workouts table">
+                <TableHeader>
+                  <TableColumn>WORKOUT NAME</TableColumn>
+                  <TableColumn>TYPE</TableColumn>
+                  <TableColumn>EXERCISES</TableColumn>
+                  <TableColumn>ASSIGNMENTS</TableColumn>
+                  <TableColumn>ACTIONS</TableColumn>
+                </TableHeader>
+                <TableBody emptyContent="No workouts found">
+                  {workoutPlans.map((workout) => (
+                    <TableRow key={workout.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{workout.name}</p>
+                          {workout.systemRoutineCategory && (
+                            <p className="text-sm text-foreground-500">
+                              {workout.systemRoutineCategory}
+                            </p>
+                          )}
+                          {workout.notes && (
+                            <p className="text-xs text-foreground-400 mt-1">
+                              {workout.notes}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          color={workout.isSystemRoutine ? "success" : "primary"}
+                          variant="flat"
+                          size="sm"
+                          startContent={workout.isSystemRoutine ? <IconBarbell size={14} /> : <IconEdit size={14} />}
+                        >
+                          {workout.isSystemRoutine ? "System" : "Custom"}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <p className="font-medium">{workout.WorkoutPlanExercise.length} exercises</p>
+                          {workout.WorkoutPlanExercise.length > 0 && (
+                            <p className="text-xs text-foreground-500">
+                              {workout.WorkoutPlanExercise.slice(0, 2).map(ex => ex.Exercise.name).join(", ")}
+                              {workout.WorkoutPlanExercise.length > 2 && ` +${workout.WorkoutPlanExercise.length - 2} more`}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <p className="font-medium">{workout._count?.assignedWorkouts || 0} assigned</p>
+                          <p className="text-xs text-foreground-500">{workout._count?.logs || 0} logs</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            startContent={<IconTrash size={16} />}
+                            onPress={() => handleDeleteWorkout(workout.id, workout.name)}
+                            isDisabled={loading || (workout._count?.assignedWorkouts || 0) > 0 || (workout._count?.logs || 0) > 0}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardBody>
+          </Card>
+
+          {/* Pagination */}
+          <AdminPagination
+            totalResults={totalWorkouts}
+            limit={limit}
+            showControls
+          />
+        </>
+      )}
+
+      {/* Assignments Tab Content */}
+      {activeTab === "assignments" && (
+        <>
+          {/* Advanced Search and Filter */}
+          <Card>
         <CardBody className="p-4">
           <div className="space-y-4">
             {/* Search Bar */}
@@ -811,15 +1012,33 @@ export default function WorkoutAssignment() {
                         <DatePicker
                           label="From"
                           size="sm"
-                          value={assignedDateFrom ? new Date(assignedDateFrom) : undefined}
-                          onChange={(date) => setAssignedDateFrom(date ? date.toISOString().split('T')[0] : '')}
+                          value={assignedDateFrom ? new Date(assignedDateFrom + 'T00:00:00') : undefined}
+                          onChange={(date) => {
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setAssignedDateFrom(`${year}-${month}-${day}`);
+                            } else {
+                              setAssignedDateFrom('');
+                            }
+                          }}
                           className="transition-all focus-within:scale-[1.02]"
                         />
                         <DatePicker
                           label="To"
                           size="sm"
-                          value={assignedDateTo ? new Date(assignedDateTo) : undefined}
-                          onChange={(date) => setAssignedDateTo(date ? date.toISOString().split('T')[0] : '')}
+                          value={assignedDateTo ? new Date(assignedDateTo + 'T00:00:00') : undefined}
+                          onChange={(date) => {
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setAssignedDateTo(`${year}-${month}-${day}`);
+                            } else {
+                              setAssignedDateTo('');
+                            }
+                          }}
                           className="transition-all focus-within:scale-[1.02]"
                         />
                       </div>
@@ -883,143 +1102,160 @@ export default function WorkoutAssignment() {
         </CardBody>
       </Card>
 
-      {/* Assignments Table */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Assignment History</h3>
-        </CardHeader>
-        <CardBody className="p-0">
-          <Table aria-label="Assignments table">
-            <TableHeader>
-              <TableColumn>USER</TableColumn>
-              <TableColumn>WORKOUT</TableColumn>
-              <TableColumn>STATUS</TableColumn>
-              <TableColumn>ASSIGNMENT DATE</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent="No assignments found">
-              {filteredAssignments.map((assignment) => (
-                <TableRow key={assignment.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar
-                        src={assignment.user.imageUrl}
-                        name={(() => {
-                          const name = assignment.user.username || assignment.user.firstName || assignment.user.email;
-                          if (name) {
-                            // Get first letter of name, or first letter of email if no name
-                            if (name.includes('@')) {
-                              return name.split('@')[0].charAt(0).toUpperCase();
-                            }
-                            return name.charAt(0).toUpperCase();
-                          }
-                          return "U";
-                        })()}
-                        size="sm"
-                        className="flex-shrink-0 font-bold"
-                        classNames={{
-                          name: "font-bold"
-                        }}
-                        color="primary"
-                        showFallback
-                      />
-                      <div>
-                        <div className="font-medium text-sm">
-                          {assignment.user.username || assignment.user.firstName || assignment.user.email || "Unknown User"}
-                        </div>
-                        {assignment.user.email && (assignment.user.email !== (assignment.user.username || assignment.user.firstName)) && (
-                          <div className="text-xs text-foreground-500">
-                            {assignment.user.email}
+          {/* Assignments Table */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Assignment History</h3>
+            </CardHeader>
+            <CardBody className="p-0">
+              <Table aria-label="Assignments table">
+                <TableHeader>
+                  <TableColumn>USER</TableColumn>
+                  <TableColumn>WORKOUT</TableColumn>
+                  <TableColumn>STATUS</TableColumn>
+                  <TableColumn>ASSIGNMENT DATE</TableColumn>
+                  <TableColumn>ACTIONS</TableColumn>
+                </TableHeader>
+                <TableBody emptyContent="No assignments found">
+                  {filteredAssignments.map((assignment) => (
+                    <TableRow key={assignment.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={assignment.user.imageUrl}
+                            name={(() => {
+                              const name = assignment.user.username || assignment.user.firstName || assignment.user.email;
+                              if (name) {
+                                // Get first letter of name, or first letter of email if no name
+                                if (name.includes('@')) {
+                                  return name.split('@')[0].charAt(0).toUpperCase();
+                                }
+                                return name.charAt(0).toUpperCase();
+                              }
+                              return "U";
+                            })()}
+                            size="sm"
+                            className="flex-shrink-0 font-bold"
+                            classNames={{
+                              name: "font-bold"
+                            }}
+                            color="primary"
+                            showFallback
+                          />
+                          <div>
+                            <div className="font-medium text-sm">
+                              {assignment.user.username || assignment.user.firstName || assignment.user.email || "Unknown User"}
+                            </div>
+                            {assignment.user.email && (assignment.user.email !== (assignment.user.username || assignment.user.firstName)) && (
+                              <div className="text-xs text-foreground-500">
+                                {assignment.user.email}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{assignment.workoutPlan.name}</p>
-                      {assignment.workoutPlan.systemRoutineCategory && (
-                        <p className="text-sm text-foreground-500">
-                          {assignment.workoutPlan.systemRoutineCategory}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Chip color={getStatusColor(assignment.status)} variant="flat" size="sm">
-                      {assignment.status}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {new Date(assignment.assignedAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs text-foreground-400">
-                      {(() => {
-                        const assignmentDate = new Date(assignment.assignedAt);
-                        const today = new Date();
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{assignment.workoutPlan.name}</p>
+                          {assignment.workoutPlan.systemRoutineCategory && (
+                            <p className="text-sm text-foreground-500">
+                              {assignment.workoutPlan.systemRoutineCategory}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Chip color={getStatusColor(assignment.status)} variant="flat" size="sm">
+                          {assignment.status}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {new Date(assignment.assignedAt).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-foreground-400">
+                          {(() => {
+                            const assignmentDate = new Date(assignment.assignedAt);
+                            const today = new Date();
 
-                        // Set time to 00:00:00 for accurate date-only comparison
-                        assignmentDate.setHours(0, 0, 0, 0);
-                        today.setHours(0, 0, 0, 0);
+                            // Set time to 00:00:00 for accurate date-only comparison
+                            assignmentDate.setHours(0, 0, 0, 0);
+                            today.setHours(0, 0, 0, 0);
 
-                        const diffTime = today.getTime() - assignmentDate.getTime();
-                        const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
+                            const diffTime = today.getTime() - assignmentDate.getTime();
+                            const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
 
-                        if (diffTime > 0) {
-                          return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-                        } else if (diffTime < 0) {
-                          return diffDays === 1 ? "In 1 day" : `In ${diffDays} days`;
-                        } else {
-                          return "Today";
-                        }
-                      })()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        startContent={<IconEdit size={16} />}
-                        onPress={() => openEditModal(assignment)}
-                      >
-                        Edit
-                      </Button>
-                      <Select
-                        size="sm"
-                        label="Status"
-                        placeholder="Update status"
-                        className="w-32"
-                        selectedKeys={[assignment.status]}
-                        onSelectionChange={(keys) => {
-                          const status = Array.from(keys)[0] as string;
-                          if (status !== assignment.status) {
-                            updateAssignmentStatus(assignment.id, status);
-                          }
-                        }}
-                      >
-                        <SelectItem key="PENDING">Pending</SelectItem>
-                        <SelectItem key="IN_PROGRESS">In Progress</SelectItem>
-                        <SelectItem key="COMPLETED">Completed</SelectItem>
-                        <SelectItem key="SKIPPED">Skipped</SelectItem>
-                        <SelectItem key="ABSENT">Absent</SelectItem>
-                      </Select>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
+                            if (diffTime > 0) {
+                              return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+                            } else if (diffTime < 0) {
+                              return diffDays === 1 ? "In 1 day" : `In ${diffDays} days`;
+                            } else {
+                              return "Today";
+                            }
+                          })()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            startContent={<IconEdit size={16} />}
+                            onPress={() => openEditModal(assignment)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            startContent={<IconTrash size={16} />}
+                            onPress={() => handleDeleteAssignment(
+                              assignment.id,
+                              assignment.user.username || assignment.user.firstName || assignment.user.email || "Unknown User",
+                              assignment.workoutPlan.name
+                            )}
+                            isDisabled={loading}
+                          >
+                            Delete
+                          </Button>
+                          <Select
+                            size="sm"
+                            label="Status"
+                            placeholder="Update status"
+                            className="w-32"
+                            selectedKeys={[assignment.status]}
+                            onSelectionChange={(keys) => {
+                              const status = Array.from(keys)[0] as string;
+                              if (status !== assignment.status) {
+                                updateAssignmentStatus(assignment.id, status);
+                              }
+                            }}
+                          >
+                            <SelectItem key="PENDING">Pending</SelectItem>
+                            <SelectItem key="IN_PROGRESS">In Progress</SelectItem>
+                            <SelectItem key="COMPLETED">Completed</SelectItem>
+                            <SelectItem key="SKIPPED">Skipped</SelectItem>
+                            <SelectItem key="ABSENT">Absent</SelectItem>
+                          </Select>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardBody>
+          </Card>
 
-      {/* Pagination */}
-      <AdminPagination
-        totalResults={totalWorkouts}
-        limit={limit}
-        showControls
-      />
+          {/* Pagination */}
+          <AdminPagination
+            totalResults={assignments.length}
+            limit={limit}
+            showControls
+          />
+        </>
+      )}
+
 
       {/* Assign Workout Modal */}
       <BottomSheet
@@ -1171,14 +1407,30 @@ export default function WorkoutAssignment() {
                 <DatePicker
                   label="Assignment Date (Optional)"
                   placeholder="Select assignment date"
-                  value={assignmentDate ? new Date(assignmentDate) : undefined}
-                  onChange={(date) => setAssignmentDate(date ? date.toISOString().split('T')[0] : '')}
+                  value={assignmentDate ? new Date(assignmentDate + 'T00:00:00') : undefined}
+                  onChange={(date) => {
+                    if (date) {
+                      // Format the date as YYYY-MM-DD in local timezone
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      setAssignmentDate(`${year}-${month}-${day}`);
+                    } else {
+                      setAssignmentDate('');
+                    }
+                  }}
                 />
                 <div className="flex items-end">
                   <Button
                     variant="flat"
                     size="md"
-                    onPress={() => setAssignmentDate(new Date().toISOString().split('T')[0])}
+                    onPress={() => {
+                      const today = new Date();
+                      const year = today.getFullYear();
+                      const month = String(today.getMonth() + 1).padStart(2, '0');
+                      const day = String(today.getDate()).padStart(2, '0');
+                      setAssignmentDate(`${year}-${month}-${day}`);
+                    }}
                     className="w-full"
                   >
                     Set Today
@@ -1324,8 +1576,18 @@ export default function WorkoutAssignment() {
             <DatePicker
               label="Assignment Date"
               placeholder="Select assignment date"
-              value={editAssignmentDate ? new Date(editAssignmentDate) : undefined}
-              onChange={(date) => setEditAssignmentDate(date ? date.toISOString().split('T')[0] : '')}
+              value={editAssignmentDate ? new Date(editAssignmentDate + 'T00:00:00') : undefined}
+              onChange={(date) => {
+                if (date) {
+                  // Format the date as YYYY-MM-DD in local timezone
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  setEditAssignmentDate(`${year}-${month}-${day}`);
+                } else {
+                  setEditAssignmentDate('');
+                }
+              }}
             />
 
             <Textarea
