@@ -45,12 +45,12 @@ export function AddParticipantModal({
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    if (userSearchTerm.length >= 2) {
+    if (userSearchTerm.length >= 2 && !selectedUser) {
       searchUsers();
     } else {
       setSearchResults([]);
     }
-  }, [userSearchTerm]);
+  }, [userSearchTerm, selectedUser]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -148,7 +148,7 @@ export function AddParticipantModal({
       />
 
       {/* Search Results */}
-      {userSearchTerm.length >= 2 && (
+      {userSearchTerm.length >= 2 && !selectedUser && (
         <div className="max-h-64 overflow-y-auto border border-divider rounded-lg">
           {searching ? (
             <div className="p-4 text-center text-foreground-500">
@@ -166,7 +166,7 @@ export function AddParticipantModal({
                   console.log('Selecting user:', user);
                   setSelectedUser(user.userId); // Use userId instead of id for API consistency
                   setUserSearchTerm(`${user.firstName} ${user.lastName} (${user.email})`);
-                  setSearchResults([]); // Clear search results to prevent further API calls
+                  setSearchResults([]); // Clear search results immediately
                 }}
               >
                 <div className="flex items-center gap-3">
@@ -206,9 +206,23 @@ export function AddParticipantModal({
 
       {selectedUser && (
         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
-          <p className="text-sm text-success-600 dark:text-success-400">
-            ✓ User selected and ready to be added to the challenge
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-success-600 dark:text-success-400">
+              ✓ User selected and ready to be added to the challenge
+            </p>
+            <Button
+              size="sm"
+              variant="light"
+              color="success"
+              onPress={() => {
+                setSelectedUser("");
+                setUserSearchTerm("");
+                setSearchResults([]);
+              }}
+            >
+              Change User
+            </Button>
+          </div>
         </div>
       )}
     </div>

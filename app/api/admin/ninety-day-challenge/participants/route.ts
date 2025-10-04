@@ -205,12 +205,15 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         challengeId,
-        isEnabled: false, // Default to disabled until admin enables
+        isEnabled: true, // Enable by default when admin adds them
       },
     });
 
     console.log('Participant created successfully:', participant);
-    return NextResponse.json({ participant });
+    return NextResponse.json({
+      participant,
+      message: "Participant has been added to the challenge successfully"
+    });
   } catch (error) {
     console.error("Error adding participant:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

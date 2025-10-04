@@ -5,8 +5,9 @@ import { Button } from "@nextui-org/button";
 import { IconPlus } from "@tabler/icons-react";
 import { CommunityFeed } from "../../_components/CommunityFeed";
 import BottomSheet from "@/components/UI/BottomSheet";
-import { Textarea, Input } from "@nextui-org/input";
+import { Textarea } from "@nextui-org/input";
 import { IconCamera, IconX } from "@tabler/icons-react";
+import DatePicker from "@/components/UI/DatePicker";
 
 interface PostsClientWrapperProps {
   challengeId: string | null;
@@ -25,7 +26,7 @@ export function PostsClientWrapper({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date(), // Use Date object instead of string
     dayDescription: "",
     photos: [] as File[],
   });
@@ -46,19 +47,13 @@ export function PostsClientWrapper({
 
   const resetForm = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date(), // Reset to today's date
       dayDescription: "",
       photos: [],
     });
   };
 
   const handleSubmit = async () => {
-    console.log('Admin post submit:', {
-      challengeId,
-      challengeTitle,
-      formData
-    });
-
     if (!challengeId) {
       alert('No challenge selected');
       return;
@@ -68,14 +63,15 @@ export function PostsClientWrapper({
     try {
       const submitData = new FormData();
       submitData.append('challengeId', challengeId);
-      submitData.append('date', formData.date);
-      submitData.append('dayDescription', formData.dayDescription);
 
-      console.log('FormData being sent:', {
-        challengeId: submitData.get('challengeId'),
-        date: submitData.get('date'),
-        dayDescription: submitData.get('dayDescription')
-      });
+      // Convert date to local YYYY-MM-DD format to avoid timezone issues
+      const year = formData.date.getFullYear();
+      const month = String(formData.date.getMonth() + 1).padStart(2, '0');
+      const day = String(formData.date.getDate()).padStart(2, '0');
+      const localDateString = `${year}-${month}-${day}`;
+
+      submitData.append('date', localDateString);
+      submitData.append('dayDescription', formData.dayDescription);
 
       // Add photos
       formData.photos.forEach((photo) => {
@@ -153,14 +149,27 @@ export function PostsClientWrapper({
       >
         <div className="space-y-4">
           {/* Date */}
-          <Input
-            label="Date"
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-            isRequired
-            size="sm"
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Post Date *
+              </label>
+              <Button
+                size="sm"
+                variant="light"
+                onPress={() => setFormData(prev => ({ ...prev, date: new Date() }))}
+                className="text-xs h-6 px-2"
+              >
+                Today
+              </Button>
+            </div>
+            <DatePicker
+              value={formData.date}
+              onChange={(date) => setFormData(prev => ({ ...prev, date: date || new Date() }))}
+              placeholder="Select post date"
+              className="w-full"
+            />
+          </div>
 
           {/* Post Content */}
           <Textarea

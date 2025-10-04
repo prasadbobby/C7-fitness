@@ -148,13 +148,6 @@ export async function POST(request: NextRequest) {
       var challenges = formData.get('challenges') as string;
       var requestedChallengeId = formData.get('challengeId') as string;
 
-      console.log('FormData extracted values:', {
-        date,
-        dayDescription,
-        requestedChallengeId,
-        photoCount: formData.getAll('photos').length
-      });
-
       // Handle photo files
       var photos: string[] = [];
       const photoFiles = formData.getAll('photos') as File[];
@@ -198,19 +191,14 @@ export async function POST(request: NextRequest) {
 
     // If admin provides a specific challengeId, use that
     if (isAdmin && requestedChallengeId) {
-      console.log('Admin posting with specific challengeId:', requestedChallengeId);
-
       // Verify the challenge exists
       const challenge = await prisma.ninetyDayChallenge.findUnique({
         where: { id: requestedChallengeId }
       });
 
       if (!challenge) {
-        console.log('Challenge not found:', requestedChallengeId);
         return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
       }
-
-      console.log('Challenge found:', challenge.title);
 
       // Create or get admin participant record for this challenge
       const adminParticipant = await prisma.ninetyDayChallengeParticipant.upsert({
@@ -232,11 +220,6 @@ export async function POST(request: NextRequest) {
 
       challengeId = requestedChallengeId;
       participantId = adminParticipant.id;
-
-      console.log('Admin participant created/updated:', {
-        participantId: adminParticipant.id,
-        challengeId: requestedChallengeId
-      });
     } else if (participant) {
       challengeId = participant.challengeId;
       participantId = participant.id;
@@ -274,6 +257,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
     }
 
+    // Create date in local timezone to avoid timezone shifting
+    const [year, month, day] = date.split('-').map(Number);
+    let postDate = new Date(year, month - 1, day); // month is 0-indexed
+
     // Check if user already posted for this date (skip check for admins)
     if (!isAdmin) {
       const existingPost = await prisma.ninetyDayChallengePost.findUnique({
@@ -281,7 +268,7 @@ export async function POST(request: NextRequest) {
           userId_challengeId_date: {
             userId: user.id,
             challengeId: challengeId,
-            date: new Date(date),
+            date: postDate,
           },
         },
       });
@@ -291,17 +278,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // For admins, adjust the date by a few seconds to bypass unique constraint while keeping the same display date
-    let postDate = new Date(date);
     if (isAdmin) {
       // Check if there are existing posts for this date and add seconds to make it unique
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
       const existingPosts = await prisma.ninetyDayChallengePost.findMany({
         where: {
           userId: user.id,
           challengeId: challengeId,
           date: {
-            gte: new Date(date + 'T00:00:00.000Z'),
-            lt: new Date(date + 'T23:59:59.999Z')
+            gte: startOfDay,
+            lt: endOfDay
           }
         }
       });
@@ -309,14 +297,6 @@ export async function POST(request: NextRequest) {
       // Add seconds equal to the number of existing posts to make the timestamp unique
       postDate.setSeconds(existingPosts.length);
     }
-
-    console.log('Creating post with final values:', {
-      userId: user.id,
-      challengeId: challengeId,
-      participantId: participantId,
-      dayDescription,
-      isAdmin
-    });
 
     const post = await prisma.ninetyDayChallengePost.create({
       data: {
@@ -334,12 +314,6 @@ export async function POST(request: NextRequest) {
         challenges,
         photos: photos || [],
       },
-    });
-
-    console.log('Post created successfully:', {
-      postId: post.id,
-      challengeId: post.challengeId,
-      participantId: post.participantId
     });
 
     // Update participant's completed days and last active date
