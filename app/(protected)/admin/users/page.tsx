@@ -97,7 +97,6 @@ export default function UserManagement() {
   const [currentTab, setCurrentTab] = useState("all");
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
-  const [tabError, setTabError] = useState<string | null>(null);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -149,19 +148,13 @@ export default function UserManagement() {
         role: selectedRole,
       });
 
-      console.log('Fetching users with params:', params.toString());
       const response = await fetch(`/api/admin/users/management?${params}`);
 
       if (!response.ok) {
-        console.error('Users management API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Users management API error details:', errorText);
-        setTabError(`API Error: ${response.status} ${response.statusText}`);
         return;
       }
 
       const data = await response.json();
-      console.log('Users management data received:', data);
 
       setUsers(data.users || []);
       setAdminUsers(data.adminUsers || []);
@@ -169,12 +162,8 @@ export default function UserManagement() {
       setPendingInvitations(data.pendingInvitations || []);
       setTotal(data.total || 0);
 
-      if (data.users?.length === 0 && data.adminUsers?.length === 0 && data.pendingInvitations?.length === 0) {
-        setTabError("No data found - all arrays empty");
-      }
     } catch (error) {
       console.error("Error fetching users:", error);
-      setTabError(`Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -410,35 +399,6 @@ export default function UserManagement() {
         </CardBody>
       </Card>
 
-      {/* Debug Info */}
-      {(process.env.NODE_ENV === 'development' || tabError) && (
-        <Card className="bg-warning/10 border-warning/20">
-          <CardBody className="p-4">
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-warning-600">Debug Information:</p>
-              <div className="text-xs text-warning-700 space-y-1">
-                <p>• Current Tab: {currentTab}</p>
-                <p>• Users Count: {users.length}</p>
-                <p>• Admin Users Count: {adminUsers.length}</p>
-                <p>• Pending Invitations Count: {pendingInvitations.length}</p>
-                <p>• Loading: {loading ? 'Yes' : 'No'}</p>
-                {tabError && <p className="text-danger">• Tab Error: {tabError}</p>}
-              </div>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("all")}>
-                  Force All Tab
-                </Button>
-                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("admins")}>
-                  Force Admins Tab
-                </Button>
-                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("pending")}>
-                  Force Pending Tab
-                </Button>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
 
       {/* Users and Invitations Tabs */}
       <Card>
@@ -448,11 +408,7 @@ export default function UserManagement() {
             {/* Tab Headers */}
             <div className="flex border-b border-divider px-6 bg-content1">
               <button
-                onClick={() => {
-                  console.log('Clicking All Users tab');
-                  setCurrentTab("all");
-                  setTabError(null);
-                }}
+                onClick={() => setCurrentTab("all")}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
                   currentTab === "all"
                     ? "border-primary text-primary bg-primary/5"
@@ -464,11 +420,7 @@ export default function UserManagement() {
               </button>
 
               <button
-                onClick={() => {
-                  console.log('Clicking Administrators tab');
-                  setCurrentTab("admins");
-                  setTabError(null);
-                }}
+                onClick={() => setCurrentTab("admins")}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
                   currentTab === "admins"
                     ? "border-primary text-primary bg-primary/5"
@@ -480,11 +432,7 @@ export default function UserManagement() {
               </button>
 
               <button
-                onClick={() => {
-                  console.log('Clicking Pending Invitations tab');
-                  setCurrentTab("pending");
-                  setTabError(null);
-                }}
+                onClick={() => setCurrentTab("pending")}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
                   currentTab === "pending"
                     ? "border-primary text-primary bg-primary/5"

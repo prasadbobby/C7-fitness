@@ -94,36 +94,20 @@ export default function StepTrackingAdmin() {
     try {
       setDataLoading(true);
       setUserLoadError(null);
-      console.log("Fetching users and step goals...");
 
       const [usersRes, goalsRes] = await Promise.all([
         fetch("/api/admin/users?limit=1000"),
         fetch("/api/admin/step-goals"),
       ]);
 
-      console.log("Users response status:", usersRes.status);
-      console.log("Goals response status:", goalsRes.status);
-
       if (!usersRes.ok) {
-        console.error("Users API error:", usersRes.status, usersRes.statusText);
-        const errorText = await usersRes.text();
-        console.error("Users API error details:", errorText);
         setUserLoadError(`Failed to load users: ${usersRes.status} ${usersRes.statusText}`);
-      }
-
-      if (!goalsRes.ok) {
-        console.error("Goals API error:", goalsRes.status, goalsRes.statusText);
-        const errorText = await goalsRes.text();
-        console.error("Goals API error details:", errorText);
       }
 
       const [usersData, goalsData] = await Promise.all([
         usersRes.ok ? usersRes.json() : { users: [] },
         goalsRes.ok ? goalsRes.json() : { stepGoals: [] },
       ]);
-
-      console.log("Users data received:", usersData);
-      console.log("Goals data received:", goalsData);
 
       setUsers(usersData.users || []);
       setStepGoals(goalsData.stepGoals || []);
@@ -132,9 +116,7 @@ export default function StepTrackingAdmin() {
         setUserLoadError("No users found in the system");
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
       setUserLoadError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Set empty arrays to prevent undefined errors
       setUsers([]);
       setStepGoals([]);
     } finally {
@@ -664,19 +646,6 @@ export default function StepTrackingAdmin() {
                 </div>
               </div>
 
-              {/* Debug Info (only show in development or when there are issues) */}
-              {(process.env.NODE_ENV === 'development' || userLoadError) && (
-                <div className="bg-content2 border border-divider rounded-lg p-3">
-                  <p className="text-xs font-medium text-foreground-600 mb-2">Debug Information:</p>
-                  <div className="space-y-1 text-xs text-foreground-500">
-                    <p>• Users loaded: {users.length}</p>
-                    <p>• Data loading: {dataLoading ? 'Yes' : 'No'}</p>
-                    <p>• Environment: {process.env.NODE_ENV || 'unknown'}</p>
-                    <p>• API Base URL: {window.location.origin}</p>
-                    {userLoadError && <p className="text-danger">• Error: {userLoadError}</p>}
-                  </div>
-                </div>
-              )}
             </div>
       </BottomSheet>
 
@@ -759,24 +728,16 @@ function CustomUserDropdown({
 }: CustomUserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('CustomUserDropdown - All users received:', allUsers);
-    console.log('CustomUserDropdown - Filtered users:', users);
-    console.log('CustomUserDropdown - User roles:', allUsers.map(u => ({ name: u.username || u.firstName || u.email, role: u.role })));
-  }, [allUsers, users]);
 
   const selectedUserData = users.find(user => user.userId === selectedUser);
 
   const handleUserSelect = (user: User) => {
-    console.log('User selected:', user);
     onUserSelect(user.userId);
     setIsOpen(false);
   };
 
   const handleToggle = () => {
     if (!isDisabled && !isLoading) {
-      console.log('Toggling dropdown, current state:', isOpen);
       setIsOpen(!isOpen);
     }
   };
@@ -849,15 +810,8 @@ function CustomUserDropdown({
       {isOpen && !isLoading && !isDisabled && (
         <div className="absolute z-50 w-full mt-2 bg-content1 border border-content3 rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {users.length === 0 ? (
-            <div className="p-4 text-center">
-              <p className="text-foreground-500 mb-2">No users available</p>
-              <div className="text-xs text-foreground-400 space-y-1">
-                <p>Total users loaded: {allUsers.length}</p>
-                <p>Filtered users: {users.length}</p>
-                {allUsers.length > 0 && (
-                  <p>User roles: {allUsers.map(u => u.role).join(', ')}</p>
-                )}
-              </div>
+            <div className="p-4 text-center text-foreground-500">
+              No users available
             </div>
           ) : (
             users.map((user) => (
