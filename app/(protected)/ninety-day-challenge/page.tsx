@@ -4,6 +4,7 @@ import PageHeading from "@/components/PageHeading/PageHeading";
 import { ChallengeCalendar } from "./_components/ChallengeCalendar";
 import { DailyPostForm } from "./_components/DailyPostForm";
 import { ChallengeStats } from "./_components/ChallengeStats";
+import { CommunityPostsSection } from "./_components/CommunityPostsSection";
 import prisma from "@/prisma/prisma";
 
 async function checkChallengeAccess(userId: string) {
@@ -84,6 +85,9 @@ export default async function NinetyDayChallengePage() {
           <DailyPostForm />
         </div>
       </div>
+
+      {/* Community Posts Section */}
+      <CommunityPostsSection challengeId={accessData.challengeId} />
     </div>
   );
 }

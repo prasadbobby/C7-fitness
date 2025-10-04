@@ -29,6 +29,7 @@ export function DailyPostForm() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [todaysPost, setTodaysPost] = useState<TodaysPost | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [formData, setFormData] = useState({
     sleepHours: 8,
@@ -112,26 +113,41 @@ export function DailyPostForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setUploadingPhoto(true);
+
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      console.log('Starting photo upload:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
 
       const response = await fetch('/api/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadFormData,
       });
 
+      const data = await response.json();
+      console.log('Upload response:', { status: response.status, data });
+
       if (response.ok) {
-        const data = await response.json();
         setFormData(prev => ({
           ...prev,
           photos: [...prev.photos, data.url],
         }));
+        console.log('Photo added to form data successfully');
       } else {
-        console.error('Failed to upload file');
+        console.error('Upload failed:', data);
+        alert(`Failed to upload photo: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error uploading file:', error);
+      alert('Error uploading photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
     }
 
     // Clear the input
@@ -381,14 +397,27 @@ export function DailyPostForm() {
                   onChange={handlePhotoUpload}
                   className="hidden"
                   id="photo-upload"
+                  disabled={uploadingPhoto}
                 />
                 <label
                   htmlFor="photo-upload"
-                  className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                  className={`flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg transition-colors ${
+                    uploadingPhoto
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  }`}
                 >
                   <IconCamera size={20} />
-                  <span className="text-sm">Add Photo</span>
+                  <span className="text-sm">
+                    {uploadingPhoto ? 'Uploading...' : 'Add Photo'}
+                  </span>
                 </label>
+                {uploadingPhoto && (
+                  <div className="flex items-center gap-2 text-sm text-primary">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing image...</span>
+                  </div>
+                )}
               </div>
 
               {formData.photos.length > 0 && (

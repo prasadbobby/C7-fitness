@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const dateFilter = searchParams.get("date");
+    const requestedChallengeId = searchParams.get("challengeId");
     const skip = (page - 1) * limit;
 
     // Check if user has access to any active challenge or is admin
@@ -42,7 +43,17 @@ export async function GET(request: NextRequest) {
     // For admins, show posts from all active challenges if they don't have a participant record
     let whereClause: any = {};
 
-    if (isAdmin && !userParticipant) {
+    // If a specific challengeId is requested, use that (with proper access checks)
+    if (requestedChallengeId) {
+      // Verify user has access to this challenge
+      const hasAccess = isAdmin || (userParticipant && userParticipant.challengeId === requestedChallengeId);
+
+      if (!hasAccess) {
+        return NextResponse.json({ error: "No access to requested challenge" }, { status: 403 });
+      }
+
+      whereClause.challengeId = requestedChallengeId;
+    } else if (isAdmin && !userParticipant) {
       // Admin without participant - get active challenge
       const activeChallenge = await prisma.ninetyDayChallenge.findFirst({
         where: { isActive: true },
