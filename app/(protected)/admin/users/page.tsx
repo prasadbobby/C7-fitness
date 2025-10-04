@@ -97,6 +97,7 @@ export default function UserManagement() {
   const [currentTab, setCurrentTab] = useState("all");
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
+  const [tabError, setTabError] = useState<string | null>(null);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -148,16 +149,32 @@ export default function UserManagement() {
         role: selectedRole,
       });
 
+      console.log('Fetching users with params:', params.toString());
       const response = await fetch(`/api/admin/users/management?${params}`);
-      const data = await response.json();
 
-      setUsers(data.users);
-      setAdminUsers(data.adminUsers);
-      setRegularUsers(data.regularUsers);
-      setPendingInvitations(data.pendingInvitations);
-      setTotal(data.total);
+      if (!response.ok) {
+        console.error('Users management API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Users management API error details:', errorText);
+        setTabError(`API Error: ${response.status} ${response.statusText}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Users management data received:', data);
+
+      setUsers(data.users || []);
+      setAdminUsers(data.adminUsers || []);
+      setRegularUsers(data.regularUsers || []);
+      setPendingInvitations(data.pendingInvitations || []);
+      setTotal(data.total || 0);
+
+      if (data.users?.length === 0 && data.adminUsers?.length === 0 && data.pendingInvitations?.length === 0) {
+        setTabError("No data found - all arrays empty");
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
+      setTabError(`Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -393,274 +410,325 @@ export default function UserManagement() {
         </CardBody>
       </Card>
 
+      {/* Debug Info */}
+      {(process.env.NODE_ENV === 'development' || tabError) && (
+        <Card className="bg-warning/10 border-warning/20">
+          <CardBody className="p-4">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-warning-600">Debug Information:</p>
+              <div className="text-xs text-warning-700 space-y-1">
+                <p>• Current Tab: {currentTab}</p>
+                <p>• Users Count: {users.length}</p>
+                <p>• Admin Users Count: {adminUsers.length}</p>
+                <p>• Pending Invitations Count: {pendingInvitations.length}</p>
+                <p>• Loading: {loading ? 'Yes' : 'No'}</p>
+                {tabError && <p className="text-danger">• Tab Error: {tabError}</p>}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("all")}>
+                  Force All Tab
+                </Button>
+                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("admins")}>
+                  Force Admins Tab
+                </Button>
+                <Button size="sm" variant="flat" color="warning" onPress={() => setCurrentTab("pending")}>
+                  Force Pending Tab
+                </Button>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Users and Invitations Tabs */}
       <Card>
         <CardBody className="p-0">
-          <Tabs
-            selectedKey={currentTab}
-            onSelectionChange={(key) => setCurrentTab(key.toString())}
-            variant="underlined"
-            classNames={{
-              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider px-6",
-              cursor: "w-full bg-primary",
-              tab: "max-w-fit px-0 h-12",
-              tabContent: "group-data-[selected=true]:text-primary"
-            }}
-          >
-            <Tab
-              key="all"
-              title={
-                <div className="flex items-center gap-2">
-                  <IconUser size={18} />
-                  <span>All Users ({users.length})</span>
-                </div>
-              }
-            >
-              <div className="p-0">
-                <Table aria-label="All users table">
-                  <TableHeader>
-                    <TableColumn>USER</TableColumn>
-                    <TableColumn>ROLE</TableColumn>
-                    <TableColumn>PHYSICAL INFO</TableColumn>
-                    <TableColumn>WORKOUTS</TableColumn>
-                    <TableColumn>JOINED</TableColumn>
-                    <TableColumn>ACTIONS</TableColumn>
-                  </TableHeader>
-                  <TableBody emptyContent="No users found" isLoading={loading}>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar
-                              src={user.imageUrl}
-                              name={user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                              size="sm"
-                              color="primary"
-                              showFallback
-                            />
-                            <div>
-                              <div className="font-medium text-sm">
-                                {user.name || "Unknown User"}
-                              </div>
-                              <div className="text-xs text-foreground-500">
-                                {user.email}
+          {/* Custom Tab Implementation */}
+          <div className="w-full">
+            {/* Tab Headers */}
+            <div className="flex border-b border-divider px-6 bg-content1">
+              <button
+                onClick={() => {
+                  console.log('Clicking All Users tab');
+                  setCurrentTab("all");
+                  setTabError(null);
+                }}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  currentTab === "all"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconUser size={18} />
+                <span className="font-medium">All Users ({users.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  console.log('Clicking Administrators tab');
+                  setCurrentTab("admins");
+                  setTabError(null);
+                }}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  currentTab === "admins"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconShield size={18} />
+                <span className="font-medium">Administrators ({adminUsers.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  console.log('Clicking Pending Invitations tab');
+                  setCurrentTab("pending");
+                  setTabError(null);
+                }}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  currentTab === "pending"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconClock size={18} />
+                <span className="font-medium">Pending Invitations ({pendingInvitations.length})</span>
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-96">
+              {currentTab === "all" && (
+                <div className="p-0">
+                  <Table aria-label="All users table">
+                    <TableHeader>
+                      <TableColumn>USER</TableColumn>
+                      <TableColumn>ROLE</TableColumn>
+                      <TableColumn>PHYSICAL INFO</TableColumn>
+                      <TableColumn>WORKOUTS</TableColumn>
+                      <TableColumn>JOINED</TableColumn>
+                      <TableColumn>ACTIONS</TableColumn>
+                    </TableHeader>
+                    <TableBody emptyContent="No users found" isLoading={loading}>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                src={user.imageUrl}
+                                name={user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                                size="sm"
+                                color="primary"
+                                showFallback
+                              />
+                              <div>
+                                <div className="font-medium text-sm">
+                                  {user.name || "Unknown User"}
+                                </div>
+                                <div className="text-xs text-foreground-500">
+                                  {user.email}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Chip color={getRoleColor(user.role)} variant="flat" size="sm">
-                              {user.role}
-                            </Chip>
-                            {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Chip color={getRoleColor(user.role)} variant="flat" size="sm">
+                                {user.role}
+                              </Chip>
+                              {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="light"
+                                  color="warning"
+                                  onClick={() => handleDemoteUser(user.userId, user.role)}
+                                  isLoading={isUpdatingRole === user.userId}
+                                  className="opacity-60 hover:opacity-100"
+                                  title={user.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
+                                >
+                                  <IconArrowDown size={16} />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {user.age && <span>Age: {user.age}</span>}
+                              {user.height && <span className="ml-2">Height: {user.height}cm</span>}
+                              {user.weight && <span className="ml-2">Weight: {user.weight}kg</span>}
+                              {!user.age && !user.height && !user.weight && (
+                                <span className="text-foreground-400">Not provided</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <IconBarbell size={16} />
+                              <span>{user._count.assignedWorkouts}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {formatDate(user.createdAt)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
                               <Button
                                 isIconOnly
                                 size="sm"
-                                variant="light"
-                                color="warning"
-                                onClick={() => handleDemoteUser(user.userId, user.role)}
-                                isLoading={isUpdatingRole === user.userId}
-                                className="opacity-60 hover:opacity-100"
-                                title={user.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
+                                variant="ghost"
+                                color="primary"
+                                as={Link}
+                                href={`/admin/users/${user.id}/progress`}
+                                title="View Progress"
                               >
-                                <IconArrowDown size={16} />
+                                <IconChartLine size={16} />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {user.age && <span>Age: {user.age}</span>}
-                            {user.height && <span className="ml-2">Height: {user.height}cm</span>}
-                            {user.weight && <span className="ml-2">Weight: {user.weight}kg</span>}
-                            {!user.age && !user.height && !user.weight && (
-                              <span className="text-foreground-400">Not provided</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <IconBarbell size={16} />
-                            <span>{user._count.assignedWorkouts}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {formatDate(user.createdAt)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="ghost"
-                              color="primary"
-                              as={Link}
-                              href={`/admin/users/${user.id}/progress`}
-                              title="View Progress"
-                            >
-                              <IconChartLine size={16} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="ghost"
-                              onPress={() => handleEditUser(user)}
-                              title="Edit User"
-                            >
-                              <IconEdit size={16} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="ghost"
-                              color="danger"
-                              onPress={() => handleDeleteUser(user)}
-                              title="Delete User"
-                            >
-                              <IconTrash size={16} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Tab>
-
-            <Tab
-              key="admins"
-              title={
-                <div className="flex items-center gap-2">
-                  <IconShield size={18} />
-                  <span>Administrators ({adminUsers.length})</span>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="ghost"
+                                onPress={() => handleEditUser(user)}
+                                title="Edit User"
+                              >
+                                <IconEdit size={16} />
+                              </Button>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="ghost"
+                                color="danger"
+                                onPress={() => handleDeleteUser(user)}
+                                title="Delete User"
+                              >
+                                <IconTrash size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              }
-            >
-              <div className="p-6">
-                {adminUsers.length === 0 ? (
-                  <div className="text-center py-12">
-                    <IconShield size={48} className="mx-auto text-foreground-300 mb-4" />
-                    <p className="text-foreground-500">No administrators found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {adminUsers.map((admin) => {
-                      const RoleIcon = getRoleIcon(admin.role);
-                      return (
-                        <div
-                          key={admin.id}
-                          className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-center gap-4">
-                            <Avatar
-                              src={admin.imageUrl}
-                              name={admin.name.charAt(0).toUpperCase()}
-                              size="md"
-                              color="primary"
-                              showFallback
-                            />
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-semibold text-foreground">
-                                  {admin.name}
+              )}
+
+              {currentTab === "admins" && (
+                <div className="p-6">
+                  {adminUsers.length === 0 ? (
+                    <div className="text-center py-12">
+                      <IconShield size={48} className="mx-auto text-foreground-300 mb-4" />
+                      <p className="text-foreground-500">No administrators found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {adminUsers.map((admin) => {
+                        const RoleIcon = getRoleIcon(admin.role);
+                        return (
+                          <div
+                            key={admin.id}
+                            className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-center gap-4">
+                              <Avatar
+                                src={admin.imageUrl}
+                                name={admin.name.charAt(0).toUpperCase()}
+                                size="md"
+                                color="primary"
+                                showFallback
+                              />
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-semibold text-foreground">
+                                    {admin.name}
+                                  </p>
+                                </div>
+                                <p className="text-sm text-foreground-500">
+                                  {admin.email}
+                                </p>
+                                <p className="text-xs text-foreground-400">
+                                  Joined {formatDate(admin.createdAt)}
                                 </p>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Chip size="sm" color={getRoleColor(admin.role)} variant="flat" className="font-medium">
+                                {admin.role.replace('_', ' ')}
+                              </Chip>
+                              {(admin.role === "ADMIN" || admin.role === "SUPER_ADMIN") && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="light"
+                                  color="warning"
+                                  onClick={() => handleDemoteUser(admin.userId, admin.role)}
+                                  isLoading={isUpdatingRole === admin.userId}
+                                  className="opacity-60 hover:opacity-100"
+                                  title={admin.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
+                                >
+                                  <IconArrowDown size={16} />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentTab === "pending" && (
+                <div className="p-6">
+                  {pendingInvitations.length === 0 ? (
+                    <div className="text-center py-12">
+                      <IconMail size={48} className="mx-auto text-foreground-300 mb-4" />
+                      <p className="text-foreground-500">No pending invitations</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingInvitations.map((invitation) => (
+                        <div
+                          key={invitation.email}
+                          className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-full">
+                              <IconMail size={20} className="text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{invitation.email}</p>
                               <p className="text-sm text-foreground-500">
-                                {admin.email}
-                              </p>
-                              <p className="text-xs text-foreground-400">
-                                Joined {formatDate(admin.createdAt)}
+                                Invited {formatDate(invitation.createdAt)}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <Chip size="sm" color={getRoleColor(admin.role)} variant="flat" className="font-medium">
-                              {admin.role.replace('_', ' ')}
+                            <Chip size="sm" color={getRoleColor(invitation.role)} variant="flat">
+                              {invitation.role.replace('_', ' ')} PENDING
                             </Chip>
-                            {(admin.role === "ADMIN" || admin.role === "SUPER_ADMIN") && (
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="light"
-                                color="warning"
-                                onClick={() => handleDemoteUser(admin.userId, admin.role)}
-                                isLoading={isUpdatingRole === admin.userId}
-                                className="opacity-60 hover:opacity-100"
-                                title={admin.role === "SUPER_ADMIN" ? "Demote to Admin" : "Demote to User"}
-                              >
-                                <IconArrowDown size={16} />
-                              </Button>
-                            )}
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              color="danger"
+                              onClick={() => handleCancelInvitation(invitation.email)}
+                              isLoading={isLoading === invitation.email}
+                              className="opacity-60 hover:opacity-100"
+                              title="Cancel Invitation"
+                            >
+                              <IconX size={16} />
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </Tab>
-
-            <Tab
-              key="pending"
-              title={
-                <div className="flex items-center gap-2">
-                  <IconClock size={18} />
-                  <span>Pending Invitations ({pendingInvitations.length})</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              }
-            >
-              <div className="p-6">
-                {pendingInvitations.length === 0 ? (
-                  <div className="text-center py-12">
-                    <IconMail size={48} className="mx-auto text-foreground-300 mb-4" />
-                    <p className="text-foreground-500">No pending invitations</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingInvitations.map((invitation) => (
-                      <div
-                        key={invitation.email}
-                        className="flex items-center justify-between p-4 bg-content1 border border-divider rounded-xl shadow-sm"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-primary/10 rounded-full">
-                            <IconMail size={20} className="text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{invitation.email}</p>
-                            <p className="text-sm text-foreground-500">
-                              Invited {formatDate(invitation.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Chip size="sm" color={getRoleColor(invitation.role)} variant="flat">
-                            {invitation.role.replace('_', ' ')} PENDING
-                          </Chip>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            color="danger"
-                            onClick={() => handleCancelInvitation(invitation.email)}
-                            isLoading={isLoading === invitation.email}
-                            className="opacity-60 hover:opacity-100"
-                            title="Cancel Invitation"
-                          >
-                            <IconX size={16} />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Tab>
-          </Tabs>
+              )}
+            </div>
+          </div>
         </CardBody>
       </Card>
 
