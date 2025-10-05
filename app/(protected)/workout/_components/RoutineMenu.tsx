@@ -8,8 +8,9 @@ import {
   DropdownMenu,
   DropdownItem,
   DropdownSection,
-} from "@nextui-org/dropdown";
-import { Button, useDisclosure } from "@nextui-org/react";
+} from "@/components/UI/CustomDropdown";
+import { useDisclosure } from "@nextui-org/react";
+import CustomButton from "@/components/UI/CustomButton";
 import {
   IconEdit,
   IconInfoCircle,
@@ -89,12 +90,12 @@ export default function RoutineMenu({ routineId }: { routineId: string }) {
         size="md"
         footer={
           <>
-            <Button variant="ghost" onPress={onDeleteClose}>
+            <CustomButton variant="ghost" onPress={onDeleteClose}>
               Cancel
-            </Button>
-            <Button color="danger" onPress={handleDelete} isLoading={loading}>
+            </CustomButton>
+            <CustomButton color="danger" onPress={handleDelete} isLoading={loading}>
               Delete
-            </Button>
+            </CustomButton>
           </>
         }
       >
