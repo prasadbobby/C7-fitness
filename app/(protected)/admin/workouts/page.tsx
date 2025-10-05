@@ -24,8 +24,6 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Tabs,
-  Tab,
   Checkbox,
   Accordion,
   AccordionItem,
@@ -652,37 +650,36 @@ export default function WorkoutAssignment() {
 
       {/* Tab Navigation */}
       <Card>
-        <CardBody className="p-4">
-          <Tabs
-            selectedKey={activeTab}
-            onSelectionChange={(key) => setActiveTab(key as string)}
-            variant="underlined"
-            classNames={{
-              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
-              cursor: "w-full bg-primary",
-              tab: "max-w-fit px-0 h-12",
-              tabContent: "group-data-[selected=true]:text-primary"
-            }}
-          >
-            <Tab
-              key="workouts"
-              title={
-                <div className="flex items-center space-x-2">
-                  <IconBarbell size={20} />
-                  <span>Workout Plans</span>
-                </div>
-              }
-            />
-            <Tab
-              key="assignments"
-              title={
-                <div className="flex items-center space-x-2">
-                  <IconUsers size={20} />
-                  <span>Assignment History</span>
-                </div>
-              }
-            />
-          </Tabs>
+        <CardBody className="p-0">
+          {/* Custom Tab Implementation */}
+          <div className="w-full">
+            {/* Tab Headers */}
+            <div className="flex border-b border-divider px-6 bg-content1">
+              <button
+                onClick={() => setActiveTab("workouts")}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  activeTab === "workouts"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconBarbell size={18} />
+                <span className="font-medium">Workout Plans ({workoutPlans.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("assignments")}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  activeTab === "assignments"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconUsers size={18} />
+                <span className="font-medium">Assignment History ({filteredAssignments.length})</span>
+              </button>
+            </div>
+          </div>
         </CardBody>
       </Card>
 
