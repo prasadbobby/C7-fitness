@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs";
 import PageHeading from "@/components/PageHeading/PageHeading";
 import { Button } from "@nextui-org/button";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft, IconChevronRight } from "@tabler/icons-react";
 import Link from "next/link";
 import prisma from "@/prisma/prisma";
 import { PostsClientWrapper } from "./_components/PostsClientWrapper";
@@ -101,25 +101,43 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4">
-        <Button
-          as={Link}
-          href={requestedChallengeId && isAdmin
-            ? `/admin/ninety-day-challenge/challenges/${requestedChallengeId}`
-            : "/ninety-day-challenge"
-          }
-          variant="ghost"
-          startContent={<IconArrowLeft size={16} />}
-        >
-          {requestedChallengeId && isAdmin ? "Back to Challenge Dashboard" : "Back to Challenge"}
-        </Button>
-        <div>
-          <PageHeading title="Community Posts" />
-          <p className="text-zinc-600 dark:text-zinc-400 mt-2">
-            {challengeTitle} - Community discussions and daily updates
-          </p>
-        </div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-foreground-500">
+        {requestedChallengeId && isAdmin ? (
+          // Admin flow
+          <>
+            <Link href="/admin" className="hover:text-foreground-700">
+              Admin
+            </Link>
+            <IconChevronRight size={16} />
+            <Link href="/admin/ninety-day-challenge" className="hover:text-foreground-700">
+              90-Day Challenge
+            </Link>
+            <IconChevronRight size={16} />
+            <Link href={`/admin/ninety-day-challenge/challenges/${requestedChallengeId}`} className="hover:text-foreground-700">
+              {challengeTitle}
+            </Link>
+            <IconChevronRight size={16} />
+            <span className="text-foreground-900 font-medium">Community Posts</span>
+          </>
+        ) : (
+          // User flow
+          <>
+            <Link href="/ninety-day-challenge" className="hover:text-foreground-700">
+              90-Day Challenge
+            </Link>
+            <IconChevronRight size={16} />
+            <span className="text-foreground-900 font-medium">Community Posts</span>
+          </>
+        )}
+      </nav>
+
+      {/* Header */}
+      <div>
+        <PageHeading title="Community Posts" />
+        <p className="text-zinc-600 dark:text-zinc-400 mt-2">
+          {challengeTitle} - Community discussions and daily updates
+        </p>
       </div>
 
       {/* Community Guidelines */}

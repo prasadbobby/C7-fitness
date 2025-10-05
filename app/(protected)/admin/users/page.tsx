@@ -50,6 +50,7 @@ import {
   IconShield,
   IconSettings,
   IconUserCheck,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { InviteUserForm } from "./_components/InviteUserForm";
 import { cancelInvitation, updateUserRole } from "../settings/_actions";
@@ -302,6 +303,15 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-foreground-500">
+        <Link href="/admin" className="hover:text-foreground-700">
+          Admin
+        </Link>
+        <IconChevronRight size={16} />
+        <span className="text-foreground-900 font-medium">Users</span>
+      </nav>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>

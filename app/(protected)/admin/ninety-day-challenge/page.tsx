@@ -11,8 +11,10 @@ import {
   IconTrendingUp,
   IconTarget,
   IconChartBar,
-  IconFlame
+  IconFlame,
+  IconChevronRight
 } from "@tabler/icons-react";
+import Link from "next/link";
 
 interface Stats {
   activeChallenges: number;
@@ -57,6 +59,15 @@ export default function NinetyDayChallengePage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-foreground-500">
+        <Link href="/admin" className="hover:text-foreground-700">
+          Admin
+        </Link>
+        <IconChevronRight size={16} />
+        <span className="text-foreground-900 font-medium">90-Day Challenge</span>
+      </nav>
+
       {/* Custom Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-3">

@@ -85,37 +85,45 @@ export async function POST(request: NextRequest) {
 
     // Generate directory name from exercise name
     const exerciseDirName = name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/_{2,}/g, '_');
-    const exerciseDir = join(process.cwd(), 'public', 'images', 'exercises', exerciseDirName);
-    const imagesDir = join(exerciseDir, 'images');
-    const imagePath = `/images/exercises/${exerciseDirName}/images/0.jpg`;
 
-    try {
-      // Create the directory structure
-      await mkdir(exerciseDir, { recursive: true });
-      await mkdir(imagesDir, { recursive: true });
+    // Use provided image URL or default path
+    const imagePath = image || `/images/exercises/${exerciseDirName}/images/0.jpg`;
 
-      // Create the exercise.json file
-      const exerciseJson = {
-        name: name.trim(),
-        force: force || null,
-        level,
-        mechanic: mechanic || null,
-        equipment: equipment || null,
-        primaryMuscles: finalPrimaryMuscles,
-        secondaryMuscles: finalSecondaryMuscles,
-        instructions: instructions.filter((instruction: string) => instruction.trim()),
-        category,
-        ...(description?.trim() && { description: description.trim() }),
-        ...(aliases.length > 0 && { aliases: aliases.filter((alias: string) => alias.trim()) }),
-        ...(tips.length > 0 && { tips: tips.filter((tip: string) => tip.trim()) }),
-      };
+    // Only create local files in development
+    const isProduction = process.env.NODE_ENV === 'production';
 
-      const jsonPath = join(exerciseDir, 'exercise.json');
-      await writeFile(jsonPath, JSON.stringify(exerciseJson, null, 2));
+    if (!isProduction) {
+      const exerciseDir = join(process.cwd(), 'public', 'images', 'exercises', exerciseDirName);
+      const imagesDir = join(exerciseDir, 'images');
 
-    } catch (fileError) {
-      console.error("Error creating directories/files:", fileError);
-      // Continue with database creation even if file operations fail
+      try {
+        // Create the directory structure
+        await mkdir(exerciseDir, { recursive: true });
+        await mkdir(imagesDir, { recursive: true });
+
+        // Create the exercise.json file
+        const exerciseJson = {
+          name: name.trim(),
+          force: force || null,
+          level,
+          mechanic: mechanic || null,
+          equipment: equipment || null,
+          primaryMuscles: finalPrimaryMuscles,
+          secondaryMuscles: finalSecondaryMuscles,
+          instructions: instructions.filter((instruction: string) => instruction.trim()),
+          category,
+          ...(description?.trim() && { description: description.trim() }),
+          ...(aliases.length > 0 && { aliases: aliases.filter((alias: string) => alias.trim()) }),
+          ...(tips.length > 0 && { tips: tips.filter((tip: string) => tip.trim()) }),
+        };
+
+        const jsonPath = join(exerciseDir, 'exercise.json');
+        await writeFile(jsonPath, JSON.stringify(exerciseJson, null, 2));
+
+      } catch (fileError) {
+        console.error("Error creating directories/files:", fileError);
+        // Continue with database creation even if file operations fail
+      }
     }
 
     // Create the exercise in database

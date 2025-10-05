@@ -24,6 +24,10 @@ interface WorkoutData {
   exercises: Exercise[];
 }
 
+interface AdminWorkoutData extends WorkoutData {
+  targetUserId: string; // The user for whom the admin is entering the workout
+}
+
 export async function handleSaveWorkout(data: WorkoutData) {
   try {
     const { userId }: { userId: string | null } = auth();
@@ -61,6 +65,59 @@ export async function handleSaveWorkout(data: WorkoutData) {
 
     return { success: true, message: "Workout Saved" };
   } catch (e) {
+    return { success: false, message: "Failed to save workout" };
+  }
+}
+
+export async function handleSaveAdminWorkout(data: AdminWorkoutData) {
+  try {
+    const { userId }: { userId: string | null } = auth();
+
+    if (!userId) {
+      throw new Error("You must be signed in to view this page.");
+    }
+
+    // Check if user is admin
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    if (!userInfo || (userInfo.role !== "ADMIN" && userInfo.role !== "SUPER_ADMIN")) {
+      throw new Error("Admin access required");
+    }
+
+    const { workoutPlanId, date, duration, exercises, targetUserId } = data;
+
+    await prisma.workoutLog.create({
+      data: {
+        userId: targetUserId, // Save workout for the target user, not the admin
+        workoutPlanId: workoutPlanId,
+        date: new Date(date),
+        duration: duration,
+        inProgress: false,
+        exercises: {
+          create: exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            trackingType: exercise.trackingType,
+            sets: {
+              create: exercise.sets.map((set) => ({
+                weight: set.weight,
+                reps: set.reps,
+                exerciseDuration: set.duration,
+              })),
+            },
+          })),
+        },
+      },
+    });
+
+    revalidatePath("/activity");
+    revalidatePath("/admin/users");
+
+    return { success: true, message: "Workout saved for user" };
+  } catch (e) {
+    console.error("Error saving admin workout:", e);
     return { success: false, message: "Failed to save workout" };
   }
 }

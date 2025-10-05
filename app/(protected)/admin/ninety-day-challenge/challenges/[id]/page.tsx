@@ -17,6 +17,7 @@ import {
   IconCalendarEvent,
   IconUserPlus,
   IconMessageCircle,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -108,20 +109,23 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-foreground-500">
+        <Link href="/admin" className="hover:text-foreground-700">
+          Admin
+        </Link>
+        <IconChevronRight size={16} />
+        <Link href="/admin/ninety-day-challenge" className="hover:text-foreground-700">
+          90-Day Challenge
+        </Link>
+        <IconChevronRight size={16} />
+        <span className="text-foreground-900 font-medium">
+          {challenge?.title || 'Challenge Details'}
+        </span>
+      </nav>
+
       {/* Header */}
       <div className="space-y-4">
-        {/* Back Button */}
-        <div className="flex items-center gap-4">
-          <Button
-            as={Link}
-            href="/admin/ninety-day-challenge"
-            variant="ghost"
-            startContent={<IconArrowLeft size={16} />}
-          >
-            Back to Challenges
-          </Button>
-        </div>
-
         {/* Title and Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">

@@ -84,3 +84,4 @@ uploads/
 temp/
 package-lock.json
 .env.*
+VERCEL_BLOB_SETUP.md

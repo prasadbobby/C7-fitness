@@ -36,7 +36,7 @@ export default async function StartWorkout({
   searchParams,
 }: {
   params: { id: string };
-  searchParams?: { assignmentId?: string };
+  searchParams?: { assignmentId?: string; adminMode?: string; targetUserId?: string; targetUserDbId?: string };
 }) {
   const workout = await fetchRoutine(params.id);
 
@@ -44,10 +44,22 @@ export default async function StartWorkout({
     throw new Error("Workout not found");
   }
 
+  const isAdminMode = searchParams?.adminMode === 'true';
+  const targetUserId = searchParams?.targetUserId;
+  const targetUserDbId = searchParams?.targetUserDbId;
+
   return (
     <>
-      <PageHeading title={`Workout: ${workout.name}`} />
-      <WorkoutManager workout={workout} assignmentId={searchParams?.assignmentId} />
+      <PageHeading
+        title={`Workout: ${workout.name}${isAdminMode ? ' (Admin Mode)' : ''}`}
+      />
+      <WorkoutManager
+        workout={workout}
+        assignmentId={searchParams?.assignmentId}
+        isAdminMode={isAdminMode}
+        targetUserId={targetUserId}
+        targetUserDbId={targetUserDbId}
+      />
     </>
   );
 }

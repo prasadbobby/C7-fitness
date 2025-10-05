@@ -3,6 +3,7 @@ import prisma from "@/prisma/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
+import { put } from "@vercel/blob";
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,68 +54,130 @@ export async function POST(request: NextRequest) {
 
     // Generate directory name from exercise name
     const exerciseDirName = exerciseName.trim().replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/_{2,}/g, '_');
-    const exerciseDir = join(process.cwd(), 'public', 'images', 'exercises', exerciseDirName);
-    const imagesDir = join(exerciseDir, 'images');
 
-    try {
-      // Create the directory structure
-      await mkdir(exerciseDir, { recursive: true });
-      await mkdir(imagesDir, { recursive: true });
+    // Check if we're in production (Vercel)
+    const isProduction = process.env.NODE_ENV === 'production';
 
-      const uploadedImages = [];
+    if (isProduction) {
+      // Use Vercel Blob storage for production
+      try {
+        const uploadedImages = [];
+        let imageIndex = 0;
 
-      // Process each uploaded image
-      let imageIndex = 0;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
 
-        if (!file.type.startsWith('image/')) {
-          console.log(`Skipping non-image file: ${file.name}`);
-          continue; // Skip non-image files
+          if (!file.type.startsWith('image/')) {
+            console.log(`Skipping non-image file: ${file.name}`);
+            continue;
+          }
+
+          // Get file extension, default to jpg
+          const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+
+          // Generate filename: 0.jpg, 1.jpg, 2.jpg, etc.
+          const filename = `${imageIndex}.${fileExtension}`;
+          const blobPath = `exercises/${exerciseDirName}/images/${filename}`;
+
+          console.log(`Uploading to Vercel Blob: ${blobPath}`);
+
+          // Upload to Vercel Blob
+          const blob = await put(blobPath, file, {
+            access: 'public',
+          });
+
+          uploadedImages.push({
+            index: imageIndex,
+            filename,
+            path: blob.url,
+            size: file.size,
+          });
+
+          imageIndex++;
         }
 
-        // Convert file to buffer
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        console.log(`Successfully uploaded ${uploadedImages.length} images to Vercel Blob for ${exerciseName}`);
 
-        // Get file extension, default to jpg
-        const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-
-        // Generate filename: 0.jpg, 1.jpg, 2.jpg, etc.
-        const filename = `${imageIndex}.${fileExtension}`;
-        const filepath = join(imagesDir, filename);
-
-        console.log(`Saving image to: ${filepath}`);
-
-        // Save the file
-        await writeFile(filepath, buffer);
-
-        uploadedImages.push({
-          index: imageIndex,
-          filename,
-          path: `/images/exercises/${exerciseDirName}/images/${filename}`,
-          size: buffer.length,
+        return NextResponse.json({
+          message: "Images uploaded successfully",
+          exerciseName,
+          exerciseDir: exerciseDirName,
+          uploadedImages,
+          totalUploaded: uploadedImages.length,
         });
 
-        imageIndex++;
+      } catch (blobError) {
+        console.error("Error uploading to Vercel Blob:", blobError);
+        return NextResponse.json(
+          { error: "Failed to upload images to cloud storage" },
+          { status: 500 }
+        );
       }
+    } else {
+      // Use local filesystem for development
+      const exerciseDir = join(process.cwd(), 'public', 'images', 'exercises', exerciseDirName);
+      const imagesDir = join(exerciseDir, 'images');
 
-      console.log(`Successfully uploaded ${uploadedImages.length} images for ${exerciseName}`);
+      try {
+        // Create the directory structure
+        await mkdir(exerciseDir, { recursive: true });
+        await mkdir(imagesDir, { recursive: true });
 
-      return NextResponse.json({
-        message: "Images uploaded successfully",
-        exerciseName,
-        exerciseDir: exerciseDirName,
-        uploadedImages,
-        totalUploaded: uploadedImages.length,
-      });
+        const uploadedImages = [];
 
-    } catch (fileError) {
-      console.error("Error uploading images:", fileError);
-      return NextResponse.json(
-        { error: "Failed to save images to disk" },
-        { status: 500 }
-      );
+        // Process each uploaded image
+        let imageIndex = 0;
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          if (!file.type.startsWith('image/')) {
+            console.log(`Skipping non-image file: ${file.name}`);
+            continue; // Skip non-image files
+          }
+
+          // Convert file to buffer
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+
+          // Get file extension, default to jpg
+          const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+
+          // Generate filename: 0.jpg, 1.jpg, 2.jpg, etc.
+          const filename = `${imageIndex}.${fileExtension}`;
+          const filepath = join(imagesDir, filename);
+
+          console.log(`Saving image to: ${filepath}`);
+
+          // Save the file
+          await writeFile(filepath, buffer);
+
+          uploadedImages.push({
+            index: imageIndex,
+            filename,
+            path: `/images/exercises/${exerciseDirName}/images/${filename}`,
+            size: buffer.length,
+          });
+
+          imageIndex++;
+        }
+
+        console.log(`Successfully uploaded ${uploadedImages.length} images for ${exerciseName}`);
+
+        return NextResponse.json({
+          message: "Images uploaded successfully",
+          exerciseName,
+          exerciseDir: exerciseDirName,
+          uploadedImages,
+          totalUploaded: uploadedImages.length,
+        });
+
+      } catch (fileError) {
+        console.error("Error uploading images:", fileError);
+        return NextResponse.json(
+          { error: "Failed to save images to disk" },
+          { status: 500 }
+        );
+      }
     }
 
   } catch (error) {

@@ -14,7 +14,7 @@ import { useWorkoutData } from "@/contexts/WorkoutDataContext";
 
 import ExerciseTable from "./ExerciseTable";
 import StatusBar from "./StatusBar";
-import { handleSaveWorkout } from "@/server-actions/WorkoutServerActions";
+import { handleSaveWorkout, handleSaveAdminWorkout } from "@/server-actions/WorkoutServerActions";
 import ExerciseOrderIndicator from "@/components/Generic/ExerciseOrderIndicator";
 
 interface Exercise {
@@ -38,7 +38,19 @@ interface Workout {
   WorkoutPlanExercise: WorkoutPlanExercise[];
 }
 
-export default function WorkoutManager({ workout, assignmentId }: { workout: Workout; assignmentId?: string }) {
+export default function WorkoutManager({
+  workout,
+  assignmentId,
+  isAdminMode = false,
+  targetUserId,
+  targetUserDbId
+}: {
+  workout: Workout;
+  assignmentId?: string;
+  isAdminMode?: boolean;
+  targetUserId?: string;
+  targetUserDbId?: string;
+}) {
   const router = useRouter();
   const workoutPlanId = workout.id;
 
@@ -315,17 +327,41 @@ export default function WorkoutManager({ workout, assignmentId }: { workout: Wor
           exercises: exercisesData,
         };
 
-        const response = await handleSaveWorkout(data);
+        let response;
+
+        if (isAdminMode && targetUserId) {
+          // Admin mode: save workout for the target user
+          const adminData = {
+            ...data,
+            targetUserId: targetUserId
+          };
+          response = await handleSaveAdminWorkout(adminData);
+        } else {
+          // Regular mode: save workout for current user
+          response = await handleSaveWorkout(data);
+        }
 
         if (response.success) {
           startConfetti();
           await updateAssignmentStatus("COMPLETED");
-          router.push("/dashboard");
+
+          // Different redirect based on mode
+          if (isAdminMode && targetUserDbId) {
+            router.push(`/admin/users/${targetUserDbId}/progress`);
+            toast.success("Workout saved for user successfully!");
+          } else if (isAdminMode) {
+            // Fallback if targetUserDbId is not provided
+            router.push(`/admin/users/${targetUserId}/progress`);
+            toast.success("Workout saved for user successfully!");
+          } else {
+            router.push("/dashboard");
+            toast.success("Workout saved successfully!");
+          }
+
           setWorkoutExercises([]);
           setWorkoutDuration(0);
           setWorkoutStartTime(null);
           setActiveWorkoutRoutine(null);
-          toast.success("Workout saved successfully!");
         } else {
           toast.error("Failed to save workout");
         }

@@ -9,28 +9,24 @@ import {
   CardFooter,
   Button,
   Chip,
-  Progress,
-  Divider,
   useDisclosure,
 } from "@nextui-org/react";
 import {
-  IconUser,
   IconCalendar,
   IconBarbell,
   IconTarget,
   IconTrendingUp,
-  IconArrowLeft,
   IconUserX,
   IconSquareCheck,
   IconClock,
   IconPlayerSkipForward,
   IconEdit,
   IconDeviceFloppy,
-  IconX,
   IconPlus,
   IconMinus,
   IconChevronLeft,
   IconChevronRight,
+  IconJumpRope,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import BottomSheet from "@/components/UI/BottomSheet";
@@ -170,8 +166,7 @@ export default function UserProgressDashboard() {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
-    // Get first and last day of the month
-    const firstDay = new Date(year, month, 1);
+    // Get last day of the month
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
 
@@ -342,22 +337,33 @@ export default function UserProgressDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-foreground-500">
+        <Link href="/admin/users" className="hover:text-foreground-700">
+          Users
+        </Link>
+        <IconChevronRight size={16} />
+        <span className="text-foreground-900 font-medium">
+          {user?.username || user?.firstName || user?.email || user?.userId}
+        </span>
+      </nav>
+
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          as={Link}
-          href="/admin/users"
-          variant="ghost"
-          startContent={<IconArrowLeft size={16} />}
-        >
-          Back to Users
-        </Button>
+      <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Progress Dashboard</h1>
           <p className="text-foreground-500 mt-2">
             Comprehensive tracking for {user?.username || user?.firstName || user?.email || user?.userId}
           </p>
         </div>
+        <Button
+          as={Link}
+          href={`/admin/users/${id}/assigned-workouts`}
+          color="primary"
+          startContent={<IconJumpRope size={16} />}
+        >
+          Assigned Workouts
+        </Button>
       </div>
 
       {/* User Info Card */}
