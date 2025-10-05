@@ -122,7 +122,7 @@ export default function SidebarNav() {
 
             <NavItem
               icon={<IconJumpRope size={22} className="shrink-0" />}
-              label="Start Workout"
+              label="Created Workouts"
               href="/workout"
               active={pathname.startsWith("/workout")}
             />

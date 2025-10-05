@@ -26,7 +26,7 @@ export default function AboutTab({ exercise }: { exercise: Exercise | null }) {
         <div className="flex">
           <div className="shrink-0 grow-0 basis-full min-w-0">
             <Image
-              src={exercise?.image ? exercise.image.replace('/0.jpg', '/images/0.jpg') : ''}
+              src={exercise?.image || '/images/placeholder-exercise.jpg'}
               width={750}
               height={500}
               alt={`${exercise?.name} photo 1`}
@@ -34,10 +34,27 @@ export default function AboutTab({ exercise }: { exercise: Exercise | null }) {
           </div>
           <div className="shrink-0 grow-0 basis-full min-w-0">
             <Image
-              src={exercise?.image ? exercise.image.replace('/0.jpg', '/images/1.jpg') : ''}
+              src={exercise?.image ?
+                exercise.image.replace(/\/0\.(jpg|png|gif|webp)/, '/1.$1') :
+                '/images/placeholder-exercise.jpg'}
               width={750}
               height={500}
               alt={`${exercise?.name} photo 2`}
+              onError={(e) => {
+                // Try different extensions if the first one fails
+                const img = e.target as HTMLImageElement;
+                const currentSrc = img.src;
+
+                if (currentSrc.includes('1.jpg')) {
+                  img.src = currentSrc.replace('1.jpg', '1.png');
+                } else if (currentSrc.includes('1.png')) {
+                  img.src = currentSrc.replace('1.png', '1.gif');
+                } else if (currentSrc.includes('1.gif')) {
+                  img.src = currentSrc.replace('1.gif', '1.webp');
+                } else {
+                  img.src = '/images/placeholder-exercise.jpg';
+                }
+              }}
             />
           </div>
         </div>

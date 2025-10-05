@@ -36,7 +36,7 @@ export default async function RootLayout({
       signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL?.trim() || '/sign-up'}
       afterSignInUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL?.trim() || '/dashboard'}
       afterSignUpUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL?.trim() || '/dashboard'}
-      domain={process.env.NEXT_PUBLIC_CLERK_DOMAIN || (process.env.NODE_ENV === 'production' ? 'clerk.c7pfs.site' : undefined)}
+      domain={process.env.NEXT_PUBLIC_CLERK_DOMAIN || (process.env.NODE_ENV === 'production' ? 'clerk.c7personal.fit' : undefined)}
     >
       <html
         lang="en"

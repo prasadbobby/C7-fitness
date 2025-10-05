@@ -6,6 +6,7 @@ import ExerciseDetailModal from "./_components/Modals/ExerciseDetailModal/Exerci
 import ExerciseAddToRoutineModal from "./_components/Modals/ExerciseAddToRoutineModal";
 import ExerciseFilters from "./_components/Filters/ExerciseFilters";
 import { ExerciseAddToRoutineModalProvider } from "@/contexts/ExerciseAddToRoutineModalContext";
+import AdminExerciseControls from "./_components/AdminExerciseControls";
 
 interface UserRoutine {
   name: string;
@@ -43,6 +44,14 @@ export default async function ExercisesPage({
   const favs = searchParams?.favs === "true";
   const equipmentOwned = searchParams?.equipmentOwned === "true";
 
+  // Check if user is admin
+  const userInfo = await prisma.userInfo.findUnique({
+    where: { userId },
+    select: { role: true },
+  });
+
+  const isAdmin = userInfo?.role === "ADMIN" || userInfo?.role === "SUPER_ADMIN";
+
   const userRoutines: (UserRoutine & { exerciseCount: number })[] =
     await prisma.workoutPlan
       .findMany({
@@ -68,6 +77,7 @@ export default async function ExercisesPage({
   return (
     <ExerciseAddToRoutineModalProvider>
       <PageHeading title="Exercises" />
+      {isAdmin && <AdminExerciseControls />}
       <ExerciseFilters searchParams={searchParams} />
       {/* <Suspense 
         key={search + cat + muscle + level + force + currentPage} 

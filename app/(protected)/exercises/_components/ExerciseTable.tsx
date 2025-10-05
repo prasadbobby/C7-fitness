@@ -18,6 +18,7 @@ import ExerciseAddToRoutineButton from "./ExerciseAddToRoutineButton";
 import ExerciseAddToRoutineCreatorButton from "./ExerciseAddToRoutineCreatorButton";
 import ExerciseRemoveRoutineCreatorButton from "./ExerciseRemoveRoutineCreatorButton";
 import ExerciseFavButton from "./ExerciseFavButton";
+import ExerciseDeleteButton from "./ExerciseDeleteButton";
 import { useUser } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 
@@ -101,7 +102,7 @@ export default function ExerciseTable({
                 <User
                   avatarProps={{
                     radius: "lg",
-                    src: exercise.image ? exercise.image.replace('/0.jpg', '/images/0.jpg') : '',
+                    src: exercise.image || '/images/placeholder-exercise.jpg',
                     className: "hidden md:block",
                   }}
                   description={
@@ -141,19 +142,26 @@ export default function ExerciseTable({
               >
                 <ButtonGroup size="sm" variant="flat">
                   <ExerciseInfoButton exercise={exercise} />
-                  <ExerciseFavButton 
+                  <ExerciseFavButton
                     exerciseId={exercise.id}
-                    isFavourite={favouriteExercises.has(exercise.id)} 
+                    isFavourite={favouriteExercises.has(exercise.id)}
                   />
                   {isHighlighted ? (
                     <ExerciseRemoveRoutineCreatorButton
                       exerciseId={exercise.id}
                     />
                   ) : mode === "exercisePage" && isAdmin ? (
-                    <ExerciseAddToRoutineButton
-                      exercise={exercise}
-                      userRoutines={userRoutines}
-                    />
+                    <>
+                      <ExerciseAddToRoutineButton
+                        exercise={exercise}
+                        userRoutines={userRoutines}
+                      />
+                      <ExerciseDeleteButton
+                        exerciseId={exercise.id}
+                        exerciseName={exercise.name}
+                        onDeleted={() => window.location.reload()}
+                      />
+                    </>
                   ) : (
                     mode === "createRoutine" && (
                       <ExerciseAddToRoutineCreatorButton

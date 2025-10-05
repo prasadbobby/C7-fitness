@@ -76,7 +76,7 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
     try {
       const invitation = await clerkClient.invitations.createInvitation({
         emailAddress: email,
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://c7pfs.site'}/sign-up?role=${targetRole.toLowerCase()}`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://c7personal.fit/'}/sign-up?role=${targetRole.toLowerCase()}`,
         publicMetadata: {
           role: targetRole.toLowerCase(),
           invitedBy: currentUserRole?.toLowerCase() || "admin"
