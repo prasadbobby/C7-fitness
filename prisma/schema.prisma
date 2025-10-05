@@ -17,6 +17,7 @@ model UserInfo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   assignedWorkouts AssignedWorkout[]
+  trainingProgression UserTrainingProgression[]
 }
 
 model PendingInvitation {
@@ -81,8 +82,7 @@ model WorkoutPlan {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   notes           String?
-  isSystemRoutine Boolean             @default(false)
-  systemRoutineCategory String?
+  trainingType    TrainingType?       // Professional training category
   logs            WorkoutLog[]
   WorkoutPlanExercise WorkoutPlanExercise[]
   assignedWorkouts AssignedWorkout[]
@@ -177,6 +177,15 @@ model UserEquipment {
 enum TrackingType {
   reps
   duration
+}
+
+enum TrainingType {
+  ENDURANCE
+  HYPERTROPHY
+  STRENGTH
+  POWER
+  TONING
+  FUNCTIONAL
 }
 
 enum CategoryType {
@@ -454,4 +463,28 @@ enum ReactionType {
   STRONG
   FIRE
   CLAP
+}
+
+// User Training Progression Model
+model UserTrainingProgression {
+  id                String        @id @default(uuid())
+  userId            String
+  trainingType      TrainingType
+  startDate         DateTime      @default(now())
+  endDate           DateTime?     // When this training phase ends
+  targetWeeks       Int           @default(4) // Expected duration in weeks
+  actualWeeks       Int?          // Actual duration completed
+  isActive          Boolean       @default(true)
+  isCompleted       Boolean       @default(false)
+  assignedBy        String        // Admin who assigned this training phase
+  notes             String?       // Admin notes about this training phase
+  completionNotes   String?       // Notes when phase is completed
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  user              UserInfo      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([trainingType, isActive])
 }

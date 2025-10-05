@@ -19,6 +19,7 @@ export default async function NewRoutineFormStepOne({
 
   let routineName = "";
   let routineNotes = "";
+  let routineTrainingType = null;
   let pageTitle = "New Routine";
 
   if (routineId !== null) {
@@ -30,11 +31,13 @@ export default async function NewRoutineFormStepOne({
         id: true,
         name: true,
         notes: true,
+        trainingType: true,
       },
     });
 
     routineName = routine?.name || "";
     routineNotes = routine?.notes || "";
+    routineTrainingType = routine?.trainingType || null;
     pageTitle = `Edit Routine: ${routineName}`;
   }
 
@@ -44,6 +47,7 @@ export default async function NewRoutineFormStepOne({
         routineId={routineId}
         routineName={routineName}
         routineNotes={routineNotes}
+        routineTrainingType={routineTrainingType}
         pageTitle={pageTitle}
       />
     </div>

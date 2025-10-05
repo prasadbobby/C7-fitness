@@ -14,15 +14,11 @@ export async function handleDeleteRoutine(routineId: string) {
     // First, check if the user owns this routine (security check)
     const routine = await prisma.workoutPlan.findUnique({
       where: { id: routineId },
-      select: { userId: true, isSystemRoutine: true },
+      select: { userId: true },
     });
 
     if (!routine) {
       throw new Error("Routine not found");
-    }
-
-    if (routine.isSystemRoutine) {
-      throw new Error("Cannot delete system routines");
     }
 
     if (routine.userId !== userId) {
@@ -67,13 +63,14 @@ export async function handleCreateRoutine(data: any) {
       throw new Error("You must be signed in to view this page.");
     }
 
-    const { routineName, exercisesWithOrder, notes } = data;
+    const { routineName, exercisesWithOrder, notes, trainingType } = data;
 
     await prisma.workoutPlan.create({
       data: {
         name: routineName,
         userId: userId,
         notes: notes,
+        trainingType: trainingType,
         WorkoutPlanExercise: {
           create: exercisesWithOrder.map((exercise: any) => ({
             exerciseId: exercise.exerciseId,
@@ -103,7 +100,7 @@ export async function handleEditRoutine(data: any) {
       throw new Error("You must be signed in to view this page.");
     }
 
-    const { routineName, routineId, exercisesWithOrder, notes } = data;
+    const { routineName, routineId, exercisesWithOrder, notes, trainingType } = data;
 
     // First, update the workout plan details
     await prisma.workoutPlan.update({
@@ -112,6 +109,7 @@ export async function handleEditRoutine(data: any) {
         name: routineName,
         userId: userId,
         notes: notes,
+        trainingType: trainingType,
       },
     });
 
@@ -156,6 +154,7 @@ export async function handleCreateRoutineStepOne(
 
     const routineName = data.get("routineName") as string;
     const routineNotes = data.get("routineNotes") as string | null;
+    const trainingType = data.get("trainingType") as string | null;
 
     let routine;
     if (routineId) {
@@ -164,6 +163,7 @@ export async function handleCreateRoutineStepOne(
         data: {
           name: routineName,
           notes: routineNotes,
+          trainingType: trainingType as any,
         },
       });
     } else {
@@ -172,6 +172,7 @@ export async function handleCreateRoutineStepOne(
           name: routineName,
           userId: userId,
           notes: routineNotes,
+          trainingType: trainingType as any,
         },
       });
     }

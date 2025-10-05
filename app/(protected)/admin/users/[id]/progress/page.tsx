@@ -37,6 +37,7 @@ import BottomSheet from "@/components/UI/BottomSheet";
 import DatePicker from "@/components/UI/DatePicker";
 import { Input, Table, TableHeader, TableBody, TableColumn, TableRow, TableCell, ButtonGroup } from "@nextui-org/react";
 import { toast } from "sonner";
+import TrainingCategoryManager from "./_components/TrainingCategoryManager";
 
 interface UserProgress {
   user: {
@@ -391,6 +392,16 @@ export default function UserProgressDashboard() {
           </div>
         </CardBody>
       </Card>
+
+      {/* Training Category Manager */}
+      <TrainingCategoryManager
+        userId={user.userId}
+        userInfo={{
+          username: user.username,
+          firstName: user.firstName,
+          email: user.email
+        }}
+      />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">

@@ -67,8 +67,7 @@ interface WorkoutPlan {
   id: string;
   name: string;
   notes?: string;
-  systemRoutineCategory?: string;
-  isSystemRoutine: boolean;
+  trainingType?: string;
   WorkoutPlanExercise: Array<{
     Exercise: {
       name: string;
@@ -102,7 +101,7 @@ interface Assignment {
   };
   workoutPlan: {
     name: string;
-    systemRoutineCategory?: string;
+    trainingType?: string;
   };
 }
 
@@ -114,6 +113,7 @@ export default function WorkoutAssignment() {
   const [users, setUsers] = useState<User[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [trainingProgressions, setTrainingProgressions] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [selectedWorkout, setSelectedWorkout] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -135,6 +135,7 @@ export default function WorkoutAssignment() {
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [userRoleFilter, setUserRoleFilter] = useState<Set<string>>(new Set());
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<Set<string>>(new Set());
+  const [trainingTypeFilter, setTrainingTypeFilter] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
   const [assignedDateFrom, setAssignedDateFrom] = useState("");
   const [assignedDateTo, setAssignedDateTo] = useState("");
@@ -149,6 +150,13 @@ export default function WorkoutAssignment() {
   useEffect(() => {
     fetchData();
   }, [page, searchTerm]);
+
+  // Clear selected workout when user changes to ensure compatibility
+  useEffect(() => {
+    if (selectedUser) {
+      setSelectedWorkout("");
+    }
+  }, [selectedUser]);
 
   const updateURLParams = (updates: Record<string, string | number>) => {
     const params = new URLSearchParams(searchParams);
@@ -178,22 +186,25 @@ export default function WorkoutAssignment() {
         search: searchTerm,
       });
 
-      const [usersRes, workoutsRes, assignmentsRes] = await Promise.all([
+      const [usersRes, workoutsRes, assignmentsRes, progressionsRes] = await Promise.all([
         fetch("/api/admin/users?limit=1000"),
         fetch(`/api/admin/workouts?${params}`),
         fetch("/api/admin/assignments"),
+        fetch("/api/admin/training-progressions"),
       ]);
 
-      const [usersData, workoutsData, assignmentsData] = await Promise.all([
+      const [usersData, workoutsData, assignmentsData, progressionsData] = await Promise.all([
         usersRes.json(),
         workoutsRes.json(),
         assignmentsRes.json(),
+        progressionsRes.json(),
       ]);
 
       setUsers(usersData.users || []);
       setWorkoutPlans(workoutsData.workouts || []);
       setTotalWorkouts(workoutsData.total || 0);
       setAssignments(assignmentsData.assignments || []);
+      setTrainingProgressions(progressionsData.progressions || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -393,10 +404,44 @@ export default function WorkoutAssignment() {
     setShowOverdueOnly(false);
   };
 
-  // Get unique categories from workout plans
-  const uniqueCategories = Array.from(new Set(workoutPlans
-    .filter(wp => wp.systemRoutineCategory)
-    .map(wp => wp.systemRoutineCategory!)
+  // Filter workouts based on user's training category
+  const getFilteredWorkoutsForUser = (userId: string) => {
+    if (!userId) return workoutPlans;
+
+    // Find user's active training progression
+    const userProgression = trainingProgressions.find(
+      p => p.userId === userId && p.isActive
+    );
+
+    if (!userProgression) return workoutPlans;
+
+    const userTrainingType = userProgression.trainingType;
+
+    console.log('User Progression:', userProgression);
+    console.log('User Training Type:', userTrainingType);
+    console.log('All Workouts:', workoutPlans.map(w => ({
+      name: w.name,
+      trainingType: w.trainingType
+    })));
+
+    // Filter workouts that match the user's training type
+    const filteredWorkouts = workoutPlans.filter(workout => {
+      // Direct match: workout's trainingType matches user's trainingType
+      return workout.trainingType && workout.trainingType === userTrainingType;
+    });
+
+    console.log('Filtered Workouts:', filteredWorkouts.map(w => ({
+      name: w.name,
+      trainingType: w.trainingType
+    })));
+
+    return filteredWorkouts;
+  };
+
+  // Get unique training types from workout plans
+  const uniqueTrainingTypes = Array.from(new Set(workoutPlans
+    .filter(wp => wp.trainingType)
+    .map(wp => wp.trainingType!)
   ));
 
   // Get unique user roles
@@ -407,6 +452,7 @@ export default function WorkoutAssignment() {
     statusFilter.size > 0 ||
     userRoleFilter.size > 0 ||
     workoutTypeFilter.size > 0 ||
+    trainingTypeFilter.size > 0 ||
     categoryFilter.size > 0 ||
     assignedDateFrom ||
     assignedDateTo ||
@@ -427,8 +473,8 @@ export default function WorkoutAssignment() {
         (user?.firstName && user.firstName.toLowerCase().includes(searchLower)) ||
         (user?.email && user.email.toLowerCase().includes(searchLower)) ||
         (assignment.notes && assignment.notes.toLowerCase().includes(searchLower)) ||
-        (assignment.workoutPlan.systemRoutineCategory &&
-         assignment.workoutPlan.systemRoutineCategory.toLowerCase().includes(searchLower));
+        (assignment.workoutPlan.trainingType &&
+         assignment.workoutPlan.trainingType.toLowerCase().includes(searchLower));
 
       if (!matchesSearch) return false;
     }
@@ -443,19 +489,24 @@ export default function WorkoutAssignment() {
       return false;
     }
 
-    // Workout type filter
-    if (workoutTypeFilter.size > 0 && workoutPlan) {
-      const isSystemRoutine = workoutPlan.isSystemRoutine;
-      const type = isSystemRoutine ? "system" : "custom";
-      if (!workoutTypeFilter.has(type)) {
+    // Training type filter
+    if (workoutTypeFilter.size > 0 && workoutPlan && workoutPlan.trainingType) {
+      if (!workoutTypeFilter.has(workoutPlan.trainingType)) {
         return false;
       }
     }
 
-    // Category filter
+    // Training type filter
+    if (trainingTypeFilter.size > 0 && workoutPlan) {
+      if (!workoutPlan.trainingType || !trainingTypeFilter.has(workoutPlan.trainingType)) {
+        return false;
+      }
+    }
+
+    // Training type category filter
     if (categoryFilter.size > 0) {
-      if (!assignment.workoutPlan.systemRoutineCategory ||
-          !categoryFilter.has(assignment.workoutPlan.systemRoutineCategory)) {
+      if (!assignment.workoutPlan.trainingType ||
+          !categoryFilter.has(assignment.workoutPlan.trainingType)) {
         return false;
       }
     }
@@ -658,9 +709,9 @@ export default function WorkoutAssignment() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{workout.name}</p>
-                          {workout.systemRoutineCategory && (
+                          {workout.trainingType && (
                             <p className="text-sm text-foreground-500">
-                              {workout.systemRoutineCategory}
+                              {workout.trainingType}
                             </p>
                           )}
                           {workout.notes && (
@@ -671,14 +722,18 @@ export default function WorkoutAssignment() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          color={workout.isSystemRoutine ? "success" : "primary"}
-                          variant="flat"
-                          size="sm"
-                          startContent={workout.isSystemRoutine ? <IconBarbell size={14} /> : <IconEdit size={14} />}
-                        >
-                          {workout.isSystemRoutine ? "System" : "Custom"}
-                        </Chip>
+                        {workout.trainingType ? (
+                          <Chip
+                            color="primary"
+                            variant="flat"
+                            size="sm"
+                            startContent={<IconTarget size={14} />}
+                          >
+                            {workout.trainingType}
+                          </Chip>
+                        ) : (
+                          <span className="text-sm text-foreground-400">No type</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -705,7 +760,7 @@ export default function WorkoutAssignment() {
                             color="danger"
                             startContent={<IconTrash size={16} />}
                             onPress={() => handleDeleteWorkout(workout.id, workout.name)}
-                            isDisabled={loading || (workout._count?.assignedWorkouts || 0) > 0 || (workout._count?.logs || 0) > 0}
+                            isDisabled={loading}
                           >
                             Delete
                           </Button>
@@ -880,11 +935,11 @@ export default function WorkoutAssignment() {
                         </div>
                       </div>
 
-                      {/* Workout Types */}
+                      {/* Workout Training Types */}
                       <div>
-                        <p className="text-xs font-medium text-foreground-600 mb-2 uppercase tracking-wide">Workout Types</p>
+                        <p className="text-xs font-medium text-foreground-600 mb-2 uppercase tracking-wide">Workout Training Types</p>
                         <div className="flex flex-wrap gap-2">
-                          {["system", "custom"].map((type) => (
+                          {uniqueTrainingTypes.map((type) => (
                             <Chip
                               key={type}
                               variant={workoutTypeFilter.has(type) ? "solid" : "flat"}
@@ -900,9 +955,9 @@ export default function WorkoutAssignment() {
                                 }
                                 setWorkoutTypeFilter(newSet);
                               }}
-                              startContent={type === "system" ? <IconBarbell size={14} /> : <IconEdit size={14} />}
+                              startContent={<IconTarget size={14} />}
                             >
-                              {type} routines
+                              {type}
                             </Chip>
                           ))}
                         </div>
@@ -926,29 +981,29 @@ export default function WorkoutAssignment() {
                       </div>
                     </CardHeader>
                     <CardBody className="pt-0 space-y-4">
-                      {/* Categories */}
-                      {uniqueCategories.length > 0 && (
+                      {/* Training Types */}
+                      {uniqueTrainingTypes.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-foreground-600 mb-2 uppercase tracking-wide">Categories</p>
+                          <p className="text-xs font-medium text-foreground-600 mb-2 uppercase tracking-wide">Training Types</p>
                           <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-                            {uniqueCategories.map((category) => (
+                            {uniqueTrainingTypes.map((trainingType) => (
                               <Chip
-                                key={category}
-                                variant={categoryFilter.has(category) ? "solid" : "flat"}
-                                color={categoryFilter.has(category) ? "warning" : "default"}
+                                key={trainingType}
+                                variant={categoryFilter.has(trainingType) ? "solid" : "flat"}
+                                color={categoryFilter.has(trainingType) ? "warning" : "default"}
                                 size="sm"
                                 className="cursor-pointer transition-all hover:scale-105"
                                 onClick={() => {
                                   const newSet = new Set(categoryFilter);
-                                  if (categoryFilter.has(category)) {
-                                    newSet.delete(category);
+                                  if (categoryFilter.has(trainingType)) {
+                                    newSet.delete(trainingType);
                                   } else {
-                                    newSet.add(category);
+                                    newSet.add(trainingType);
                                   }
                                   setCategoryFilter(newSet);
                                 }}
                               >
-                                {category}
+                                {trainingType}
                               </Chip>
                             ))}
                           </div>
@@ -1111,6 +1166,7 @@ export default function WorkoutAssignment() {
               <Table aria-label="Assignments table">
                 <TableHeader>
                   <TableColumn>USER</TableColumn>
+                  <TableColumn>TRAINING CATEGORY</TableColumn>
                   <TableColumn>WORKOUT</TableColumn>
                   <TableColumn>STATUS</TableColumn>
                   <TableColumn>ASSIGNMENT DATE</TableColumn>
@@ -1155,11 +1211,55 @@ export default function WorkoutAssignment() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {(() => {
+                          const userProgression = trainingProgressions.find(
+                            p => p.userId === assignment.user.userId && p.isActive
+                          );
+                          if (userProgression) {
+                            const trainingTypeColorMap = {
+                              ENDURANCE: "secondary",
+                              HYPERTROPHY: "success",
+                              STRENGTH: "danger",
+                              POWER: "warning",
+                              TONING: "primary",
+                              FUNCTIONAL: "default",
+                            };
+                            const trainingTypeDisplayMap = {
+                              ENDURANCE: "Endurance",
+                              HYPERTROPHY: "Hypertrophy",
+                              STRENGTH: "Strength",
+                              POWER: "Power",
+                              TONING: "Toning",
+                              FUNCTIONAL: "Functional",
+                            };
+                            return (
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color={trainingTypeColorMap[userProgression.trainingType] || "default"}
+                              >
+                                {trainingTypeDisplayMap[userProgression.trainingType] || userProgression.trainingType}
+                              </Chip>
+                            );
+                          }
+                          return (
+                            <span className="text-sm text-foreground-400">No category</span>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
                         <div>
-                          <p className="font-medium">{assignment.workoutPlan.name}</p>
-                          {assignment.workoutPlan.systemRoutineCategory && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium">{assignment.workoutPlan.name}</p>
+                            {assignment.workoutPlan.trainingType && (
+                              <Chip size="sm" variant="dot" color="primary">
+                                {assignment.workoutPlan.trainingType}
+                              </Chip>
+                            )}
+                          </div>
+                          {assignment.workoutPlan.trainingType && (
                             <p className="text-sm text-foreground-500">
-                              {assignment.workoutPlan.systemRoutineCategory}
+                              {assignment.workoutPlan.trainingType}
                             </p>
                           )}
                         </div>
@@ -1372,6 +1472,52 @@ export default function WorkoutAssignment() {
                 ))}
               </Select>
 
+              {/* Show user's training category if available */}
+              {selectedUser && (() => {
+                const userProgression = trainingProgressions.find(
+                  p => p.userId === selectedUser && p.isActive
+                );
+
+                if (userProgression) {
+                  const trainingTypeDisplayMap = {
+                    'ENDURANCE': 'Endurance Training',
+                    'HYPERTROPHY': 'Hypertrophy Training',
+                    'STRENGTH': 'Strength Training',
+                    'POWER': 'Power Training',
+                    'TONING': 'Toning Training',
+                    'FUNCTIONAL': 'Functional Training'
+                  };
+
+                  return (
+                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2">
+                        <IconTarget size={16} className="text-primary" />
+                        <span className="text-sm font-medium text-primary">
+                          Current Training Category: {trainingTypeDisplayMap[userProgression.trainingType as keyof typeof trainingTypeDisplayMap] || userProgression.trainingType}
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground-600 mt-1">
+                        Workouts below are filtered to match this training category
+                      </p>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+                      <div className="flex items-center gap-2">
+                        <IconTarget size={16} className="text-warning" />
+                        <span className="text-sm font-medium text-warning">
+                          No Training Category Assigned
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground-600 mt-1">
+                        All available workouts are shown
+                      </p>
+                    </div>
+                  );
+                }
+              })()}
+
               <Select
                 label="Select Workout Plan"
                 placeholder="Choose a workout plan to assign"
@@ -1382,21 +1528,21 @@ export default function WorkoutAssignment() {
                   value: "text-foreground",
                 }}
               >
-                {workoutPlans.map((workout) => (
+                {getFilteredWorkoutsForUser(selectedUser).map((workout) => (
                   <SelectItem key={workout.id} value={workout.id} textValue={workout.name}>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{workout.name}</span>
-                        {workout.systemRoutineCategory && (
+                        {workout.trainingType && (
                           <span className="text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded">
-                            {workout.systemRoutineCategory}
+                            {workout.trainingType}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-foreground-500">
                         <span>{workout.WorkoutPlanExercise.length} exercises</span>
                         <span>•</span>
-                        <span>{workout.isSystemRoutine ? "System" : "Custom"} routine</span>
+                        <span>{workout.trainingType || "No type"}</span>
                       </div>
                     </div>
                   </SelectItem>
@@ -1466,13 +1612,13 @@ export default function WorkoutAssignment() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-semibold text-foreground">{workout.name}</p>
-                              {workout.systemRoutineCategory && (
-                                <p className="text-sm text-foreground-500">{workout.systemRoutineCategory}</p>
+                              {workout.trainingType && (
+                                <p className="text-sm text-foreground-500">{workout.trainingType}</p>
                               )}
                             </div>
                             <div className="text-right text-sm text-foreground-500">
                               <p>{workout.WorkoutPlanExercise.length} exercises</p>
-                              <p>{workout.isSystemRoutine ? "System" : "Custom"} routine</p>
+                              <p>{workout.trainingType || "No type"}</p>
                             </div>
                           </div>
 

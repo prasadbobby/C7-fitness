@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
           OR: [
             { name: { contains: search, mode: "insensitive" as const } },
             { notes: { contains: search, mode: "insensitive" as const } },
-            { systemRoutineCategory: { contains: search, mode: "insensitive" as const } },
+            { trainingType: { contains: search, mode: "insensitive" as const } },
           ],
         }
       : {};

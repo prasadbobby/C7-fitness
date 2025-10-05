@@ -105,7 +105,7 @@ export async function PATCH(
         workoutPlan: {
           select: {
             name: true,
-            systemRoutineCategory: true,
+            trainingType: true,
           },
         },
       },

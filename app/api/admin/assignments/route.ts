@@ -20,8 +20,7 @@ export async function GET(request: NextRequest) {
         workoutPlan: {
           select: {
             name: true,
-            systemRoutineCategory: true,
-            isSystemRoutine: true,
+            trainingType: true,
           },
         },
       },
@@ -164,7 +163,7 @@ export async function POST(request: NextRequest) {
         workoutPlan: {
           select: {
             name: true,
-            systemRoutineCategory: true,
+            trainingType: true,
           },
         },
       },

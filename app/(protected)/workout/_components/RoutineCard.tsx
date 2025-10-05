@@ -61,6 +61,24 @@ const categoryColorMap: Record<string, Color> = {
   olympic_weightlifting: "secondary",
 };
 
+const trainingTypeColorMap: Record<string, Color> = {
+  ENDURANCE: "secondary",
+  HYPERTROPHY: "success",
+  STRENGTH: "danger",
+  POWER: "warning",
+  TONING: "primary",
+  FUNCTIONAL: "default",
+};
+
+const trainingTypeDisplayMap: Record<string, string> = {
+  ENDURANCE: "Endurance",
+  HYPERTROPHY: "Hypertrophy",
+  STRENGTH: "Strength",
+  POWER: "Power",
+  TONING: "Toning",
+  FUNCTIONAL: "Functional",
+};
+
 export default function RoutineCard({
   routine,
   isSystem,
@@ -83,6 +101,18 @@ export default function RoutineCard({
       <CardHeader className="flex gap-3 px-5 pt-4">
         <div className="flex flex-col flex-grow">
           <p className="text-md leading-5">{routine.name}</p>
+          {routine.trainingType && (
+            <div className="flex gap-1 mt-1">
+              <Chip
+                size="sm"
+                variant="flat"
+                color={trainingTypeColorMap[routine.trainingType] || "default"}
+                className="text-xs"
+              >
+                {trainingTypeDisplayMap[routine.trainingType] || routine.trainingType}
+              </Chip>
+            </div>
+          )}
           {isAssigned && routine._assignmentStatus && (
             <>
               <Chip

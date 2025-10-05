@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Input, Textarea } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
+import { Select, SelectItem } from "@nextui-org/select";
 import { handleCreateRoutineStepOne } from "@/server-actions/RoutineServerActions";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Divider } from "@nextui-org/divider";
@@ -12,18 +13,61 @@ import {
   IconClipboardList,
   IconTarget,
   IconNotes,
-  IconSparkles
+  IconSparkles,
+  IconCategory
 } from "@tabler/icons-react";
+
+// Training categories with their professional descriptions
+const trainingCategories = [
+  {
+    key: "ENDURANCE",
+    label: "Endurance Training",
+    description: "15-20 reps, 40-50% 1RM, 30-60s rest",
+    details: "Builds cardiovascular endurance and muscular stamina"
+  },
+  {
+    key: "HYPERTROPHY",
+    label: "Hypertrophy Training",
+    description: "8-12 reps, 70-80% 1RM, 60-90s rest",
+    details: "Maximizes muscle growth and size gains"
+  },
+  {
+    key: "STRENGTH",
+    label: "Strength Training",
+    description: "3-6 reps, 85-95% 1RM, 2-5min rest",
+    details: "Develops maximum strength and power"
+  },
+  {
+    key: "POWER",
+    label: "Power Training",
+    description: "1-3 reps, 90-100% 1RM, 3-5min rest",
+    details: "Explosive movement and peak performance"
+  },
+  {
+    key: "TONING",
+    label: "Toning Training",
+    description: "12-15 reps, 60-70% 1RM, 45-75s rest",
+    details: "Muscle definition and body sculpting"
+  },
+  {
+    key: "FUNCTIONAL",
+    label: "Functional Training",
+    description: "Variable reps, bodyweight focus, 30-90s rest",
+    details: "Real-world movement patterns and daily activities"
+  }
+];
 
 export default function NewRoutineFormStepOneClient({
   routineId,
   routineName,
   routineNotes,
+  routineTrainingType,
   pageTitle,
 }: {
   routineId: string | null;
   routineName: string;
   routineNotes: string;
+  routineTrainingType: string | null;
   pageTitle: string;
 }) {
   const router = useRouter();
@@ -111,6 +155,45 @@ export default function NewRoutineFormStepOneClient({
                   label: "text-foreground-600 font-medium"
                 }}
               />
+            </div>
+
+            <Divider className="my-6" />
+
+            {/* Training Category Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <IconCategory size={20} className="text-primary" />
+                <h3 className="text-lg font-semibold text-foreground">Training Category</h3>
+              </div>
+              <Select
+                name="trainingType"
+                placeholder="Select training category"
+                label="Training Type"
+                isRequired
+                defaultSelectedKeys={routineTrainingType ? [routineTrainingType] : []}
+                size="lg"
+                variant="flat"
+                classNames={{
+                  trigger: "h-12",
+                  label: "text-foreground-600 font-medium",
+                  value: "text-base"
+                }}
+                description="Choose the primary training focus for this routine"
+              >
+                {trainingCategories.map((category) => (
+                  <SelectItem
+                    key={category.key}
+                    value={category.key}
+                    textValue={category.label}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{category.label}</span>
+                      <span className="text-xs text-foreground-500">{category.description}</span>
+                      <span className="text-xs text-foreground-400 mt-1">{category.details}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </Select>
             </div>
 
             <Divider className="my-6" />

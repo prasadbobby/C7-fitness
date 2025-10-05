@@ -51,7 +51,7 @@ export async function GET(
         workoutPlan: {
           select: {
             name: true,
-            systemRoutineCategory: true,
+            trainingType: true,
           },
         },
       },
