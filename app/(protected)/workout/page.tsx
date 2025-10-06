@@ -9,6 +9,8 @@ import RoutineCards from "./_components/RoutineCards";
 import YourRoutinesSection from "./_components/YourRoutinesSection";
 import { WorkoutPlan } from "@prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 type Exercise = {
   id: string;
   name: string;

@@ -9,6 +9,8 @@ import ProfileMeasurements from "./_components/ProfileMeasurements";
 import ProfileDetails from "./_components/ProfileDetails";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher/ThemeSwitcher";
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage() {
   const user = await currentUser();
 

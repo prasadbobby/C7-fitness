@@ -14,6 +14,8 @@ import clsx from "clsx";
 import prisma from "@/prisma/prisma";
 import { clerkClient } from "@clerk/nextjs";
 
+export const dynamic = 'force-dynamic';
+
 async function getAdminStats() {
   const [totalUsers, totalWorkouts, totalAssignments, recentActivity] = await Promise.all([
     prisma.userInfo.count(),

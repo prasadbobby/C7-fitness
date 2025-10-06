@@ -3,6 +3,8 @@ import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { AssignmentStatus } from "@prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }

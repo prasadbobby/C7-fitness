@@ -10,6 +10,8 @@ import Link from "next/link";
 import { IconPlayerTrackNextFilled, IconX } from "@tabler/icons-react";
 import { IconPlayerTrackPrevFilled } from "@tabler/icons-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewRoutineFormStepTwo({
   searchParams,
 }: {

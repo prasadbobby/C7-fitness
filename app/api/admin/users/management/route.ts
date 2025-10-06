@@ -3,6 +3,8 @@ import { checkAdminAuth } from "@/utils/adminAuth";
 import { clerkClient } from "@clerk/nextjs";
 import prisma from "@/prisma/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check if user is admin

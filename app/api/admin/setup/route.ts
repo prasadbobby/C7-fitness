@@ -3,6 +3,8 @@ import prisma from "@/prisma/prisma";
 import { auth } from "@clerk/nextjs";
 import { UserRole } from "@prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();

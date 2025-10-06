@@ -5,6 +5,8 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { put } from "@vercel/blob";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();

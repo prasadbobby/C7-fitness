@@ -4,6 +4,8 @@ import { requireAdmin } from "@/utils/adminAuth";
 import { UserRole } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();

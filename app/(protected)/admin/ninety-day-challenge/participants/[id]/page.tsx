@@ -7,6 +7,8 @@ import { ParticipantDetails } from "./_components/ParticipantDetails";
 import { ParticipantPosts } from "./_components/ParticipantPosts";
 import { ParticipantStats } from "./_components/ParticipantStats";
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: { id: string };
 }

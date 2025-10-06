@@ -8,6 +8,8 @@ import PageHeading from "@/components/PageHeading/PageHeading";
 import { User } from "@nextui-org/user";
 import { Button } from "@nextui-org/button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboard(params: {
   searchParams: { search?: string };
 }) {

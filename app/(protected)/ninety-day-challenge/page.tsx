@@ -8,6 +8,8 @@ import { ChallengeSelection } from "./_components/ChallengeSelection";
 import { ChallengeSelector } from "./_components/ChallengeSelector";
 import prisma from "@/prisma/prisma";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserChallenges(userId: string) {
   try {
     // Get ALL challenges the user is enabled for

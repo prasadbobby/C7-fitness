@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs";
 import { requireAdmin } from "@/utils/adminAuth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }

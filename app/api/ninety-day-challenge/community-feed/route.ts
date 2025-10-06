@@ -3,6 +3,8 @@ import { currentUser } from "@clerk/nextjs";
 import prisma from "@/prisma/prisma";
 import { clerkClient } from "@clerk/nextjs";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await currentUser();

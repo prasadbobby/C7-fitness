@@ -8,6 +8,8 @@ import ExerciseFilters from "./_components/Filters/ExerciseFilters";
 import { ExerciseAddToRoutineModalProvider } from "@/contexts/ExerciseAddToRoutineModalContext";
 import AdminExerciseControls from "./_components/AdminExerciseControls";
 
+export const dynamic = 'force-dynamic';
+
 interface UserRoutine {
   name: string;
   id: string;

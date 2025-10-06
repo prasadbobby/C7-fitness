@@ -7,6 +7,8 @@ import Link from "next/link";
 import prisma from "@/prisma/prisma";
 import { PostsClientWrapper } from "./_components/PostsClientWrapper";
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   searchParams: {
     challengeId?: string;

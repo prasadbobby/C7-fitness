@@ -10,6 +10,8 @@ import DashboardAssignedWorkouts from "./_components/DashboardAssignedWorkouts";
 import StepDashboard from "@/components/StepTracker/StepDashboard";
 import { checkAdminAuth } from "@/utils/adminAuth";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage({
   searchParams,
 }: {

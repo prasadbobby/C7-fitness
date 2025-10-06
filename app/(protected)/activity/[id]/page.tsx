@@ -3,6 +3,8 @@ import prisma from "@/prisma/prisma";
 import EditWorkout from "./EditWorkout";
 import PageHeading from "@/components/PageHeading/PageHeading";
 
+export const dynamic = 'force-dynamic';
+
 export default async function EditActivity({
   params,
 }: {

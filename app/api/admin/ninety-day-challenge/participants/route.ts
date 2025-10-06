@@ -3,6 +3,8 @@ import { requireAdmin } from "@/utils/adminAuth";
 import prisma from "@/prisma/prisma";
 import { clerkClient } from "@clerk/nextjs";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();

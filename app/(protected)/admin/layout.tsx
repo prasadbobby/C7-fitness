@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { checkAdminAuth } from "@/utils/adminAuth";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({
   children,
 }: {

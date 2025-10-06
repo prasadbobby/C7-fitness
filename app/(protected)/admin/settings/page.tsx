@@ -5,6 +5,8 @@ import { Card, CardBody, CardHeader, Chip, Button } from "@nextui-org/react";
 import { IconSettings, IconShield, IconDatabase, IconLock, IconMail, IconChartLine, IconServer } from "@tabler/icons-react";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminSettingsPage() {
   const { isAdmin, role, userId } = await checkAdminAuth();
 

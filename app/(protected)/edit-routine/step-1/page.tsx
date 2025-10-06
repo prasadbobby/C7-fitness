@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs";
 import prisma from "@/prisma/prisma";
 import NewRoutineFormStepOneClient from "./form.client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewRoutineFormStepOne({
   searchParams,
 }: {

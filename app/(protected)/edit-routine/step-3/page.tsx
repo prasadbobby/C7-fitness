@@ -4,6 +4,8 @@ import PageHeading from "@/components/PageHeading/PageHeading";
 //import StepProgress from "../_components/StepProgress";
 import RoutineBuilder from "./_components/RoutineBuilder";
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewRoutineFormStepTwo({
   searchParams,
 }: {
