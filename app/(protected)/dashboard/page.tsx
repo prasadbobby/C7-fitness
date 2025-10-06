@@ -38,6 +38,8 @@ export default async function DashboardPage({
   return (
     <>
       <PageHeading title="Dashboard" />
+      <DashboardLinks />
+
       <DashboardCards />
       <DashboardCharts
         chart1DateRange={chart1DateRange}
@@ -46,7 +48,6 @@ export default async function DashboardPage({
         chart4DateRange={chart4DateRange}
       />
 
-      <DashboardLinks />
 
       <DashboardAssignedWorkouts />
 

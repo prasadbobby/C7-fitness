@@ -14,6 +14,15 @@ model UserInfo {
   height Float?
   weight Float?
   role   UserRole @default(USER)
+
+  // Membership validity fields
+  membershipStartDate DateTime?
+  membershipEndDate   DateTime?
+  membershipDuration  Int?      // Duration in days
+  membershipStatus    MembershipStatus @default(INACTIVE)
+  membershipSetBy     String?   // Admin user ID who set the membership
+  membershipNotes     String?   // Optional notes about the membership
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   assignedWorkouts AssignedWorkout[]
@@ -254,6 +263,13 @@ enum UserRole {
   USER
   ADMIN
   SUPER_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  SUSPENDED
 }
 
 enum AssignmentStatus {

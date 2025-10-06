@@ -164,7 +164,7 @@ async function migrateExercises() {
           instructions: exerciseData.instructions,
           description: exerciseData.description || null,
           tips: exerciseData.tips || [],
-          image: `/images/exercises/${folder}/0.jpg` // Assuming first image
+          image: `/images/exercises/${folder}/images/0.jpg` // Assuming first image
         }
       });
 

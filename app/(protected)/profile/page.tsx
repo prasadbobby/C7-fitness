@@ -7,6 +7,7 @@ import ProfileEquipment from "./_components/ProfileEquipment";
 import ProfileActions from "./_components/ProfileActions";
 import ProfileMeasurements from "./_components/ProfileMeasurements";
 import ProfileDetails from "./_components/ProfileDetails";
+import ProfileMembership from "./_components/ProfileMembership";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher/ThemeSwitcher";
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,10 @@ export default async function ProfilePage() {
         firstName={firstName}
         lastName={lastName}
       />
+
+      <div className="mb-5">
+        <ProfileMembership />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
         <ProfileMeasurements userMeasurements={userMeasurements} />
