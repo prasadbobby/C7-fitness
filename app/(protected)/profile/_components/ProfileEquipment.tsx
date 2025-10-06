@@ -1,12 +1,7 @@
 "use client";
-import { useState } from "react";
-import { handleUpdateUserEquipment } from "@/server-actions/UserServerActions";
-import { Card, CardBody, CardFooter, CardHeader } from "@nextui-org/card";
+import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { CheckboxGroup, Checkbox } from "@nextui-org/checkbox";
-import { Button } from "@nextui-org/button";
-import { toast } from "sonner";
-import { IconBarbell, IconDeviceFloppy } from "@tabler/icons-react";
-import { EquipmentType } from "@prisma/client";
+import { IconBarbell } from "@tabler/icons-react";
 
 interface ProfileEquipmentProps {
   equipment: string[];
@@ -32,61 +27,32 @@ const formatText = (text: string): string => {
     .join(" ");
 };
 
-function toEquipmentType(items: string[]): EquipmentType[] {
-  return items.filter((item): item is EquipmentType =>
-    Object.values(EquipmentType).includes(item as EquipmentType),
-  );
-}
-
 export default function ProfileEquipment({ equipment }: ProfileEquipmentProps) {
-  const [selectedEquipment, setSelectedEquipment] = useState(equipment || []);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async () => {
-    setIsLoading(true);
-
-    const response = await handleUpdateUserEquipment(
-      toEquipmentType(selectedEquipment),
-    );
-
-    if (response.success) {
-      toast.success(response.message);
-    } else {
-      toast.error(response.message);
-    }
-
-    setIsLoading(false);
-  };
 
   return (
     <Card shadow="none" className="shadow-md">
-      <CardHeader className="text-xl font-semibold px-5 pb-0 gap-x-3  items-center">
+      <CardHeader className="text-xl font-semibold px-5 pb-0 gap-x-3 items-center">
         <IconBarbell className="text-danger" />
-        Equipment
+        Equipment Preferences
       </CardHeader>
       <CardBody className="px-5">
         <CheckboxGroup
-          value={selectedEquipment}
-          onChange={(value) => setSelectedEquipment(value as EquipmentType[])}
+          value={equipment}
           color="primary"
+          isReadOnly
         >
           {equipmentItems.map((item, index) => (
-            <Checkbox key={index} value={item}>
+            <Checkbox key={index} value={item} isDisabled>
               {formatText(item)}
             </Checkbox>
           ))}
         </CheckboxGroup>
+        {equipment.length === 0 && (
+          <p className="text-sm text-foreground-500 mt-2">
+            No equipment preferences set. Contact admin to update your preferences.
+          </p>
+        )}
       </CardBody>
-      <CardFooter className="px-5">
-        <Button
-          variant="flat"
-          onPress={handleSubmit}
-          isLoading={isLoading}
-          startContent={<IconDeviceFloppy size={20} />}
-        >
-          Save
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

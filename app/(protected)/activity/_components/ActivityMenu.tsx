@@ -1,6 +1,5 @@
 "use client";
 import { useContext } from "react";
-import { useRouter } from "next/navigation";
 import { ActivityModalContext } from "@/contexts/ActivityModalContext";
 import { handleDeleteActivity } from "@/server-actions/ActivityServerActions";
 import { TrackingType } from "@prisma/client";
@@ -12,10 +11,8 @@ import {
   DropdownItem,
 } from "@nextui-org/dropdown";
 import {
-  IconEdit,
   IconInfoCircle,
   IconMenu2,
-  IconShare,
   IconTrash,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
@@ -49,7 +46,6 @@ interface Activity {
 }
 
 export default function ActivityMenu({ activity }: { activity: Activity }) {
-  const router = useRouter();
   const { setActivity, onOpen } = useContext(ActivityModalContext);
 
   const handleDelete = async (activityId: string) => {
@@ -72,10 +68,6 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
     } else if (key === "details") {
       setActivity(activity);
       onOpen();
-    } else if (key === "edit") {
-      router.push("/activity/" + activity.id);
-    } else if (key === "share") {
-      //console.log("share");
     }
   };
 
@@ -88,7 +80,6 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
       </DropdownTrigger>
       <DropdownMenu
         color="primary"
-        disabledKeys={["share", "edit"]}
         aria-label="Activity Actions"
         topContent={
           <h4 className="text-zinc-500 uppercase font-semibold text-xs px-2 pt-2">
@@ -103,12 +94,6 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
             key="details"
           >
             View Details
-          </DropdownItem>
-          <DropdownItem startContent={<IconEdit size={20} />} key="edit">
-            Edit
-          </DropdownItem>
-          <DropdownItem startContent={<IconShare size={20} />} key="share">
-            Share (Coming Soon)
           </DropdownItem>
         </DropdownSection>
         <DropdownItem

@@ -85,3 +85,5 @@ temp/
 package-lock.json
 .env.*
 VERCEL_BLOB_SETUP.md
+rds-schema-check.sql
+rds-schema-sync.sql
