@@ -10,6 +10,23 @@ function formatDuration(seconds: number) {
   return `${minutes}m`;
 }
 
+// Helper function to format seconds to time display
+function formatDurationFromSeconds(seconds?: number): string {
+  if (!seconds || seconds === 0) return "0s";
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+}
+
 export default async function DashboardRecentActivity() {
   const { userId }: { userId: string | null } = auth();
 
@@ -30,6 +47,8 @@ export default async function DashboardRecentActivity() {
       id: true,
       duration: true,
       createdAt: true,
+      totalRestTimeSeconds: true,    // Include rest time data
+      totalActiveTimeSeconds: true,  // Include active time data
       WorkoutPlan: {
         select: {
           name: true,
@@ -49,6 +68,7 @@ export default async function DashboardRecentActivity() {
               weight: true,
               reps: true,
               exerciseDuration: true,
+              restTimeSeconds: true,     // Include per-set rest time
             },
           },
         },
@@ -74,6 +94,10 @@ export default async function DashboardRecentActivity() {
                 0,
               );
 
+              const hasTimingData = activity.totalRestTimeSeconds !== null || activity.totalActiveTimeSeconds !== null;
+              const totalRestTime = activity.totalRestTimeSeconds || 0;
+              const totalActiveTime = activity.totalActiveTimeSeconds || 0;
+
               return (
                 <Card key={activity.id} shadow="none" className="shadow-md">
                   <CardHeader className="flex gap-3 px-5 pt-4">
@@ -92,6 +116,20 @@ export default async function DashboardRecentActivity() {
                           <span>{totalWeight} KG</span>
                         </span>
                       </p>
+
+                      {/* Enhanced Timing Information */}
+                      {hasTimingData && (
+                        <div className="mt-1 flex gap-2 text-xs">
+                          <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded">
+                            <div className="w-1 h-1 bg-primary rounded-full"></div>
+                            <span className="text-primary-600">Active: {formatDurationFromSeconds(totalActiveTime)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 rounded">
+                            <div className="w-1 h-1 bg-warning rounded-full"></div>
+                            <span className="text-warning-600">Rest: {formatDurationFromSeconds(totalRestTime)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   <CardBody className="pt-0 px-5 pb-4">

@@ -20,6 +20,8 @@ interface Exercise {
 interface WorkoutData {
   date: string;
   duration: number;
+  totalRestTime?: number;
+  totalActiveTime?: number;
   workoutPlanId: string;
   exercises: Exercise[];
 }
@@ -36,7 +38,7 @@ export async function handleSaveWorkout(data: WorkoutData) {
       throw new Error("You must be signed in to view this page.");
     }
 
-    const { workoutPlanId, date, duration, exercises } = data;
+    const { workoutPlanId, date, duration, totalRestTime, totalActiveTime, exercises } = data;
 
     await prisma.workoutLog.create({
       data: {
@@ -44,6 +46,8 @@ export async function handleSaveWorkout(data: WorkoutData) {
         workoutPlanId: workoutPlanId,
         date: new Date(date),
         duration: duration,
+        totalRestTimeSeconds: totalRestTime || 0,
+        totalActiveTimeSeconds: totalActiveTime || 0,
         inProgress: false,
         exercises: {
           create: exercises.map((exercise) => ({
@@ -87,7 +91,7 @@ export async function handleSaveAdminWorkout(data: AdminWorkoutData) {
       throw new Error("Admin access required");
     }
 
-    const { workoutPlanId, date, duration, exercises, targetUserId } = data;
+    const { workoutPlanId, date, duration, totalRestTime, totalActiveTime, exercises, targetUserId } = data;
 
     await prisma.workoutLog.create({
       data: {
@@ -95,6 +99,8 @@ export async function handleSaveAdminWorkout(data: AdminWorkoutData) {
         workoutPlanId: workoutPlanId,
         date: new Date(date),
         duration: duration,
+        totalRestTimeSeconds: totalRestTime || 0,
+        totalActiveTimeSeconds: totalActiveTime || 0,
         inProgress: false,
         exercises: {
           create: exercises.map((exercise) => ({
@@ -130,7 +136,7 @@ export async function handleUpdateWorkout(id: string, data: WorkoutData) {
       throw new Error("You must be signed in to view this page.");
     }
 
-    const { workoutPlanId, date, duration, exercises } = data;
+    const { workoutPlanId, date, duration, totalRestTime, totalActiveTime, exercises } = data;
 
     await prisma.workoutLog.update({
       where: { id: id },
@@ -139,6 +145,8 @@ export async function handleUpdateWorkout(id: string, data: WorkoutData) {
         workoutPlanId: workoutPlanId,
         date: new Date(date),
         duration: duration,
+        totalRestTimeSeconds: totalRestTime || 0,
+        totalActiveTimeSeconds: totalActiveTime || 0,
         inProgress: false,
         exercises: {
           deleteMany: {},

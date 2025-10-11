@@ -68,6 +68,8 @@ export async function GET(
         id: true,
         date: true,
         duration: true,
+        totalRestTimeSeconds: true,    // Include rest time data
+        totalActiveTimeSeconds: true,  // Include active time data
         WorkoutPlan: {
           select: {
             name: true,
@@ -89,6 +91,9 @@ export async function GET(
                 weight: true,
                 reps: true,
                 exerciseDuration: true,
+                restTimeSeconds: true,     // Include per-set rest time
+                setStartTime: true,        // Include set timing data
+                setEndTime: true,          // Include set end time
               },
             },
           },

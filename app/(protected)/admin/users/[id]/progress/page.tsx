@@ -69,6 +69,8 @@ interface UserProgress {
     id: string;
     date: string;
     duration: number;
+    totalRestTimeSeconds?: number;     // Rest time tracking
+    totalActiveTimeSeconds?: number;   // Active time tracking
     WorkoutPlan: {
       name: string;
     };
@@ -84,6 +86,9 @@ interface UserProgress {
         weight?: number;
         reps?: number;
         exerciseDuration?: number;
+        restTimeSeconds?: number;      // Per-set rest time
+        setStartTime?: string;         // Set timing data
+        setEndTime?: string;
       }[];
     }[];
   }[];
@@ -137,6 +142,23 @@ export default function UserProgressDashboard() {
 
   const goToCurrentMonth = () => {
     setCurrentMonth(new Date());
+  };
+
+  // Helper function to format seconds to time display
+  const formatDuration = (seconds?: number): string => {
+    if (!seconds || seconds === 0) return "0s";
+
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
   };
 
   useEffect(() => {
@@ -854,47 +876,95 @@ export default function UserProgressDashboard() {
                             <p className="text-foreground-500">This user hasn't completed any workouts yet.</p>
                           </div>
                         ) : (
-                          workoutLogs?.map((log) => (
-                            <div key={log.id} className="p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors">
-                              <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-3 gap-3">
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-foreground">{log.WorkoutPlan.name}</h4>
-                                  <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-500 mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <IconCalendar size={14} />
-                                      <span>{new Date(log.date).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <IconClock size={14} />
-                                      <span>{log.duration} minutes</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="flat"
-                                  startContent={<IconEdit size={14} />}
-                                  onPress={() => handleEditWorkout(log)}
-                                  className="shrink-0"
-                                >
-                                  Edit
-                                </Button>
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium text-foreground-700">Exercises completed:</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {log.exercises.map((exercise, index) => (
-                                    <div key={index} className="text-sm p-2 bg-content2 rounded">
-                                      <div className="font-medium">{exercise.Exercise.name}</div>
-                                      <div className="text-xs text-foreground-500">
-                                        {exercise.sets.length} sets completed
+                          workoutLogs?.map((log) => {
+                            const hasTimingData = log.totalRestTimeSeconds !== null || log.totalActiveTimeSeconds !== null;
+                            const totalRestTime = log.totalRestTimeSeconds || 0;
+                            const totalActiveTime = log.totalActiveTimeSeconds || 0;
+                            const totalWorkoutSeconds = log.duration; // Duration is already in seconds
+
+                            return (
+                              <div key={log.id} className="p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors">
+                                <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-3 gap-3">
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-foreground">{log.WorkoutPlan.name}</h4>
+                                    <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-500 mt-1">
+                                      <div className="flex items-center gap-1">
+                                        <IconCalendar size={14} />
+                                        <span>{new Date(log.date).toLocaleDateString()}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <IconClock size={14} />
+                                        <span>{formatDuration(log.duration)} total</span>
                                       </div>
                                     </div>
-                                  ))}
+
+                                    {/* Enhanced Timing Information */}
+                                    {hasTimingData && (
+                                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
+                                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                          <div>
+                                            <div className="text-xs text-primary-600 font-medium">Active Time</div>
+                                            <div className="text-sm font-semibold text-primary">{formatDuration(totalActiveTime)}</div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 p-2 bg-warning/10 rounded-lg">
+                                          <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                          <div>
+                                            <div className="text-xs text-warning-600 font-medium">Rest Time</div>
+                                            <div className="text-sm font-semibold text-warning">{formatDuration(totalRestTime)}</div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 p-2 bg-secondary/10 rounded-lg">
+                                          <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                          <div>
+                                            <div className="text-xs text-secondary-600 font-medium">Efficiency</div>
+                                            <div className="text-sm font-semibold text-secondary">
+                                              {totalWorkoutSeconds > 0 ? Math.round((totalActiveTime / totalWorkoutSeconds) * 100) : 0}%
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="flat"
+                                    startContent={<IconEdit size={14} />}
+                                    onPress={() => handleEditWorkout(log)}
+                                    className="shrink-0"
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-foreground-700">Exercises completed:</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {log.exercises.map((exercise, index) => (
+                                      <div key={index} className="text-sm p-2 bg-content2 rounded">
+                                        <div className="font-medium">{exercise.Exercise.name}</div>
+                                        <div className="text-xs text-foreground-500">
+                                          {exercise.sets.length} sets completed
+                                          {exercise.sets.some(set => set.restTimeSeconds) && (
+                                            <span className="ml-2 text-warning-600">
+                                              • Avg rest: {formatDuration(
+                                                Math.round(
+                                                  exercise.sets
+                                                    .filter(set => set.restTimeSeconds)
+                                                    .reduce((sum, set) => sum + (set.restTimeSeconds || 0), 0) /
+                                                  exercise.sets.filter(set => set.restTimeSeconds).length
+                                                )
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </CardBody>

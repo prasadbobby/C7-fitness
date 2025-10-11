@@ -11,6 +11,8 @@ import { IconPlus, IconX } from "@tabler/icons-react";
 
 import { useWorkoutControls } from "@/contexts/WorkoutControlsContext";
 import { useWorkoutData } from "@/contexts/WorkoutDataContext";
+import { useAuth } from "@clerk/nextjs";
+import { useRestTimer } from "@/contexts/RestTimerContext";
 
 import ExerciseTable from "./ExerciseTable";
 import StatusBar from "./StatusBar";
@@ -53,6 +55,8 @@ export default function WorkoutManager({
 }) {
   const router = useRouter();
   const workoutPlanId = workout.id;
+  const { userId } = useAuth();
+  const restTimer = useRestTimer();
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
@@ -102,8 +106,17 @@ export default function WorkoutManager({
       );
       setWorkoutExercises(initialWorkoutExercises);
       setIsDataLoaded(true);
+
+      // Initialize rest timer session when workout loads
+      if (userId) {
+        restTimer.startUserWorkoutSession(
+          userId,
+          "Current User",
+          workoutPlanId
+        );
+      }
     }
-  }, [workout, activeWorkoutRoutine, setWorkoutExercises, isDataLoaded]);
+  }, [workout, activeWorkoutRoutine, setWorkoutExercises, isDataLoaded, userId, restTimer, workoutPlanId]);
 
   // Handle clicking complete set button
   const handleCompleteSet = (
@@ -146,10 +159,33 @@ export default function WorkoutManager({
       setToUpdate.completed = isSelected;
       exerciseToUpdate.sets[setIndex] = setToUpdate;
       updatedWorkoutExercises[exerciseIndex] = exerciseToUpdate;
+
       if (setToUpdate.completed) {
         toast.success(`${exerciseName} Set ${setIndex + 1} completed`);
+
+        // Start rest timer if this isn't the last set of the exercise
+        const totalSetsForExercise = exerciseToUpdate.sets.length;
+        const isLastSet = setIndex + 1 >= totalSetsForExercise;
+
+        if (!isLastSet && userId) {
+          // Start rest timer (60 seconds default)
+          restTimer.startRestTimer(
+            userId,
+            exerciseToUpdate.exerciseId,
+            exerciseName,
+            setIndex + 1, // Convert to 1-based indexing
+            60, // 60 seconds default rest time
+            true // auto-started
+          );
+        }
       } else {
         toast(`${exerciseName} Set ${setIndex + 1} marked as incomplete`);
+
+        // Stop any active rest timer if unchecking
+        const currentRestTimer = userId ? restTimer.getRestTimerForUser(userId) : undefined;
+        if (currentRestTimer && currentRestTimer.exerciseId === exerciseToUpdate.exerciseId && currentRestTimer.setNumber === setIndex + 1) {
+          restTimer.stopRestTimer(currentRestTimer.id);
+        }
       }
       return updatedWorkoutExercises;
     });
@@ -266,6 +302,11 @@ export default function WorkoutManager({
         "Are you sure you want to cancel the workout? No data will be saved.",
       )
     ) {
+      // End rest timer session
+      if (userId) {
+        restTimer.endUserWorkoutSession(userId);
+      }
+
       setWorkoutExercises([]);
       setWorkoutDuration(0);
       setWorkoutStartTime(null);
@@ -307,6 +348,22 @@ export default function WorkoutManager({
       try {
         setIsSaving(true);
 
+        // Get timing data from rest timer context
+        const userSession = userId ? restTimer.getUserSession(userId) : null;
+        const totalRestTime = userSession?.totalRestTime || 0;
+        const totalActiveTime = workoutDuration - totalRestTime;
+
+        console.log('🔍 Workout completion timing data:', {
+          workoutDuration,
+          totalRestTime,
+          totalActiveTime,
+          userSession: userSession ? {
+            userId: userSession.userId,
+            totalRestTime: userSession.totalRestTime,
+            status: userSession.status
+          } : 'No session found'
+        });
+
         const exercisesData = filteredExercises.map((exercise) => ({
           exerciseId: exercise.exerciseId,
           trackingType:
@@ -323,6 +380,8 @@ export default function WorkoutManager({
           name: workout.name,
           date: new Date().toISOString(),
           duration: workoutDuration,
+          totalRestTime: totalRestTime,
+          totalActiveTime: totalActiveTime,
           workoutPlanId: workout.id,
           exercises: exercisesData,
         };
@@ -345,6 +404,11 @@ export default function WorkoutManager({
           startConfetti();
           await updateAssignmentStatus("COMPLETED");
 
+          // End rest timer session
+          if (userId) {
+            restTimer.endUserWorkoutSession(userId);
+          }
+
           // Different redirect based on mode
           if (isAdminMode && targetUserDbId) {
             router.push(`/admin/users/${targetUserDbId}/progress`);
@@ -355,7 +419,7 @@ export default function WorkoutManager({
             toast.success("Workout saved for user successfully!");
           } else {
             router.push("/dashboard");
-            toast.success("Workout saved successfully!");
+            toast.success(`Workout completed! Rest time: ${restTimer.formatTime(totalRestTime)}, Active time: ${restTimer.formatTime(totalActiveTime)}`);
           }
 
           setWorkoutExercises([]);

@@ -1,6 +1,8 @@
 "use client";
 import clsx from "clsx";
 import { useSidebarToggleContext } from "@/contexts/SidebarToggleContext";
+import { WorkoutProvidersWrapper } from "@/contexts/WorkoutProvidersWrapper";
+import { FloatingTimerButton } from "@/components/TimerControls/FloatingTimerButton";
 
 export default function LayoutWrapper({
   children,
@@ -14,5 +16,10 @@ export default function LayoutWrapper({
     "md:ml-64": !sidebarCollapse,
   });
 
-  return <div className={layoutClass}>{children}</div>;
+  return (
+    <WorkoutProvidersWrapper>
+      <div className={layoutClass}>{children}</div>
+      <FloatingTimerButton position="top-right" showOnlyWhenActive={true} />
+    </WorkoutProvidersWrapper>
+  );
 }

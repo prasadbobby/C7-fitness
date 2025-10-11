@@ -73,6 +73,11 @@ model Exercise {
   userPBs UserExercisePB[]
   favouritedBy FavouriteExercise[]
   userGoals           UserGoal[]
+
+  // New relations for rest timer system
+  currentWorkoutSessions WorkoutSession[] @relation("CurrentExercise")
+  restTimers            RestTimer[]      @relation("RestTimerExercise")
+  sessionTimers         SessionTimer[]   @relation("TimerExercise")
 }
 
 model FavouriteExercise {
@@ -95,6 +100,9 @@ model WorkoutPlan {
   logs            WorkoutLog[]
   WorkoutPlanExercise WorkoutPlanExercise[]
   assignedWorkouts AssignedWorkout[]
+
+  // New relations for rest timer system
+  restTimers      RestTimer[]      @relation("RestTimerWorkoutPlan")
 }
 
 model WorkoutPlanExercise {
@@ -117,11 +125,19 @@ model WorkoutLog {
   date            DateTime
   duration        Int
   inProgress      Boolean             @default(true)
+
+  // Rest time tracking fields
+  totalRestTimeSeconds    Int?        @default(0)  // Total rest time during workout
+  totalActiveTimeSeconds  Int?        @default(0)  // Total active exercise time
+
   createdAt       DateTime            @default(now())
   date_updated    DateTime?           @default(now())
   WorkoutPlan     WorkoutPlan        @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
   exercises       WorkoutLogExercise[]
   UserExercisePB  UserExercisePB[]    @relation("WorkoutLogToUserExercisePB")
+
+  // Relations to new models
+  workoutSessions WorkoutSession[]
 }
 
 model WorkoutLogExercise {
@@ -142,6 +158,14 @@ model SetLog {
   exerciseDuration            Int?
   order               Int?
   isWarmUp            Boolean           @default(false)
+
+  // Rest time tracking fields
+  restTimeSeconds     Int?              // Total rest time for this set
+  restStartTime       DateTime?         // When rest timer started
+  restEndTime         DateTime?         // When rest timer ended
+  setStartTime        DateTime?         // When set actually started
+  setEndTime          DateTime?         // When set was completed
+
   WorkoutLogExercise  WorkoutLogExercise @relation(fields: [workoutLogExerciseId], references: [id], onDelete: Cascade)
 }
 
@@ -503,4 +527,132 @@ model UserTrainingProgression {
 
   @@index([userId, isActive])
   @@index([trainingType, isActive])
+}
+
+// Rest Timer and Multi-User Session Management Models
+
+model WorkoutSession {
+  id                  String    @id @default(uuid())
+  userId              String
+  workoutLogId        String?
+  status              SessionStatus @default(ACTIVE)
+  startTime           DateTime  @default(now())
+  pausedTime          DateTime?
+  currentExerciseId   String?
+  currentSetIndex     Int       @default(0)
+  restTimerStartTime  DateTime?
+  restTimerDuration   Int?      // Recommended rest duration in seconds
+  lastActivity        DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  workoutLog          WorkoutLog? @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+  currentExercise     Exercise?   @relation("CurrentExercise", fields: [currentExerciseId], references: [id])
+  timers              SessionTimer[]
+  gymParticipation    GymSessionParticipant[]
+
+  @@index([userId, status])
+  @@index([status, lastActivity])
+}
+
+model GymSession {
+  id              String    @id @default(uuid())
+  adminUserId     String
+  name            String
+  startTime       DateTime  @default(now())
+  endTime         DateTime?
+  isActive        Boolean   @default(true)
+  maxParticipants Int       @default(50)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  participants    GymSessionParticipant[]
+
+  @@index([adminUserId, isActive])
+  @@index([isActive, startTime])
+}
+
+model GymSessionParticipant {
+  id                String         @id @default(uuid())
+  gymSessionId      String
+  userId            String
+  workoutSessionId  String?
+  joinedAt          DateTime       @default(now())
+  leftAt            DateTime?
+  status            ParticipantStatus @default(JOINED)
+
+  // Relations
+  gymSession        GymSession     @relation(fields: [gymSessionId], references: [id], onDelete: Cascade)
+  workoutSession    WorkoutSession? @relation(fields: [workoutSessionId], references: [id], onDelete: SetNull)
+
+  @@unique([gymSessionId, userId])
+  @@index([gymSessionId, status])
+  @@index([userId, status])
+}
+
+model RestTimer {
+  id                String    @id @default(uuid())
+  exerciseId        String?
+  workoutPlanId     String?
+  defaultRestSeconds Int      @default(60)
+  minRestSeconds    Int       @default(30)
+  maxRestSeconds    Int       @default(300)
+  autoStart         Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+
+  // Relations
+  exercise          Exercise?    @relation("RestTimerExercise", fields: [exerciseId], references: [id], onDelete: Cascade)
+  workoutPlan       WorkoutPlan? @relation("RestTimerWorkoutPlan", fields: [workoutPlanId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId])
+  @@index([workoutPlanId])
+}
+
+model SessionTimer {
+  id                String      @id @default(uuid())
+  workoutSessionId  String
+  timerType         TimerType
+  startTime         DateTime    @default(now())
+  endTime           DateTime?
+  pausedAt          DateTime?
+  duration          Int         @default(0) // Current duration in seconds
+  targetDuration    Int?        // Target duration for rest timers
+  isActive          Boolean     @default(true)
+  exerciseId        String?     // For exercise-specific timers
+  setNumber         Int?        // For set-specific rest timers
+
+  // Relations
+  workoutSession    WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exercise          Exercise?      @relation("TimerExercise", fields: [exerciseId], references: [id], onDelete: SetNull)
+
+  @@index([workoutSessionId, timerType])
+  @@index([isActive, timerType])
+}
+
+// New enums for rest timer and session management
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  RESTING
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  JOINED
+  WORKING_OUT
+  RESTING
+  ON_BREAK
+  LEFT
+}
+
+enum TimerType {
+  WORKOUT
+  REST
+  EXERCISE
+  SET
 }

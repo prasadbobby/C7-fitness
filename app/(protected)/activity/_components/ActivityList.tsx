@@ -8,6 +8,23 @@ import ActivityMenu from "./ActivityMenu";
 import ActivityModal from "./ActivityModal";
 import { ActivityModalProvider } from "@/contexts/ActivityModalContext";
 
+// Helper function to format seconds to time display
+const formatDuration = (seconds?: number): string => {
+  if (!seconds || seconds === 0) return "0s";
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+};
+
 export default async function ActivityList() {
   const { userId }: { userId: string | null } = auth();
 
@@ -27,6 +44,8 @@ export default async function ActivityList() {
       id: true,
       duration: true,
       date: true,
+      totalRestTimeSeconds: true,    // Include rest time data
+      totalActiveTimeSeconds: true,  // Include active time data
       WorkoutPlan: {
         select: {
           name: true,
@@ -47,6 +66,7 @@ export default async function ActivityList() {
               weight: true,
               reps: true,
               exerciseDuration: true,
+              restTimeSeconds: true,     // Include per-set rest time
             },
           },
         },
@@ -66,6 +86,10 @@ export default async function ActivityList() {
               );
               return total + exerciseWeight;
             }, 0);
+
+            const hasTimingData = activity.totalRestTimeSeconds !== null || activity.totalActiveTimeSeconds !== null;
+            const totalRestTime = activity.totalRestTimeSeconds || 0;
+            const totalActiveTime = activity.totalActiveTimeSeconds || 0;
 
             return (
               <Card key={activity.id} shadow="none" className="shadow-md">
@@ -87,6 +111,20 @@ export default async function ActivityList() {
                   <p className="text-sm text-zinc-400 leading-5">
                     {activity.WorkoutPlan.name}
                   </p>
+
+                  {/* Enhanced Timing Information */}
+                  {hasTimingData && (
+                    <div className="mt-2 flex gap-2 text-xs">
+                      <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                        <span className="text-primary-600">Active: {formatDuration(totalActiveTime)}</span>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 rounded">
+                        <div className="w-1.5 h-1.5 bg-warning rounded-full"></div>
+                        <span className="text-warning-600">Rest: {formatDuration(totalRestTime)}</span>
+                      </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardBody className="pt-0 px-5 pb-4">
                   <ul>
