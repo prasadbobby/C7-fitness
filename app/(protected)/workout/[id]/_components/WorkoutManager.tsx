@@ -134,6 +134,10 @@ export default function WorkoutManager({
 
       // Initialize rest timer session when workout loads
       if (userId) {
+        console.log('🔍 Initializing workout session for rest timer tracking:', {
+          userId,
+          workoutPlanId
+        });
         restTimer.startUserWorkoutSession(
           userId,
           "Current User",
@@ -351,6 +355,14 @@ export default function WorkoutManager({
     }
 
     // Start rest timer with custom duration
+    console.log('🔍 Starting manual rest timer:', {
+      userId,
+      exerciseId,
+      exerciseName,
+      setNumber: setIndex + 1,
+      duration
+    });
+
     const timerId = restTimer.startRestTimer(
       userId,
       exerciseId,
@@ -382,9 +394,24 @@ export default function WorkoutManager({
     if (!userId) return;
 
     const currentRestTimer = restTimer.getRestTimerForUser(userId);
+    console.log('🔍 Manual stop rest timer request:', {
+      userId,
+      exerciseIndex,
+      setIndex: setIndex + 1,
+      currentRestTimer: currentRestTimer ? {
+        id: currentRestTimer.id,
+        exerciseId: currentRestTimer.exerciseId,
+        setNumber: currentRestTimer.setNumber,
+        duration: currentRestTimer.duration,
+        targetDuration: currentRestTimer.targetDuration,
+        isActive: currentRestTimer.isActive
+      } : 'No active timer found'
+    });
+
     if (currentRestTimer &&
         currentRestTimer.exerciseId === workoutExercises?.[exerciseIndex]?.exerciseId &&
         currentRestTimer.setNumber === setIndex + 1) {
+      console.log('🔍 Stopping rest timer:', currentRestTimer.id);
       restTimer.stopRestTimer(currentRestTimer.id);
     }
 
@@ -456,8 +483,12 @@ export default function WorkoutManager({
           userSession: userSession ? {
             userId: userSession.userId,
             totalRestTime: userSession.totalRestTime,
-            status: userSession.status
-          } : 'No session found'
+            status: userSession.status,
+            workoutStartTime: userSession.workoutStartTime,
+            lastActivity: userSession.lastActivity
+          } : 'No session found',
+          userId,
+          restTimerContextActive: restTimer ? 'Available' : 'Not available'
         });
 
         const exercisesData = filteredExercises.map((exercise) => ({

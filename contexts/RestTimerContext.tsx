@@ -151,9 +151,14 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
           const elapsedSeconds = Math.floor((now - timer.startTime) / 1000);
           const updatedTimer = { ...timer, duration: elapsedSeconds };
 
-          // Check for completion
+          // Check for completion - use >= to ensure we don't miss completion due to interval throttling
           if (elapsedSeconds >= timer.targetDuration) {
             updatedTimer.isActive = false;
+
+            // IMPORTANT: Ensure we use the exact target duration for accurate rest time calculation
+            // This prevents issues with interval throttling in production
+            const exactRestTime = timer.targetDuration;
+
             // Play completion sound
             if (enableAudio) {
               playRestCompleteSound();
@@ -165,20 +170,44 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
               duration: 5000,
             });
 
+            console.log('🔍 Rest timer auto-completion detected:', {
+              timerId: timer.id,
+              userId: timer.userId,
+              exerciseName: timer.exerciseName,
+              elapsedSeconds,
+              targetDuration: timer.targetDuration,
+              exactRestTime,
+              timerStartTime: timer.startTime,
+              now
+            });
+
             // CRITICAL FIX: Update user session with rest time when timer completes automatically
             setUserSessions(prev => {
               const session = prev.get(timer.userId);
               if (session && session.restTimer?.id === timer.id) {
                 const updated = new Map(prev);
-                const restTime = Math.floor((now - timer.startTime) / 1000);
+                console.log('🔍 Rest timer auto-completion - accumulating rest time:', {
+                  timerId: timer.id,
+                  userId: timer.userId,
+                  exerciseName: timer.exerciseName,
+                  exactRestTime,
+                  previousTotalRestTime: session.totalRestTime,
+                  newTotalRestTime: session.totalRestTime + exactRestTime
+                });
                 updated.set(timer.userId, {
                   ...session,
                   restTimer: undefined,
                   status: 'ACTIVE',
-                  totalRestTime: session.totalRestTime + restTime,
+                  totalRestTime: session.totalRestTime + exactRestTime,
                   lastActivity: now,
                 });
                 return updated;
+              } else {
+                console.log('🔍 Rest timer auto-completion - session not found or timer mismatch:', {
+                  sessionExists: !!session,
+                  sessionRestTimerId: session?.restTimer?.id,
+                  expectedTimerId: timer.id
+                });
               }
               return prev;
             });
@@ -311,6 +340,14 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
         const updated = new Map(prev);
         // Add rest time to total
         const restTime = Math.floor((Date.now() - timer.startTime) / 1000);
+        console.log('🔍 Rest timer manual stop - accumulating rest time:', {
+          timerId,
+          userId: timer.userId,
+          exerciseName: timer.exerciseName,
+          restTime,
+          previousTotalRestTime: session.totalRestTime,
+          newTotalRestTime: session.totalRestTime + restTime
+        });
         updated.set(timer.userId, {
           ...session,
           restTimer: undefined,
