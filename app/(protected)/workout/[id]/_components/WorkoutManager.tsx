@@ -473,13 +473,135 @@ export default function WorkoutManager({
 
         // Get timing data from rest timer context
         const userSession = userId ? restTimer.getUserSession(userId) : null;
+
+        // CRITICAL: Force a final update to ensure all rest timer data is captured
+        if (userId) {
+          const activeTimer = restTimer.getRestTimerForUser(userId);
+          if (activeTimer && activeTimer.isActive) {
+            console.log('🔍 Found active timer during workout completion - forcing stop to capture final rest time');
+            restTimer.stopRestTimer(activeTimer.id);
+
+            // IMPORTANT: Add a small delay to ensure state updates are processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Get updated session after stopping the timer
+            const updatedSession = restTimer.getUserSession(userId);
+            const totalRestTime = updatedSession?.totalRestTime || 0;
+            const totalActiveTime = workoutDuration - totalRestTime;
+
+            console.log('🔍 Final timing after forced timer stop:', {
+              totalRestTime,
+              totalActiveTime,
+              workoutDuration,
+              updatedSession: updatedSession ? {
+                totalRestTime: updatedSession.totalRestTime,
+                status: updatedSession.status
+              } : 'No updated session'
+            });
+
+            const exercisesData = filteredExercises.map((exercise) => ({
+              exerciseId: exercise.exerciseId,
+              trackingType:
+                TrackingType[exercise.trackingType as keyof typeof TrackingType],
+              sets: exercise.sets.map((set) => ({
+                reps: set.reps,
+                weight: set.weight,
+                duration: set.duration,
+                completed: set.completed,
+              })),
+            }));
+
+            const data = {
+              name: workout.name,
+              date: new Date().toISOString(),
+              duration: workoutDuration,
+              totalRestTime: totalRestTime,
+              totalActiveTime: totalActiveTime,
+              workoutPlanId: workout.id,
+              exercises: exercisesData,
+            };
+
+            let response;
+
+            if (isAdminMode && targetUserId) {
+              // Admin mode: save workout for the target user
+              const adminData = {
+                ...data,
+                targetUserId: targetUserId
+              };
+              response = await handleSaveAdminWorkout(adminData);
+            } else {
+              // Regular mode: save workout for current user
+              response = await handleSaveWorkout(data);
+            }
+
+            if (response.success) {
+              startConfetti();
+              await updateAssignmentStatus("COMPLETED");
+
+              // End rest timer session
+              if (userId) {
+                restTimer.endUserWorkoutSession(userId);
+              }
+
+              // Different redirect based on mode
+              if (isAdminMode && targetUserDbId) {
+                router.push(`/admin/users/${targetUserDbId}/progress`);
+                toast.success("Workout saved for user successfully!");
+              } else if (isAdminMode) {
+                // Fallback if targetUserDbId is not provided
+                router.push(`/admin/users/${targetUserId}/progress`);
+                toast.success("Workout saved for user successfully!");
+              } else {
+                router.push("/dashboard");
+                toast.success(`Workout completed! Rest time: ${restTimer.formatTime(totalRestTime)}, Active time: ${restTimer.formatTime(totalActiveTime)}`);
+              }
+
+              setWorkoutExercises([]);
+              setWorkoutDuration(0);
+              setWorkoutStartTime(null);
+              setActiveWorkoutRoutine(null);
+            } else {
+              toast.error("Failed to save workout");
+            }
+            setIsSaving(false);
+            return; // Exit early since we handled the completion
+          }
+        }
+
         const totalRestTime = userSession?.totalRestTime || 0;
         const totalActiveTime = workoutDuration - totalRestTime;
 
+        // ADDITIONAL FALLBACK: If no session exists but we have manual timer state, try to get latest session
+        let finalTotalRestTime = totalRestTime;
+        if (totalRestTime === 0 && userId) {
+          // Wait for any pending state updates and retry multiple times
+          let attempts = 0;
+          const maxAttempts = 5;
+
+          while (attempts < maxAttempts && finalTotalRestTime === 0) {
+            await new Promise(resolve => setTimeout(resolve, 50)); // Small delay
+            const latestSession = restTimer.getUserSession(userId);
+            if (latestSession && latestSession.totalRestTime > 0) {
+              finalTotalRestTime = latestSession.totalRestTime;
+              console.log(`🔍 Fallback attempt ${attempts + 1}: Found rest time in latest session:`, finalTotalRestTime);
+              break;
+            }
+            attempts++;
+          }
+
+          if (finalTotalRestTime === 0) {
+            console.log('🔍 Warning: No rest time found after all attempts');
+          }
+        }
+
+        const finalTotalActiveTime = workoutDuration - finalTotalRestTime;
+
         console.log('🔍 Workout completion timing data:', {
           workoutDuration,
-          totalRestTime,
-          totalActiveTime,
+          originalTotalRestTime: totalRestTime,
+          finalTotalRestTime,
+          finalTotalActiveTime,
           userSession: userSession ? {
             userId: userSession.userId,
             totalRestTime: userSession.totalRestTime,
@@ -507,8 +629,8 @@ export default function WorkoutManager({
           name: workout.name,
           date: new Date().toISOString(),
           duration: workoutDuration,
-          totalRestTime: totalRestTime,
-          totalActiveTime: totalActiveTime,
+          totalRestTime: finalTotalRestTime,
+          totalActiveTime: finalTotalActiveTime,
           workoutPlanId: workout.id,
           exercises: exercisesData,
         };
@@ -546,7 +668,7 @@ export default function WorkoutManager({
             toast.success("Workout saved for user successfully!");
           } else {
             router.push("/dashboard");
-            toast.success(`Workout completed! Rest time: ${restTimer.formatTime(totalRestTime)}, Active time: ${restTimer.formatTime(totalActiveTime)}`);
+            toast.success(`Workout completed! Rest time: ${restTimer.formatTime(finalTotalRestTime)}, Active time: ${restTimer.formatTime(finalTotalActiveTime)}`);
           }
 
           setWorkoutExercises([]);
