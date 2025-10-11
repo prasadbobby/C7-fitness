@@ -279,8 +279,8 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
         setActiveRestTimers(updatedTimers);
       }
 
-      // Update user sessions with current timer data
-      const updatedSessions = new Map(userSessions);
+      // Update user sessions with current timer data - CRITICAL: Use ref for immediate access
+      const updatedSessions = new Map(userSessionsRef.current);
       let sessionChanges = false;
 
       updatedSessions.forEach((session, userId) => {
