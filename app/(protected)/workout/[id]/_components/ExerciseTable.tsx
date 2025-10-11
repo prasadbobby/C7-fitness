@@ -8,8 +8,10 @@ import {
   TableCell,
 } from "@nextui-org/table";
 import { Input } from "@nextui-org/input";
-import { IconSquareCheck } from "@tabler/icons-react";
+import { IconSquareCheck, IconClock, IconPlayerStop } from "@tabler/icons-react";
 import { Checkbox } from "@nextui-org/checkbox";
+import { Button } from "@nextui-org/button";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/dropdown";
 
 interface Set {
   weight: number | "" | null;
@@ -48,6 +50,22 @@ interface ExerciseTableProps {
     setIndex: number,
     newValue: number | null,
   ) => void;
+  handleStartRestTimer: (
+    exerciseIndex: number,
+    setIndex: number,
+    exerciseName: string,
+    duration: number,
+  ) => void;
+  handleStopRestTimer: (
+    exerciseIndex: number,
+    setIndex: number,
+  ) => void;
+  activeRestTimer?: {
+    exerciseIndex: number;
+    setIndex: number;
+    timeRemaining: number;
+    isActive: boolean;
+  } | null;
 }
 
 export default function ExerciseTable({
@@ -57,6 +75,9 @@ export default function ExerciseTable({
   handleWeightChange,
   handleRepChange,
   handleDurationChange,
+  handleStartRestTimer,
+  handleStopRestTimer,
+  activeRestTimer,
 }: ExerciseTableProps) {
   return (
     <Table
@@ -66,22 +87,25 @@ export default function ExerciseTable({
       shadow="none"
     >
       <TableHeader>
-        <TableColumn>SET</TableColumn>
-        <TableColumn>KG</TableColumn>
+        <TableColumn className="w-12">SET</TableColumn>
+        <TableColumn className="w-24">KG</TableColumn>
         {exerciseDetail.trackingType === "duration" ? (
-          <TableColumn>DURATION</TableColumn>
+          <TableColumn className="w-24">DURATION</TableColumn>
         ) : (
-          <TableColumn>REPS</TableColumn>
+          <TableColumn className="w-24">REPS</TableColumn>
         )}
-        <TableColumn className="flex justify-center items-center">
+        <TableColumn className="w-16 text-center">
           <IconSquareCheck />
+        </TableColumn>
+        <TableColumn className="w-20 text-center">
+          <IconClock />
         </TableColumn>
       </TableHeader>
       <TableBody>
         {exerciseDetail.sets.map((set, setIndex) => (
           <TableRow key={setIndex}>
-            <TableCell>{setIndex + 1}</TableCell>
-            <TableCell>
+            <TableCell className="w-12">{setIndex + 1}</TableCell>
+            <TableCell className="w-24">
               <Input
                 size="sm"
                 type="number"
@@ -102,7 +126,7 @@ export default function ExerciseTable({
               />
             </TableCell>
             {exerciseDetail.trackingType === "duration" ? (
-              <TableCell>
+              <TableCell className="w-24">
                 <Input
                   size="sm"
                   type="number"
@@ -129,7 +153,7 @@ export default function ExerciseTable({
                 />
               </TableCell>
             ) : (
-              <TableCell>
+              <TableCell className="w-24">
                 <Input
                   size="sm"
                   label="Reps"
@@ -154,7 +178,7 @@ export default function ExerciseTable({
               </TableCell>
             )}
 
-            <TableCell className="text-center">
+            <TableCell className="w-16 text-center">
               <Checkbox
                 size="lg"
                 color={set.completed ? "primary" : "danger"}
@@ -169,6 +193,58 @@ export default function ExerciseTable({
                   )
                 }
               />
+            </TableCell>
+
+            <TableCell className="w-20 text-center">
+              {activeRestTimer &&
+               activeRestTimer.exerciseIndex === index &&
+               activeRestTimer.setIndex === setIndex ? (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-xs font-mono text-primary">
+                    {Math.floor(activeRestTimer.timeRemaining / 60)}:
+                    {String(activeRestTimer.timeRemaining % 60).padStart(2, '0')}
+                  </div>
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    isIconOnly
+                    onPress={() => handleStopRestTimer(index, setIndex)}
+                    aria-label="Stop Rest Timer"
+                  >
+                    <IconPlayerStop size={16} />
+                  </Button>
+                </div>
+              ) : (
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      isIconOnly
+                      isDisabled={!set.completed}
+                      aria-label="Start Rest Timer"
+                    >
+                      <IconClock size={16} />
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Rest Timer Duration"
+                    onAction={(key) => {
+                      const duration = parseInt(key as string);
+                      handleStartRestTimer(index, setIndex, exerciseDetail.exerciseName, duration);
+                    }}
+                  >
+                    <DropdownItem key="45">45 seconds</DropdownItem>
+                    <DropdownItem key="60">1 minute</DropdownItem>
+                    <DropdownItem key="90">1.5 minutes</DropdownItem>
+                    <DropdownItem key="120">2 minutes</DropdownItem>
+                    <DropdownItem key="180">3 minutes</DropdownItem>
+                    <DropdownItem key="300">5 minutes</DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              )}
             </TableCell>
           </TableRow>
         ))}

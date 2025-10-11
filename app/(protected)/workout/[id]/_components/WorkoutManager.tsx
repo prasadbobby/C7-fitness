@@ -59,17 +59,42 @@ export default function WorkoutManager({
   const restTimer = useRestTimer();
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [activeRestTimer, setActiveRestTimer] = useState<{
+    exerciseIndex: number;
+    setIndex: number;
+    timeRemaining: number;
+    isActive: boolean;
+  } | null>(null);
 
   // Function to update assignment status
   const updateAssignmentStatus = async (status: string) => {
     if (!assignmentId) return;
 
+    console.log(`🔍 Updating assignment status: ${status} (Admin mode: ${isAdminMode}, Assignment ID: ${assignmentId})`);
+
     try {
-      await fetch("/api/user/assigned-workouts", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignmentId, status }),
-      });
+      let response;
+      if (isAdminMode) {
+        // Use admin API for assignment updates in admin mode
+        response = await fetch(`/api/admin/assignments/${assignmentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+      } else {
+        // Use user API for regular mode
+        response = await fetch("/api/user/assigned-workouts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assignmentId, status }),
+        });
+      }
+
+      if (response.ok) {
+        console.log(`✅ Assignment status updated successfully to: ${status}`);
+      } else {
+        console.error(`❌ Failed to update assignment status: ${response.status}`);
+      }
     } catch (error) {
       console.error("Error updating assignment status:", error);
     }
@@ -118,6 +143,33 @@ export default function WorkoutManager({
     }
   }, [workout, activeWorkoutRoutine, setWorkoutExercises, isDataLoaded, userId, restTimer, workoutPlanId]);
 
+  // Update local rest timer state when context rest timer changes
+  useEffect(() => {
+    if (!userId) return;
+
+    const currentRestTimer = restTimer.getRestTimerForUser(userId);
+    if (currentRestTimer && workoutExercises) {
+      // Find the exercise and set index for this timer
+      const exerciseIndex = workoutExercises.findIndex(
+        exercise => exercise.exerciseId === currentRestTimer.exerciseId
+      );
+
+      if (exerciseIndex !== -1) {
+        const setIndex = currentRestTimer.setNumber - 1;
+        const timeRemaining = Math.max(0, currentRestTimer.targetDuration - currentRestTimer.duration);
+
+        setActiveRestTimer({
+          exerciseIndex,
+          setIndex,
+          timeRemaining,
+          isActive: currentRestTimer.isActive,
+        });
+      }
+    } else {
+      setActiveRestTimer(null);
+    }
+  }, [restTimer, userId, workoutExercises]);
+
   // Handle clicking complete set button
   const handleCompleteSet = (
     exerciseIndex: number,
@@ -162,22 +214,7 @@ export default function WorkoutManager({
 
       if (setToUpdate.completed) {
         toast.success(`${exerciseName} Set ${setIndex + 1} completed`);
-
-        // Start rest timer if this isn't the last set of the exercise
-        const totalSetsForExercise = exerciseToUpdate.sets.length;
-        const isLastSet = setIndex + 1 >= totalSetsForExercise;
-
-        if (!isLastSet && userId) {
-          // Start rest timer (60 seconds default)
-          restTimer.startRestTimer(
-            userId,
-            exerciseToUpdate.exerciseId,
-            exerciseName,
-            setIndex + 1, // Convert to 1-based indexing
-            60, // 60 seconds default rest time
-            true // auto-started
-          );
-        }
+        // Note: Rest timer now manually controlled - no automatic start
       } else {
         toast(`${exerciseName} Set ${setIndex + 1} marked as incomplete`);
 
@@ -293,6 +330,65 @@ export default function WorkoutManager({
       }
       return prevWorkoutExercises;
     });
+  };
+
+  // Manual rest timer handlers
+  const handleStartRestTimer = (
+    exerciseIndex: number,
+    setIndex: number,
+    exerciseName: string,
+    duration: number,
+  ) => {
+    if (!userId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
+    const exerciseId = workoutExercises?.[exerciseIndex]?.exerciseId;
+    if (!exerciseId) {
+      toast.error("Exercise ID not found");
+      return;
+    }
+
+    // Start rest timer with custom duration
+    const timerId = restTimer.startRestTimer(
+      userId,
+      exerciseId,
+      exerciseName,
+      setIndex + 1,
+      duration, // custom duration from user selection
+      false // not auto-started
+    );
+
+    // Set up local state for countdown display
+    setActiveRestTimer({
+      exerciseIndex,
+      setIndex,
+      timeRemaining: duration,
+      isActive: true,
+    });
+
+    const formatDuration = (seconds: number) => {
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+    };
+
+    toast.success(`Rest timer started: ${exerciseName} - Set ${setIndex + 1} (${formatDuration(duration)})`);
+  };
+
+  const handleStopRestTimer = (exerciseIndex: number, setIndex: number) => {
+    if (!userId) return;
+
+    const currentRestTimer = restTimer.getRestTimerForUser(userId);
+    if (currentRestTimer &&
+        currentRestTimer.exerciseId === workoutExercises?.[exerciseIndex]?.exerciseId &&
+        currentRestTimer.setNumber === setIndex + 1) {
+      restTimer.stopRestTimer(currentRestTimer.id);
+    }
+
+    setActiveRestTimer(null);
   };
 
   // Cancel workout and reset states
@@ -478,6 +574,9 @@ export default function WorkoutManager({
                 handleWeightChange={handleWeightChange}
                 handleRepChange={handleRepChange}
                 handleDurationChange={handleDurationChange}
+                handleStartRestTimer={handleStartRestTimer}
+                handleStopRestTimer={handleStopRestTimer}
+                activeRestTimer={activeRestTimer}
               />
             </CardBody>
             <CardFooter className="gap-2 px-5 bg-default-100">
