@@ -95,9 +95,28 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
   const [currentGymSessionId, setCurrentGymSessionId] = useState<string | null>(null);
   const [enableAudio, setEnableAudio] = useState(true);
 
+  // Sync state with ref whenever userSessions changes
+  useEffect(() => {
+    userSessionsRef.current = userSessions;
+  }, [userSessions]);
+
+  // CRITICAL: Custom setter that updates both state and ref for immediate access
+  const setUserSessionsSync = useCallback((
+    updater: React.SetStateAction<Map<string, UserWorkoutSession>>
+  ) => {
+    setUserSessions(prev => {
+      const newSessions = typeof updater === 'function' ? updater(prev) : updater;
+      userSessionsRef.current = newSessions; // Immediately update ref
+      return newSessions;
+    });
+  }, []);
+
   // Refs for interval management
   const intervalRefs = useRef<Map<string, number>>(new Map());
   const audioRefs = useRef<{ complete: HTMLAudioElement; warning: HTMLAudioElement } | null>(null);
+
+  // CRITICAL: Use a ref to store the most current session data for production-safe access
+  const userSessionsRef = useRef<Map<string, UserWorkoutSession>>(new Map());
 
   // Initialize audio - disabled for now to prevent file loading errors
   useEffect(() => {
@@ -182,32 +201,63 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // CRITICAL FIX: Update user session with rest time when timer completes automatically
-            setUserSessions(prev => {
+            setUserSessionsSync(prev => {
               const session = prev.get(timer.userId);
+              console.log('🔍 Rest timer auto-completion - checking session state:', {
+                timerId: timer.id,
+                userId: timer.userId,
+                sessionExists: !!session,
+                sessionRestTimerId: session?.restTimer?.id,
+                expectedTimerId: timer.id,
+                sessionStatus: session?.status,
+                sessionTotalRestTime: session?.totalRestTime
+              });
+
               if (session && session.restTimer?.id === timer.id) {
                 const updated = new Map(prev);
+                const newTotalRestTime = session.totalRestTime + exactRestTime;
                 console.log('🔍 Rest timer auto-completion - accumulating rest time:', {
                   timerId: timer.id,
                   userId: timer.userId,
                   exerciseName: timer.exerciseName,
                   exactRestTime,
                   previousTotalRestTime: session.totalRestTime,
-                  newTotalRestTime: session.totalRestTime + exactRestTime
+                  newTotalRestTime
                 });
                 updated.set(timer.userId, {
                   ...session,
                   restTimer: undefined,
                   status: 'ACTIVE',
-                  totalRestTime: session.totalRestTime + exactRestTime,
+                  totalRestTime: newTotalRestTime,
                   lastActivity: now,
                 });
+                console.log('🔍 Session updated successfully with new rest time:', newTotalRestTime);
                 return updated;
               } else {
-                console.log('🔍 Rest timer auto-completion - session not found or timer mismatch:', {
+                console.log('🔍 Rest timer auto-completion - session not found or timer mismatch - FORCING UPDATE:', {
                   sessionExists: !!session,
                   sessionRestTimerId: session?.restTimer?.id,
                   expectedTimerId: timer.id
                 });
+
+                // FORCE UPDATE: Even if session doesn't match exactly, still accumulate the rest time
+                if (session) {
+                  const updated = new Map(prev);
+                  const newTotalRestTime = session.totalRestTime + exactRestTime;
+                  console.log('🔍 FORCED rest time accumulation:', {
+                    previousTotalRestTime: session.totalRestTime,
+                    exactRestTime,
+                    newTotalRestTime
+                  });
+                  updated.set(timer.userId, {
+                    ...session,
+                    restTimer: undefined,
+                    status: 'ACTIVE',
+                    totalRestTime: newTotalRestTime,
+                    lastActivity: now,
+                  });
+                  return updated;
+                }
               }
               return prev;
             });
@@ -250,13 +300,13 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (sessionChanges) {
-        setUserSessions(updatedSessions);
+        setUserSessionsSync(() => updatedSessions);
       }
     };
 
     const interval = setInterval(updateTimers, 1000);
     return () => clearInterval(interval);
-  }, [activeRestTimers, userSessions, enableAudio, vibrateDevice, playRestCompleteSound, playWarningSound]);
+  }, [activeRestTimers, userSessions, enableAudio, vibrateDevice, playRestCompleteSound, playWarningSound, setUserSessionsSync]);
 
   // Rest timer functions
   const startRestTimer = useCallback((
@@ -291,7 +341,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
     setActiveRestTimers(prev => new Map(prev.set(timerId, timer)));
 
     // Update user session
-    setUserSessions(prev => {
+    setUserSessionsSync(prev => {
       const session = prev.get(userId);
       if (session) {
         const updated = new Map(prev);
@@ -314,7 +364,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return timerId;
-  }, []);
+  }, [setUserSessionsSync]);
 
   const stopRestTimer = useCallback((timerId: string) => {
     const timer = activeRestTimers.get(timerId);
@@ -334,7 +384,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Update user session
-    setUserSessions(prev => {
+    setUserSessionsSync(prev => {
       const session = prev.get(timer.userId);
       if (session && session.restTimer?.id === timerId) {
         const updated = new Map(prev);
@@ -361,7 +411,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
     });
 
     toast.success(`Rest timer stopped: ${timer.exerciseName}`);
-  }, [activeRestTimers]);
+  }, [activeRestTimers, setUserSessionsSync]);
 
   const pauseRestTimer = useCallback((timerId: string) => {
     setActiveRestTimers(prev => {
@@ -436,12 +486,12 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
       lastActivity: Date.now(),
     };
 
-    setUserSessions(prev => new Map(prev.set(userId, session)));
+    setUserSessionsSync(prev => new Map(prev.set(userId, session)));
     toast.success(`Workout session started for ${userName}`);
   }, []);
 
   const updateUserSession = useCallback((userId: string, updates: Partial<UserWorkoutSession>) => {
-    setUserSessions(prev => {
+    setUserSessionsSync(prev => {
       const session = prev.get(userId);
       if (session) {
         const updated = new Map(prev);
@@ -450,7 +500,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
       }
       return prev;
     });
-  }, []);
+  }, [setUserSessionsSync]);
 
   const endUserWorkoutSession = useCallback((userId: string) => {
     const session = userSessions.get(userId);
@@ -463,7 +513,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
       // Calculate final duration
       const totalDuration = Math.floor((Date.now() - session.workoutStartTime) / 1000);
 
-      setUserSessions(prev => {
+      setUserSessionsSync(prev => {
         const updated = new Map(prev);
         updated.delete(userId);
         return updated;
@@ -471,7 +521,7 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
 
       toast.success(`Workout completed for ${session.userName} - Duration: ${formatTime(totalDuration)}, Rest: ${formatTime(session.totalRestTime)}`);
     }
-  }, [userSessions, stopRestTimer]);
+  }, [userSessions, stopRestTimer, setUserSessionsSync]);
 
   // Utility functions
   const formatTime = useCallback((seconds: number): string => {
@@ -495,7 +545,25 @@ export const RestTimerProvider = ({ children }: { children: ReactNode }) => {
   }, [activeRestTimers]);
 
   const getUserSession = useCallback((userId: string): UserWorkoutSession | undefined => {
-    return userSessions.get(userId);
+    // CRITICAL: Use ref for immediate access to prevent state batching issues in production
+    const session = userSessionsRef.current.get(userId);
+    const fallbackSession = userSessions.get(userId);
+
+    console.log('🔍 getUserSession called:', {
+      userId,
+      refSessionExists: !!session,
+      stateSessionExists: !!fallbackSession,
+      refTotalRestTime: session?.totalRestTime,
+      stateTotalRestTime: fallbackSession?.totalRestTime,
+      refStatus: session?.status,
+      stateStatus: fallbackSession?.status,
+      sessionMatch: session === fallbackSession,
+      allRefSessionUserIds: Array.from(userSessionsRef.current.keys()),
+      allStateSessionUserIds: Array.from(userSessions.keys())
+    });
+
+    // Use ref session if available, fallback to state session
+    return session || fallbackSession;
   }, [userSessions]);
 
   const getAllActiveSessions = useCallback((): UserWorkoutSession[] => {
