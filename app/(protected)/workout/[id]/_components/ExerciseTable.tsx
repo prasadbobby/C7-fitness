@@ -1,4 +1,5 @@
 "use client";
+import { useState, useRef, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -11,7 +12,6 @@ import { Input } from "@nextui-org/input";
 import { IconSquareCheck, IconClock, IconPlayerStop } from "@tabler/icons-react";
 import { Checkbox } from "@nextui-org/checkbox";
 import { Button } from "@nextui-org/button";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/dropdown";
 
 interface Set {
   weight: number | "" | null;
@@ -66,6 +66,108 @@ interface ExerciseTableProps {
     timeRemaining: number;
     isActive: boolean;
   } | null;
+}
+
+// Custom RestTimerDropdown component
+function RestTimerDropdown({
+  onSelectDuration,
+  isDisabled
+}: {
+  onSelectDuration: (duration: number) => void;
+  isDisabled: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const durations = [
+    { key: 45, label: "45 seconds" },
+    { key: 60, label: "1 minute" },
+    { key: 90, label: "1.5 minutes" },
+    { key: 120, label: "2 minutes" },
+    { key: 180, label: "3 minutes" },
+    { key: 300, label: "5 minutes" },
+  ];
+
+  const handleDurationSelect = (duration: number) => {
+    onSelectDuration(duration);
+    setIsOpen(false);
+  };
+
+  const updatePosition = () => {
+    if (dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.right + window.scrollX - 160
+      });
+    }
+  };
+
+  // Update position when dropdown opens
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [isOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <Button
+        size="sm"
+        color="primary"
+        variant="flat"
+        isIconOnly
+        isDisabled={isDisabled}
+        aria-label="Start Rest Timer"
+        onPress={() => setIsOpen(!isOpen)}
+      >
+        <IconClock size={16} />
+      </Button>
+
+      {isOpen && !isDisabled && (
+        <div className="fixed z-[99999] min-w-[160px] bg-content1 shadow-large rounded-large border border-divider backdrop-blur-md backdrop-saturate-150 py-1"
+             style={{
+               top: `${position.top}px`,
+               left: `${position.left}px`
+             }}>
+          {durations.map((duration) => (
+            <button
+              key={duration.key}
+              className="relative flex w-full cursor-pointer select-none items-center rounded-small px-2 py-1.5 text-small subpixel-antialiased outline-none transition-colors hover:bg-default-100 active:bg-default-200 data-[hover=true]:bg-default-100 data-[selectable=true]:focus:bg-default-100 data-[pressed=true]:opacity-70 data-[focus-visible=true]:z-10 data-[focus-visible=true]:outline-2 data-[focus-visible=true]:outline-focus data-[focus-visible=true]:outline-offset-2 text-foreground tap-highlight-transparent"
+              onClick={() => handleDurationSelect(duration.key)}
+            >
+              {duration.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ExerciseTable({
@@ -216,34 +318,12 @@ export default function ExerciseTable({
                   </Button>
                 </div>
               ) : (
-                <Dropdown>
-                  <DropdownTrigger>
-                    <Button
-                      size="sm"
-                      color="primary"
-                      variant="flat"
-                      isIconOnly
-                      isDisabled={!set.completed}
-                      aria-label="Start Rest Timer"
-                    >
-                      <IconClock size={16} />
-                    </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Rest Timer Duration"
-                    onAction={(key) => {
-                      const duration = parseInt(key as string);
-                      handleStartRestTimer(index, setIndex, exerciseDetail.exerciseName, duration);
-                    }}
-                  >
-                    <DropdownItem key="45">45 seconds</DropdownItem>
-                    <DropdownItem key="60">1 minute</DropdownItem>
-                    <DropdownItem key="90">1.5 minutes</DropdownItem>
-                    <DropdownItem key="120">2 minutes</DropdownItem>
-                    <DropdownItem key="180">3 minutes</DropdownItem>
-                    <DropdownItem key="300">5 minutes</DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
+                <RestTimerDropdown
+                  onSelectDuration={(duration) =>
+                    handleStartRestTimer(index, setIndex, exerciseDetail.exerciseName, duration)
+                  }
+                  isDisabled={!set.completed}
+                />
               )}
             </TableCell>
           </TableRow>
