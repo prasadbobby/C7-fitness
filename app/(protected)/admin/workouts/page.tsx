@@ -46,6 +46,7 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Reorder } from "framer-motion";
+import { DeleteConfirmationModal, useConfirmationModal } from "@/components/UI/ConfirmationModal";
 
 interface User {
   id: string;
@@ -155,6 +156,22 @@ export default function WorkoutAssignment() {
 
   // Debug modal state
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+
+  // Confirmation modals
+  const {
+    isOpen: isDeleteWorkoutOpen,
+    onOpen: onDeleteWorkoutOpen,
+    onClose: onDeleteWorkoutClose
+  } = useDisclosure();
+  const {
+    isOpen: isDeleteAssignmentOpen,
+    onOpen: onDeleteAssignmentOpen,
+    onClose: onDeleteAssignmentClose
+  } = useDisclosure();
+
+  // Delete confirmation states
+  const [workoutToDelete, setWorkoutToDelete] = useState<{id: string, name: string} | null>(null);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<{id: string, userName: string, workoutName: string} | null>(null);
 
   // Helper function to format display names (same as ExerciseTable)
   const formatDisplayName = (name: string): string => {
@@ -358,14 +375,17 @@ export default function WorkoutAssignment() {
     }
   };
 
-  const handleDeleteWorkout = async (workoutId: string, workoutName: string) => {
-    if (!confirm(`Are you sure you want to delete the workout "${workoutName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const openDeleteWorkoutModal = (workoutId: string, workoutName: string) => {
+    setWorkoutToDelete({ id: workoutId, name: workoutName });
+    onDeleteWorkoutOpen();
+  };
+
+  const handleDeleteWorkout = async () => {
+    if (!workoutToDelete) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/workouts?id=${workoutId}`, {
+      const response = await fetch(`/api/admin/workouts?id=${workoutToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -374,6 +394,8 @@ export default function WorkoutAssignment() {
       if (response.ok) {
         await fetchData();
         toast.success("Workout deleted successfully!");
+        onDeleteWorkoutClose();
+        setWorkoutToDelete(null);
       } else {
         if (data.error === "Cannot delete workout with existing assignments or logs") {
           toast.error(
@@ -391,20 +413,25 @@ export default function WorkoutAssignment() {
     }
   };
 
-  const handleDeleteAssignment = async (assignmentId: string, userName: string, workoutName: string) => {
-    if (!confirm(`Are you sure you want to delete the assignment for "${userName}" - "${workoutName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const openDeleteAssignmentModal = (assignmentId: string, userName: string, workoutName: string) => {
+    setAssignmentToDelete({ id: assignmentId, userName, workoutName });
+    onDeleteAssignmentOpen();
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/assignments/${assignmentId}`, {
+      const response = await fetch(`/api/admin/assignments/${assignmentToDelete.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
         await fetchData();
         toast.success("Assignment deleted successfully!");
+        onDeleteAssignmentClose();
+        setAssignmentToDelete(null);
       } else {
         const data = await response.json();
         toast.error(data.error || "Failed to delete assignment");
@@ -978,7 +1005,7 @@ export default function WorkoutAssignment() {
                             variant="flat"
                             color="danger"
                             startContent={<IconTrash size={16} />}
-                            onPress={() => handleDeleteWorkout(workout.id, workout.name)}
+                            onPress={() => openDeleteWorkoutModal(workout.id, workout.name)}
                             isDisabled={loading}
                           >
                             Delete
@@ -1529,7 +1556,7 @@ export default function WorkoutAssignment() {
                             variant="flat"
                             color="danger"
                             startContent={<IconTrash size={16} />}
-                            onPress={() => handleDeleteAssignment(
+                            onPress={() => openDeleteAssignmentModal(
                               assignment.id,
                               assignment.user.username || assignment.user.firstName || assignment.user.email || "Unknown User",
                               assignment.workoutPlan.name
@@ -2404,6 +2431,53 @@ export default function WorkoutAssignment() {
           </div>
         )}
       </BottomSheet>
+
+      {/* Delete Confirmation Modals */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteWorkoutOpen}
+        onClose={onDeleteWorkoutClose}
+        onConfirm={handleDeleteWorkout}
+        itemName={workoutToDelete?.name}
+        itemType="workout"
+        isLoading={loading}
+        message={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to delete the workout <strong>"{workoutToDelete?.name}"</strong>?
+            </p>
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg">
+              <p className="text-sm text-danger font-medium">
+                ⚠️ This action cannot be undone
+              </p>
+              <p className="text-xs text-danger/80 mt-1">
+                All associated assignments and logs will be permanently removed.
+              </p>
+            </div>
+          </div>
+        }
+      />
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteAssignmentOpen}
+        onClose={onDeleteAssignmentClose}
+        onConfirm={handleDeleteAssignment}
+        itemType="assignment"
+        isLoading={loading}
+        message={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to delete the assignment for{" "}
+              <strong>"{assignmentToDelete?.userName}"</strong> -{" "}
+              <strong>"{assignmentToDelete?.workoutName}"</strong>?
+            </p>
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg">
+              <p className="text-sm text-danger font-medium">
+                ⚠️ This action cannot be undone
+              </p>
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 }

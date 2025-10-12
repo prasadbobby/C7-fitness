@@ -9,6 +9,8 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
+import { useDisclosure } from "@nextui-org/react";
 
 interface Set {
   weight: number | null;
@@ -43,6 +45,7 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
   const handleDelete = async (activityId: string) => {
     const response = await handleDeleteActivity(activityId);
@@ -60,13 +63,13 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
   };
 
   const handleDeleteClick = () => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this activity?",
-    );
-    if (confirmDelete) {
-      handleDelete(activity.id);
-    }
     setIsOpen(false);
+    onDeleteOpen();
+  };
+
+  const confirmDelete = () => {
+    handleDelete(activity.id);
+    onDeleteClose();
   };
 
   const toggleMenu = () => {
@@ -159,6 +162,14 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
           </button>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
+        onConfirm={confirmDelete}
+        itemName={activity.WorkoutPlan.name}
+        itemType="activity"
+      />
     </div>
   );
 }

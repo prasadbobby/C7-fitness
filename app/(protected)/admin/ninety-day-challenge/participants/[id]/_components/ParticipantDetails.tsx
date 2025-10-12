@@ -7,6 +7,8 @@ import { Button } from "@nextui-org/button";
 import { Switch } from "@nextui-org/switch";
 import { useState } from "react";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
+import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
+import { useDisclosure } from "@nextui-org/react";
 
 interface Participant {
   id: string;
@@ -37,6 +39,7 @@ interface Props {
 export function ParticipantDetails({ participant }: Props) {
   const [isEnabled, setIsEnabled] = useState(participant.isEnabled);
   const [loading, setLoading] = useState(false);
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
   const handleToggleEnabled = async (value: boolean) => {
     setLoading(true);
@@ -59,11 +62,11 @@ export function ParticipantDetails({ participant }: Props) {
     }
   };
 
-  const handleRemoveParticipant = async () => {
-    if (!confirm('Are you sure you want to remove this participant from the challenge?')) {
-      return;
-    }
+  const openRemoveModal = () => {
+    onDeleteOpen();
+  };
 
+  const handleRemoveParticipant = async () => {
     try {
       const response = await fetch(`/api/admin/ninety-day-challenge/participants/${participant.id}`, {
         method: 'DELETE',
@@ -74,6 +77,8 @@ export function ParticipantDetails({ participant }: Props) {
       }
     } catch (error) {
       console.error('Error removing participant:', error);
+    } finally {
+      onDeleteClose();
     }
   };
 
@@ -154,12 +159,35 @@ export function ParticipantDetails({ participant }: Props) {
             color="danger"
             variant="flat"
             startContent={<IconTrash size={16} />}
-            onPress={handleRemoveParticipant}
+            onPress={openRemoveModal}
             className="flex-1"
           >
             Remove from Challenge
           </Button>
         </div>
+
+        <DeleteConfirmationModal
+          isOpen={isDeleteOpen}
+          onClose={onDeleteClose}
+          onConfirm={handleRemoveParticipant}
+          itemName={`${participant.user.firstName} ${participant.user.lastName}`}
+          itemType="participant"
+          message={
+            <div className="space-y-3">
+              <p>
+                Are you sure you want to remove <strong>{participant.user.firstName} {participant.user.lastName}</strong> from the challenge?
+              </p>
+              <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg">
+                <p className="text-sm text-danger font-medium">
+                  ⚠️ This action cannot be undone
+                </p>
+                <p className="text-xs text-danger/80 mt-1">
+                  All their progress and posts in this challenge will be permanently removed.
+                </p>
+              </div>
+            </div>
+          }
+        />
       </CardBody>
     </Card>
   );

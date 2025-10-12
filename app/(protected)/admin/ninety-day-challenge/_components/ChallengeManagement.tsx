@@ -10,6 +10,8 @@ import { Chip } from "@nextui-org/chip";
 import { IconPlus, IconCalendarEvent, IconEdit, IconTrash, IconEye } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import DatePicker from "@/components/UI/DatePicker";
+import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
+import { useDisclosure } from "@nextui-org/react";
 
 interface Challenge {
   id: string;
@@ -28,6 +30,10 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
+
+  // Delete confirmation modal
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -88,16 +94,23 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
     }
   };
 
-  const handleDelete = async (challengeId: string) => {
-    if (!confirm('Are you sure you want to delete this challenge?')) return;
+  const openDeleteModal = (challenge: Challenge) => {
+    setChallengeToDelete(challenge);
+    onDeleteOpen();
+  };
+
+  const handleDelete = async () => {
+    if (!challengeToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/ninety-day-challenge/${challengeId}`, {
+      const response = await fetch(`/api/admin/ninety-day-challenge/${challengeToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
         await fetchChallenges();
+        onDeleteClose();
+        setChallengeToDelete(null);
       }
     } catch (error) {
       console.error('Error deleting challenge:', error);
@@ -280,7 +293,7 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
                     color="danger"
                     variant="flat"
                     startContent={<IconTrash size={16} />}
-                    onPress={() => handleDelete(challenge.id)}
+                    onPress={() => openDeleteModal(challenge)}
                     className="font-medium"
                   >
                     Delete
@@ -309,6 +322,30 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
           </Card>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
+        onConfirm={handleDelete}
+        itemName={challengeToDelete?.title}
+        itemType="challenge"
+        message={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to delete the challenge <strong>"{challengeToDelete?.title}"</strong>?
+            </p>
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg">
+              <p className="text-sm text-danger font-medium">
+                ⚠️ This action cannot be undone
+              </p>
+              <p className="text-xs text-danger/80 mt-1">
+                All participant data and posts associated with this challenge will be permanently removed.
+              </p>
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 });
