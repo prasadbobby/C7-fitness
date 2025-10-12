@@ -24,7 +24,11 @@ interface TodaysPost {
   photos: string[];
 }
 
-export function DailyPostForm() {
+interface DailyPostFormProps {
+  challengeId: string;
+}
+
+export function DailyPostForm({ challengeId }: DailyPostFormProps) {
   const [hasPostedToday, setHasPostedToday] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,8 +50,10 @@ export function DailyPostForm() {
 
   useEffect(() => {
     checkUserRole();
-    checkTodaysPost();
-  }, []);
+    if (challengeId) {
+      checkTodaysPost();
+    }
+  }, [challengeId]);
 
   const checkUserRole = async () => {
     try {
@@ -64,7 +70,7 @@ export function DailyPostForm() {
   const checkTodaysPost = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/ninety-day-challenge/posts/today?date=${today}`);
+      const response = await fetch(`/api/ninety-day-challenge/posts/today?date=${today}&challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.post && !isAdmin) {
@@ -109,6 +115,7 @@ export function DailyPostForm() {
         body: JSON.stringify({
           ...formData,
           date: today,
+          challengeId: challengeId,
         }),
       });
 

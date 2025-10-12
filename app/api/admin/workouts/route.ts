@@ -134,3 +134,115 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    await requireAdmin();
+
+    const body = await request.json();
+    const {
+      name,
+      notes,
+      trainingType,
+      exercises = []
+    } = body;
+
+    // Validate required fields
+    if (!name || name.trim() === "") {
+      return NextResponse.json(
+        { error: "Workout name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!exercises || exercises.length === 0) {
+      return NextResponse.json(
+        { error: "At least one exercise is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate exercises
+    for (const exercise of exercises) {
+      if (!exercise.exerciseId || !exercise.sets) {
+        return NextResponse.json(
+          { error: "Each exercise must have exerciseId and sets" },
+          { status: 400 }
+        );
+      }
+
+      if (exercise.trackingType === "reps" && !exercise.reps) {
+        return NextResponse.json(
+          { error: "Reps are required when tracking by repetitions" },
+          { status: 400 }
+        );
+      }
+
+      if (exercise.trackingType === "duration" && !exercise.exerciseDuration) {
+        return NextResponse.json(
+          { error: "Duration is required when tracking by duration" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create workout plan with exercises in a transaction
+    const workoutPlan = await prisma.$transaction(async (tx) => {
+      // Create the workout plan
+      const plan = await tx.workoutPlan.create({
+        data: {
+          name: name.trim(),
+          notes: notes?.trim() || null,
+          trainingType: trainingType || null,
+        },
+      });
+
+      // Create the workout plan exercises
+      const exerciseData = exercises.map((exercise: any, index: number) => ({
+        workoutPlanId: plan.id,
+        exerciseId: exercise.exerciseId,
+        sets: exercise.sets,
+        reps: exercise.trackingType === "reps" ? exercise.reps : null,
+        exerciseDuration: exercise.trackingType === "duration" ? exercise.exerciseDuration : null,
+        trackingType: exercise.trackingType,
+        order: exercise.order || index + 1,
+      }));
+
+      await tx.workoutPlanExercise.createMany({
+        data: exerciseData,
+      });
+
+      // Return the complete workout plan with exercises
+      return await tx.workoutPlan.findUnique({
+        where: { id: plan.id },
+        include: {
+          WorkoutPlanExercise: {
+            include: {
+              Exercise: {
+                select: {
+                  name: true,
+                  category: true,
+                },
+              },
+            },
+            orderBy: { order: "asc" },
+          },
+        },
+      });
+    });
+
+    return NextResponse.json({
+      message: "Workout plan created successfully",
+      id: workoutPlan?.id,
+      name: workoutPlan?.name,
+      exerciseCount: workoutPlan?.WorkoutPlanExercise.length,
+    });
+
+  } catch (error) {
+    console.error("Error creating workout plan:", error);
+    return NextResponse.json(
+      { error: "Failed to create workout plan" },
+      { status: 500 }
+    );
+  }
+}

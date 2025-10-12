@@ -6,28 +6,83 @@ import { join } from "path";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { userId } = auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
   }
 
-  const exercises = await prisma.exercise.findMany({
-    where: {
-      favouritedBy: {
-        some: {
-          userId: userId,
-        },
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-    },
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get("limit") || "50");
+  const page = parseInt(searchParams.get("page") || "1");
+  const search = searchParams.get("search") || "";
+  const category = searchParams.get("category") || "";
+  const isFavorites = searchParams.get("favorites") === "true";
+
+  // Check if user is admin for full exercise access
+  const userInfo = await prisma.userInfo.findUnique({
+    where: { userId },
+    select: { role: true },
   });
 
-  return Response.json(exercises);
+  const isAdmin = userInfo && (userInfo.role === "ADMIN" || userInfo.role === "SUPER_ADMIN");
+
+  let whereClause: any = {};
+
+  // If requesting favorites or not an admin, show only favorited exercises
+  if (isFavorites || !isAdmin) {
+    whereClause.favouritedBy = {
+      some: {
+        userId: userId,
+      },
+    };
+  }
+
+  // Add search filter
+  if (search) {
+    whereClause.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+      { primary_muscles: { has: search } },
+      { secondary_muscles: { has: search } },
+    ];
+  }
+
+  // Add category filter
+  if (category) {
+    whereClause.category = category;
+  }
+
+  const [exercises, totalCount] = await Promise.all([
+    prisma.exercise.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        level: true,
+        primary_muscles: true,
+        secondary_muscles: true,
+        image: true,
+        equipment: true,
+      },
+      orderBy: [
+        { name: "asc" }
+      ],
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.exercise.count({ where: whereClause }),
+  ]);
+
+  return Response.json({
+    exercises,
+    total: totalCount,
+    page,
+    limit,
+    totalPages: Math.ceil(totalCount / limit),
+  });
 }
 
 export async function POST(request: NextRequest) {

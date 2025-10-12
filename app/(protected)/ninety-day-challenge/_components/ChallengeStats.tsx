@@ -18,17 +18,23 @@ interface ChallengeInfo {
   totalParticipants: number;
 }
 
-export function ChallengeStats() {
+interface ChallengeStatsProps {
+  challengeId: string;
+}
+
+export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
   const [stats, setStats] = useState<ChallengeInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchChallengeStats();
-  }, []);
+    if (challengeId) {
+      fetchChallengeStats();
+    }
+  }, [challengeId]);
 
   const fetchChallengeStats = async () => {
     try {
-      const response = await fetch('/api/ninety-day-challenge/stats');
+      const response = await fetch(`/api/ninety-day-challenge/stats?challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);

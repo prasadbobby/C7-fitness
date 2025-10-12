@@ -14,7 +14,11 @@ interface DayPost {
   energy?: string;
 }
 
-export function ChallengeCalendar() {
+interface ChallengeCalendarProps {
+  challengeId: string;
+}
+
+export function ChallengeCalendar({ challengeId }: ChallengeCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState<DayPost[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -22,13 +26,15 @@ export function ChallengeCalendar() {
   const [challengeEnd, setChallengeEnd] = useState<Date>(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
 
   useEffect(() => {
-    fetchChallengeInfo();
-    fetchMonthPosts();
-  }, [currentDate]);
+    if (challengeId) {
+      fetchChallengeInfo();
+      fetchMonthPosts();
+    }
+  }, [currentDate, challengeId]);
 
   const fetchChallengeInfo = async () => {
     try {
-      const response = await fetch('/api/ninety-day-challenge/info');
+      const response = await fetch(`/api/ninety-day-challenge/info?challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         setChallengeStart(new Date(data.startDate));
@@ -43,7 +49,7 @@ export function ChallengeCalendar() {
     try {
       const month = currentDate.getMonth() + 1;
       const year = currentDate.getFullYear();
-      const response = await fetch(`/api/ninety-day-challenge/posts/calendar?month=${month}&year=${year}`);
+      const response = await fetch(`/api/ninety-day-challenge/posts/calendar?month=${month}&year=${year}&challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         setPosts(data.posts);

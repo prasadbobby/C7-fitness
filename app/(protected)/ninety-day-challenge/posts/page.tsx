@@ -170,7 +170,7 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
 
       {/* Community Feed with Admin Post Modal */}
       <PostsClientWrapper
-        challengeId={accessData.challengeId}
+        challengeId={accessData.challengeId || null}
         challengeTitle={challengeTitle}
         isAdmin={isAdmin}
         showTodayByDefault={true}

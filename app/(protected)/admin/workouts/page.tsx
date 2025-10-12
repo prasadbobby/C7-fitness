@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import AdminPagination from "@/components/Admin/AdminPagination";
 import AdminPerPageSelector from "@/components/Admin/AdminPerPageSelector";
-import AdminModal from "@/components/Admin/AdminModal";
 import BottomSheet from "@/components/UI/BottomSheet";
 import DatePicker from "@/components/UI/DatePicker";
 import {
@@ -24,11 +23,8 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Checkbox,
-  Accordion,
-  AccordionItem,
-  Pagination,
   Avatar,
+  User,
 } from "@nextui-org/react";
 import {
   IconPlus,
@@ -44,8 +40,12 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconTrash,
+  IconArrowUp,
+  IconArrowDown,
+  IconGripVertical,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { Reorder } from "framer-motion";
 
 interface User {
   id: string;
@@ -140,13 +140,33 @@ export default function WorkoutAssignment() {
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [activeTab, setActiveTab] = useState("workouts");
 
+  // Custom workout builder states
+  const [customWorkoutUser, setCustomWorkoutUser] = useState<string>("");
+  const [customWorkoutName, setCustomWorkoutName] = useState("");
+  const [customWorkoutNotes, setCustomWorkoutNotes] = useState("");
+  const [customWorkoutDate, setCustomWorkoutDate] = useState("");
+  const [customWorkoutExercises, setCustomWorkoutExercises] = useState<any[]>([]);
+  const [customWorkoutTrainingType, setCustomWorkoutTrainingType] = useState("");
+  const [availableExercises, setAvailableExercises] = useState<any[]>([]);
+  const [exerciseSearchTerm, setExerciseSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
   const { isOpen: isAssignOpen, onOpen: onAssignOpen, onClose: onAssignClose } = useDisclosure();
 
   // Debug modal state
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
 
+  // Helper function to format display names (same as ExerciseTable)
+  const formatDisplayName = (name: string): string => {
+    return name
+      .split("_")
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   useEffect(() => {
     fetchData();
+    fetchExercises();
   }, [page, searchTerm]);
 
   // Clear selected workout when user changes to ensure compatibility
@@ -156,8 +176,22 @@ export default function WorkoutAssignment() {
     }
   }, [selectedUser]);
 
+  // Auto-populate training type when user is selected in custom workout builder
+  useEffect(() => {
+    if (customWorkoutUser) {
+      const userProgression = trainingProgressions.find(
+        p => p.userId === customWorkoutUser && p.isActive
+      );
+      if (userProgression && userProgression.trainingType) {
+        setCustomWorkoutTrainingType(userProgression.trainingType);
+      } else {
+        setCustomWorkoutTrainingType("");
+      }
+    }
+  }, [customWorkoutUser, trainingProgressions]);
+
   const updateURLParams = (updates: Record<string, string | number>) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
       if (value) {
         params.set(key, value.toString());
@@ -205,6 +239,16 @@ export default function WorkoutAssignment() {
       setTrainingProgressions(progressionsData.progressions || []);
     } catch (error) {
       console.error("Error fetching data:", error);
+    }
+  };
+
+  const fetchExercises = async () => {
+    try {
+      const response = await fetch("/api/exercises?limit=1000");
+      const data = await response.json();
+      setAvailableExercises(data.exercises || []);
+    } catch (error) {
+      console.error("Error fetching exercises:", error);
     }
   };
 
@@ -373,6 +417,131 @@ export default function WorkoutAssignment() {
     }
   };
 
+  // Custom workout builder functions
+  const addExerciseToCustomWorkout = (exercise: any) => {
+    const newExercise = {
+      id: `custom-${Date.now()}`,
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      category: exercise.category,
+      sets: 3,
+      reps: 10,
+      exerciseDuration: null,
+      trackingType: "reps",
+      order: customWorkoutExercises.length + 1,
+    };
+    setCustomWorkoutExercises([...customWorkoutExercises, newExercise]);
+  };
+
+  const removeExerciseFromCustomWorkout = (index: number) => {
+    const updated = customWorkoutExercises.filter((_, i) => i !== index);
+    setCustomWorkoutExercises(updated);
+  };
+
+  const updateCustomWorkoutExercise = (index: number, field: string, value: any) => {
+    const updated = [...customWorkoutExercises];
+
+    // Handle tracking type changes
+    if (field === "trackingType") {
+      if (value === "reps") {
+        updated[index]["exerciseDuration"] = null;
+      } else if (value === "duration") {
+        updated[index]["reps"] = null;
+      }
+    }
+
+    updated[index] = { ...updated[index], [field]: value };
+    setCustomWorkoutExercises(updated);
+  };
+
+  const moveExerciseUp = (index: number) => {
+    if (index === 0) return;
+    const updated = [...customWorkoutExercises];
+    const temp = updated[index - 1];
+    updated[index - 1] = updated[index];
+    updated[index] = temp;
+    setCustomWorkoutExercises(updated);
+  };
+
+  const moveExerciseDown = (index: number) => {
+    if (index === customWorkoutExercises.length - 1) return;
+    const updated = [...customWorkoutExercises];
+    const temp = updated[index + 1];
+    updated[index + 1] = updated[index];
+    updated[index] = temp;
+    setCustomWorkoutExercises(updated);
+  };
+
+  const handleCreateCustomWorkout = async () => {
+    if (!customWorkoutUser || !customWorkoutName || customWorkoutExercises.length === 0) {
+      toast.error("Please fill in all required fields and add at least one exercise");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // First create the workout plan
+      const workoutPlanData = {
+        name: customWorkoutName,
+        notes: customWorkoutNotes,
+        trainingType: customWorkoutTrainingType || undefined,
+        exercises: customWorkoutExercises.map(ex => ({
+          exerciseId: ex.exerciseId,
+          sets: ex.sets,
+          reps: ex.trackingType === "reps" ? ex.reps : null,
+          exerciseDuration: ex.trackingType === "duration" ? ex.exerciseDuration : null,
+          trackingType: ex.trackingType,
+          order: ex.order,
+        })),
+      };
+
+      const workoutResponse = await fetch("/api/admin/workouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(workoutPlanData),
+      });
+
+      if (!workoutResponse.ok) {
+        throw new Error("Failed to create workout plan");
+      }
+
+      const createdWorkout = await workoutResponse.json();
+
+      // Then assign it to the user
+      const assignmentResponse = await fetch("/api/admin/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: customWorkoutUser,
+          workoutPlanId: createdWorkout.id,
+          notes: customWorkoutNotes,
+          assignmentDate: customWorkoutDate || undefined,
+        }),
+      });
+
+      if (assignmentResponse.ok) {
+        await fetchData();
+        // Reset form
+        setCustomWorkoutUser("");
+        setCustomWorkoutName("");
+        setCustomWorkoutNotes("");
+        setCustomWorkoutDate("");
+        setCustomWorkoutExercises([]);
+        setCustomWorkoutTrainingType("");
+        setActiveTab("assignments");
+        toast.success("Custom workout created and assigned successfully!");
+      } else {
+        const errorData = await assignmentResponse.json();
+        toast.error(errorData.message || "Failed to assign custom workout");
+      }
+    } catch (error) {
+      console.error("Error creating custom workout:", error);
+      toast.error("Failed to create custom workout. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -441,6 +610,35 @@ export default function WorkoutAssignment() {
     .filter(wp => wp.trainingType)
     .map(wp => wp.trainingType!)
   ));
+
+  // Filter exercises for custom workout builder
+  const filteredExercises = availableExercises.filter(exercise => {
+    // Search filter
+    if (exerciseSearchTerm) {
+      const searchLower = exerciseSearchTerm.toLowerCase();
+      const matchesSearch =
+        exercise.name.toLowerCase().includes(searchLower) ||
+        exercise.category.toLowerCase().includes(searchLower) ||
+        (exercise.primary_muscles && Array.isArray(exercise.primary_muscles) &&
+         exercise.primary_muscles.some((muscle: string) => muscle.toLowerCase().includes(searchLower))) ||
+        (exercise.secondary_muscles && Array.isArray(exercise.secondary_muscles) &&
+         exercise.secondary_muscles.some((muscle: string) => muscle.toLowerCase().includes(searchLower)));
+
+      if (!matchesSearch) return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== "all" && exercise.category !== selectedCategory) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Get unique exercise categories
+  const uniqueCategories = Array.from(new Set(availableExercises.map(ex => ex.category)))
+    .filter(Boolean)
+    .sort();
 
   // Get unique user roles
   const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
@@ -550,15 +748,27 @@ export default function WorkoutAssignment() {
             Manage workout plans, assign workouts to users, and track progress.
           </p>
         </div>
-        <Button
-          color="primary"
-          startContent={<IconPlus size={20} />}
-          onPress={onAssignOpen}
-          className="min-h-12 px-4 w-full sm:w-auto"
-          size="lg"
-        >
-          Assign Workout
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            color="primary"
+            startContent={<IconPlus size={20} />}
+            onPress={onAssignOpen}
+            className="min-h-12 px-4 flex-1 sm:flex-initial"
+            size="lg"
+          >
+            Assign Pre-made Workout
+          </Button>
+          <Button
+            color="secondary"
+            variant="flat"
+            startContent={<IconBarbell size={20} />}
+            onPress={() => setActiveTab("custom-builder")}
+            className="min-h-12 px-4 flex-1 sm:flex-initial"
+            size="lg"
+          >
+            Build Custom Workout
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -677,6 +887,18 @@ export default function WorkoutAssignment() {
               >
                 <IconUsers size={18} />
                 <span className="font-medium">Assignment History ({filteredAssignments.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("custom-builder")}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  activeTab === "custom-builder"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconBarbell size={18} />
+                <span className="font-medium">Custom Workout Builder</span>
               </button>
             </div>
           </div>
@@ -1213,7 +1435,7 @@ export default function WorkoutAssignment() {
                             p => p.userId === assignment.user.userId && p.isActive
                           );
                           if (userProgression) {
-                            const trainingTypeColorMap = {
+                            const trainingTypeColorMap: Record<string, "secondary" | "success" | "danger" | "warning" | "primary" | "default"> = {
                               ENDURANCE: "secondary",
                               HYPERTROPHY: "success",
                               STRENGTH: "danger",
@@ -1221,7 +1443,7 @@ export default function WorkoutAssignment() {
                               TONING: "primary",
                               FUNCTIONAL: "default",
                             };
-                            const trainingTypeDisplayMap = {
+                            const trainingTypeDisplayMap: Record<string, string> = {
                               ENDURANCE: "Endurance",
                               HYPERTROPHY: "Hypertrophy",
                               STRENGTH: "Strength",
@@ -1353,6 +1575,445 @@ export default function WorkoutAssignment() {
         </>
       )}
 
+      {/* Custom Workout Builder Tab Content */}
+      {activeTab === "custom-builder" && (
+        <div className="space-y-6">
+          {/* Custom Workout Builder Header */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <IconBarbell size={24} className="text-secondary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Custom Workout Builder</h3>
+                  <p className="text-sm text-foreground-500">Build personalized workouts for specific users by selecting exercises individually</p>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Custom Workout Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Workout Details */}
+            <Card>
+              <CardHeader>
+                <h4 className="text-md font-semibold">Workout Details</h4>
+              </CardHeader>
+              <CardBody className="space-y-4">
+                {/* User Selection */}
+                <Select
+                  label="Select User"
+                  placeholder="Choose a user for this custom workout"
+                  selectedKeys={customWorkoutUser ? [customWorkoutUser] : []}
+                  onSelectionChange={(keys) => setCustomWorkoutUser(Array.from(keys)[0] as string)}
+                  classNames={{
+                    trigger: "min-h-12",
+                    value: "text-foreground",
+                  }}
+                  renderValue={(items) => {
+                    return items.map((item) => {
+                      const user = users.find(u => u.userId === item.key);
+                      return user ? (
+                        <div key={item.key} className="flex items-center gap-2">
+                          <Avatar
+                            src={user.imageUrl}
+                            name={(() => {
+                              const name = user.username || user.firstName || user.email;
+                              if (name) {
+                                if (name.includes('@')) {
+                                  return name.split('@')[0].charAt(0).toUpperCase();
+                                }
+                                return name.charAt(0).toUpperCase();
+                              }
+                              return "U";
+                            })()}
+                            size="sm"
+                            classNames={{
+                              name: "font-bold"
+                            }}
+                            color="secondary"
+                            showFallback
+                          />
+                          <span className="text-sm font-medium">
+                            {user.username || user.firstName || user.email || "Unknown User"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span key={item.key}>Unknown User</span>
+                      );
+                    });
+                  }}
+                >
+                  {users.map((user) => (
+                    <SelectItem key={user.userId} value={user.userId} textValue={user.username || user.firstName || user.email || user.userId}>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          src={user.imageUrl}
+                          name={(() => {
+                            const name = user.username || user.firstName || user.email;
+                            if (name) {
+                              if (name.includes('@')) {
+                                return name.split('@')[0].charAt(0).toUpperCase();
+                              }
+                              return name.charAt(0).toUpperCase();
+                            }
+                            return "U";
+                          })()}
+                          size="sm"
+                          classNames={{
+                            name: "font-bold"
+                          }}
+                          color="secondary"
+                          showFallback
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {user.username || user.firstName || user.email || "Unknown User"}
+                          </span>
+                          {user.email && (user.email !== (user.username || user.firstName)) && (
+                            <span className="text-xs text-foreground-500">{user.email}</span>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              user.role === "ADMIN" || user.role === "SUPER_ADMIN"
+                                ? "bg-warning/10 text-warning"
+                                : "bg-secondary/10 text-secondary"
+                            }`}>
+                              {user.role}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </Select>
+
+                {/* Workout Name */}
+                <Input
+                  label="Workout Name"
+                  placeholder="Enter a name for this custom workout"
+                  value={customWorkoutName}
+                  onChange={(e) => setCustomWorkoutName(e.target.value)}
+                  isRequired
+                />
+
+                {/* Training Type - Auto-filled, Read-only */}
+                {customWorkoutUser && (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-content2 rounded-lg border border-divider">
+                      <div className="flex items-center gap-2 mb-1">
+                        <IconTarget size={16} className="text-secondary" />
+                        <span className="text-sm font-medium text-foreground">Training Type</span>
+                      </div>
+                      {customWorkoutTrainingType ? (
+                        <div>
+                          <p className="text-lg font-semibold text-secondary capitalize">
+                            {customWorkoutTrainingType.toLowerCase()}
+                          </p>
+                          <p className="text-xs text-foreground-500">
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-sm text-foreground-400">No training progression assigned</p>
+                          <p className="text-xs text-foreground-500">
+                            Please assign a training progression to this user first
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assignment Date */}
+                <DatePicker
+                  label="Assignment Date (Optional)"
+                  placeholder="Select assignment date"
+                  value={customWorkoutDate ? new Date(customWorkoutDate + 'T00:00:00') : undefined}
+                  onChange={(date) => {
+                    if (date) {
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      setCustomWorkoutDate(`${year}-${month}-${day}`);
+                    } else {
+                      setCustomWorkoutDate('');
+                    }
+                  }}
+                />
+
+                {/* Notes */}
+                <Textarea
+                  label="Notes (Optional)"
+                  placeholder="Add specific instructions or notes for this workout..."
+                  value={customWorkoutNotes}
+                  onChange={(e) => setCustomWorkoutNotes(e.target.value)}
+                  rows={3}
+                />
+
+                {/* Create Button */}
+                <Button
+                  color="secondary"
+                  size="lg"
+                  startContent={<IconPlus size={20} />}
+                  onPress={handleCreateCustomWorkout}
+                  isLoading={loading}
+                  isDisabled={!customWorkoutUser || !customWorkoutName || customWorkoutExercises.length === 0}
+                  className="w-full"
+                >
+                  Create & Assign Custom Workout ({customWorkoutExercises.length} exercises)
+                </Button>
+              </CardBody>
+            </Card>
+
+            {/* Right Column - Selected Exercises */}
+            <Card>
+              <CardHeader>
+                <h4 className="text-md font-semibold">Selected Exercises ({customWorkoutExercises.length})</h4>
+              </CardHeader>
+              <CardBody>
+                {customWorkoutExercises.length === 0 ? (
+                  <div className="text-center py-8">
+                    <IconBarbell size={48} className="mx-auto mb-4 opacity-50 text-foreground-400" />
+                    <h4 className="text-lg font-medium mb-2">No Exercises Selected</h4>
+                    <p className="text-foreground-500">Search and add exercises from the list below</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    <Reorder.Group
+                      axis="y"
+                      values={customWorkoutExercises}
+                      onReorder={setCustomWorkoutExercises}
+                      className="space-y-3"
+                    >
+                      {customWorkoutExercises.map((exercise, index) => (
+                        <Reorder.Item
+                          key={exercise.id}
+                          value={exercise}
+                          className="relative touch-none"
+                        >
+                          <Card className="shadow-md cursor-grab active:cursor-grabbing">
+                            <CardBody className="p-3">
+                              <div className="flex gap-2 items-center mb-3">
+                                <div className="flex items-center justify-center w-6 h-6 bg-secondary/10 text-secondary rounded-full text-xs font-bold">
+                                  {index + 1}
+                                </div>
+                                <IconGripVertical size={16} className="text-foreground-400" />
+                                <p className="text-sm font-medium flex-1">{exercise.exerciseName}</p>
+                                <Button
+                                  size="sm"
+                                  variant="flat"
+                                  color="danger"
+                                  isIconOnly
+                                  onPress={() => removeExerciseFromCustomWorkout(index)}
+                                >
+                                  <IconTrash size={16} />
+                                </Button>
+                              </div>
+
+                              {/* Tracking Type Radio Group */}
+                              <div className="mb-3">
+                                <div className="flex gap-4">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name={`tracking-${exercise.id}`}
+                                      value="reps"
+                                      checked={exercise.trackingType === "reps"}
+                                      onChange={() => updateCustomWorkoutExercise(index, "trackingType", "reps")}
+                                      className="text-primary"
+                                    />
+                                    <span className="text-sm">Reps</span>
+                                  </label>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name={`tracking-${exercise.id}`}
+                                      value="duration"
+                                      checked={exercise.trackingType === "duration"}
+                                      onChange={() => updateCustomWorkoutExercise(index, "trackingType", "duration")}
+                                      className="text-primary"
+                                    />
+                                    <span className="text-sm">Duration (seconds)</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                <Input
+                                  label="Sets"
+                                  type="number"
+                                  size="sm"
+                                  value={exercise.sets.toString()}
+                                  onChange={(e) => updateCustomWorkoutExercise(index, "sets", parseInt(e.target.value) || 1)}
+                                  min="1"
+                                />
+
+                                {exercise.trackingType === "reps" ? (
+                                  <Input
+                                    label="Reps"
+                                    type="number"
+                                    size="sm"
+                                    value={exercise.reps?.toString() || ""}
+                                    onChange={(e) => updateCustomWorkoutExercise(index, "reps", parseInt(e.target.value) || 1)}
+                                    min="1"
+                                  />
+                                ) : (
+                                  <Input
+                                    label="Duration"
+                                    type="number"
+                                    size="sm"
+                                    value={exercise.exerciseDuration?.toString() || ""}
+                                    onChange={(e) => updateCustomWorkoutExercise(index, "exerciseDuration", parseInt(e.target.value) || 30)}
+                                    min="1"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="flex justify-between">
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="flat"
+                                    isIconOnly
+                                    onPress={() => moveExerciseUp(index)}
+                                    isDisabled={index === 0}
+                                    title="Move up"
+                                  >
+                                    <IconArrowUp size={16} />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="flat"
+                                    isIconOnly
+                                    onPress={() => moveExerciseDown(index)}
+                                    isDisabled={index === customWorkoutExercises.length - 1}
+                                    title="Move down"
+                                  >
+                                    <IconArrowDown size={16} />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardBody>
+                          </Card>
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Exercise Selection */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h4 className="text-md font-semibold">Exercise Library</h4>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search exercises..."
+                    startContent={<IconSearch size={20} />}
+                    value={exerciseSearchTerm}
+                    onChange={(e) => setExerciseSearchTerm(e.target.value)}
+                    className="w-full sm:w-64"
+                    size="sm"
+                  />
+                  <Select
+                    placeholder="Category"
+                    selectedKeys={selectedCategory ? [selectedCategory] : []}
+                    onSelectionChange={(keys) => setSelectedCategory(Array.from(keys)[0] as string || "all")}
+                    className="w-full sm:w-40"
+                    size="sm"
+                  >
+                    <SelectItem key="all" value="all">All Categories</SelectItem>
+                    {uniqueCategories.map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-0">
+              <div className="max-h-96 overflow-y-auto">
+                <Table
+                  aria-label="Exercise Selection Table"
+                  shadow="none"
+                  isCompact
+                  classNames={{
+                    wrapper: "p-0",
+                  }}
+                >
+                  <TableHeader>
+                    <TableColumn>NAME</TableColumn>
+                    <TableColumn className="hidden lg:table-cell">MUSCLES</TableColumn>
+                    <TableColumn width={80}>
+                      <></>
+                    </TableColumn>
+                  </TableHeader>
+                  <TableBody emptyContent={
+                    <div className="text-center py-8">
+                      <IconSearch size={48} className="mx-auto mb-4 opacity-50 text-foreground-400" />
+                      <h4 className="text-lg font-medium mb-2">No Exercises Found</h4>
+                      <p className="text-foreground-500">Try adjusting your search or category filters</p>
+                    </div>
+                  }>
+                    {filteredExercises.map((exercise) => (
+                      <TableRow key={exercise.id}>
+                        <TableCell className="capitalize">
+                          <User
+                            avatarProps={{
+                              radius: "lg",
+                              src: exercise.image || '/images/placeholder-exercise.jpg',
+                              className: "hidden md:block",
+                            }}
+                            description={
+                              <span className="text-zinc-600 dark:text-zinc-400">
+                                {formatDisplayName(exercise.category)}
+                              </span>
+                            }
+                            name={exercise.name}
+                          />
+                        </TableCell>
+                        <TableCell className="capitalize hidden lg:table-cell">
+                          <div className="flex flex-col">
+                            <p className="text-bold text-small">
+                              {exercise.primary_muscles && Array.isArray(exercise.primary_muscles)
+                                ? exercise.primary_muscles.map((muscle: string) => formatDisplayName(muscle)).join(", ")
+                                : ""
+                              }
+                            </p>
+                            <p className="text-bold text-tiny text-zinc-600 dark:text-zinc-400">
+                              {exercise.secondary_muscles && Array.isArray(exercise.secondary_muscles)
+                                ? exercise.secondary_muscles.map((muscle: string) => formatDisplayName(muscle)).join(", ")
+                                : ""
+                              }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            color="secondary"
+                            variant="flat"
+                            isIconOnly
+                            onPress={() => addExerciseToCustomWorkout(exercise)}
+                            isDisabled={customWorkoutExercises.some(ex => ex.exerciseId === exercise.id)}
+                            title={customWorkoutExercises.some(ex => ex.exerciseId === exercise.id) ? "Already added" : "Add to workout"}
+                          >
+                            <IconPlus size={16} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
 
       {/* Assign Workout Modal */}
       <BottomSheet
