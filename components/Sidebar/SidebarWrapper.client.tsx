@@ -10,8 +10,6 @@ export default function SidebarWrapper({
 }) {
   const { sidebarCollapse, mobileMenuOpen, toggleMobileMenu } = useSidebarToggleContext();
 
-  console.log('SidebarWrapper - mobileMenuOpen:', mobileMenuOpen);
-  console.log('SidebarWrapper - toggleMobileMenu function:', toggleMobileMenu);
 
   // Close mobile menu when clicking outside or pressing escape
   // Also handle body scroll lock

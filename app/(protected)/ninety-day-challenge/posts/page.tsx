@@ -94,7 +94,7 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
             Community Posts Not Available
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            You don't have access to community posts yet. Contact an admin to get enabled for the 90-day challenge.
+            You don't have access to community posts yet. Contact an admin to get enabled for the challenges.
           </p>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
             </Link>
             <IconChevronRight size={16} />
             <Link href="/admin/ninety-day-challenge" className="hover:text-foreground-700">
-              90-Day Challenge
+              Challenge Management
             </Link>
             <IconChevronRight size={16} />
             <Link href={`/admin/ninety-day-challenge/challenges/${requestedChallengeId}`} className="hover:text-foreground-700">
@@ -126,7 +126,7 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
           // User flow
           <>
             <Link href="/ninety-day-challenge" className="hover:text-foreground-700">
-              90-Day Challenge
+              Challenges
             </Link>
             <IconChevronRight size={16} />
             <span className="text-foreground-900 font-medium">Community Posts</span>

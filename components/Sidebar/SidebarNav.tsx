@@ -50,7 +50,7 @@ export default function SidebarNav() {
           const adminData = await adminResponse.json();
           setIsAdmin(adminData.isAdmin);
 
-          // Check if user is enabled for 90-day challenge
+          // Check if user is enabled for challenge access
           const challengeResponse = await fetch('/api/ninety-day-challenge/check-access');
           if (challengeResponse.ok) {
             const challengeData = await challengeResponse.json();
@@ -111,7 +111,7 @@ export default function SidebarNav() {
 
             <NavItem
               icon={<IconCalendarEvent size={22} className="shrink-0" />}
-              label="90-Day Challenge"
+              label="Challenges"
               href="/admin/ninety-day-challenge"
               active={pathname === "/admin/ninety-day-challenge"}
             />
@@ -188,7 +188,7 @@ export default function SidebarNav() {
               <>
                 <NavItem
                   icon={<IconCalendarEvent size={22} className="shrink-0" />}
-                  label="90-Day Challenge"
+                  label="Challenges"
                   href="/ninety-day-challenge"
                   active={pathname === "/ninety-day-challenge"}
                 />

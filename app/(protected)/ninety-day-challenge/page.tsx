@@ -72,10 +72,10 @@ export default async function NinetyDayChallengePage({ searchParams }: PageProps
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-200">
-            90-Day Challenge Not Available
+            Challenge Not Available
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            You don't have access to the 90-day challenge yet. Contact an admin to get enabled.
+            You don't have access to the challenges yet. Contact an admin to get enabled.
           </p>
         </div>
       </div>

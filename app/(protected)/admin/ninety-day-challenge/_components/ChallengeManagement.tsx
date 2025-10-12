@@ -301,7 +301,7 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
                 <div>
                   <h3 className="font-semibold text-lg text-foreground mb-2">No Challenges Yet</h3>
                   <p className="text-zinc-500 text-sm">
-                    Create your first 90-day transformation challenge to get started.
+                    Create your first transformation challenge to get started.
                   </p>
                 </div>
               </div>

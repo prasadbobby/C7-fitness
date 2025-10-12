@@ -65,7 +65,7 @@ export default function NinetyDayChallengePage() {
           Admin
         </Link>
         <IconChevronRight size={16} />
-        <span className="text-foreground-900 font-medium">90-Day Challenge</span>
+        <span className="text-foreground-900 font-medium">Challenge Management</span>
       </nav>
 
       {/* Custom Header */}
@@ -76,7 +76,7 @@ export default function NinetyDayChallengePage() {
           </div>
           <div>
             <h1 className="text-2xl md:text-4xl font-bold text-foreground">
-              90-Day Challenge Management
+              Challenge Management
             </h1>
             <p className="text-zinc-500 text-sm md:text-base">
               Manage transformation challenges and monitor participant progress
@@ -175,7 +175,7 @@ export default function NinetyDayChallengePage() {
                     Challenge Management
                   </h2>
                   <p className="text-sm text-zinc-500 mt-1">
-                    Create and manage 90-day transformation challenges
+                    Create and manage transformation challenges
                   </p>
                 </div>
               </div>

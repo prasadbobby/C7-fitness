@@ -379,7 +379,8 @@ export default function UserProgressDashboard() {
   const { user, assignments, workoutLogs, stats } = progressData;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden">
+      <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 w-full">
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-sm text-foreground-500">
         <Link href="/admin/users" className="hover:text-foreground-700 transition-colors">
@@ -407,16 +408,7 @@ export default function UserProgressDashboard() {
                   <IconUser size={24} className="text-primary sm:w-8 sm:h-8" />
                 </div>
               )}
-              <div className="absolute -bottom-1 -right-1">
-                <Chip
-                  color={user?.role === "ADMIN" ? "warning" : "primary"}
-                  size="sm"
-                  variant="shadow"
-                  className="text-xs font-semibold"
-                >
-                  {user?.role || 'USER'}
-                </Chip>
-              </div>
+             
             </div>
             <div className="text-center sm:text-left flex-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
@@ -465,7 +457,7 @@ export default function UserProgressDashboard() {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
         <Card className="bg-gradient-to-br from-success/10 to-success/20 border-success/20">
           <CardBody className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
@@ -524,7 +516,7 @@ export default function UserProgressDashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Card>
+      <Card className="w-full max-w-full overflow-hidden">
         <CardBody className="p-0">
           {/* Custom Tab Implementation */}
           <div className="w-full">
@@ -588,9 +580,9 @@ export default function UserProgressDashboard() {
             </div>
 
             {/* Tab Content */}
-            <div className="min-h-96">
+            <div className="min-h-96 w-full max-w-full overflow-hidden">
               {currentTab === "management" && (
-                <div className="space-y-6 p-4 sm:p-6">
+                <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
                   {/* Membership Manager */}
                   <MembershipManager
                     userId={user.id}
@@ -614,7 +606,7 @@ export default function UserProgressDashboard() {
               )}
 
               {currentTab === "analytics" && (
-                <div className="space-y-6 p-4 sm:p-6">
+                <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
                   {/* Detailed Stats */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <Card>
@@ -786,7 +778,7 @@ export default function UserProgressDashboard() {
               )}
 
               {currentTab === "assignments" && (
-                <div className="space-y-4 p-4 sm:p-6">
+                <div className="space-y-4 p-3 sm:p-4 lg:p-6">
                   <Card>
                     <CardHeader>
                       <div className="flex items-center gap-3">
@@ -811,19 +803,21 @@ export default function UserProgressDashboard() {
                           </div>
                         ) : (
                           assignments?.map((assignment) => (
-                            <div key={assignment.id} className="p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors">
-                              <div className="flex justify-between items-start mb-3">
-                                <div>
-                                  <h4 className="font-semibold text-foreground">{assignment.workoutPlan.name}</h4>
+                            <div key={assignment.id} className="p-3 sm:p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors w-full max-w-full overflow-hidden">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="font-semibold text-foreground truncate">{assignment.workoutPlan.name}</h4>
                                   {assignment.workoutPlan.systemRoutineCategory && (
                                     <p className="text-sm text-foreground-500 mt-1">
                                       {assignment.workoutPlan.systemRoutineCategory}
                                     </p>
                                   )}
                                 </div>
-                                <Chip color={getStatusColor(assignment.status)} variant="flat" size="sm">
-                                  {assignment.status}
-                                </Chip>
+                                <div className="flex-shrink-0">
+                                  <Chip color={getStatusColor(assignment.status)} variant="flat" size="sm">
+                                    {assignment.status}
+                                  </Chip>
+                                </div>
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm text-foreground-500 mb-3">
                                 <div className="flex items-center gap-2">
@@ -852,7 +846,7 @@ export default function UserProgressDashboard() {
               )}
 
               {currentTab === "history" && (
-                <div className="space-y-4 p-4 sm:p-6">
+                <div className="space-y-4 p-3 sm:p-4 lg:p-6">
                   <Card>
                     <CardHeader>
                       <div className="flex items-center gap-3">
@@ -883,10 +877,10 @@ export default function UserProgressDashboard() {
                             const totalWorkoutSeconds = log.duration; // Duration is already in seconds
 
                             return (
-                              <div key={log.id} className="p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors">
+                              <div key={log.id} className="p-3 sm:p-4 border border-divider rounded-lg hover:bg-content2/50 transition-colors w-full max-w-full overflow-hidden">
                                 <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-3 gap-3">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-foreground">{log.WorkoutPlan.name}</h4>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-foreground truncate">{log.WorkoutPlan.name}</h4>
                                     <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-500 mt-1">
                                       <div className="flex items-center gap-1">
                                         <IconCalendar size={14} />
@@ -898,29 +892,53 @@ export default function UserProgressDashboard() {
                                       </div>
                                     </div>
 
-                                    {/* Enhanced Timing Information */}
+                                    {/* Enhanced Timing Information - Mobile Optimized */}
                                     {hasTimingData && (
-                                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
-                                          <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                          <div>
-                                            <div className="text-xs text-primary-600 font-medium">Active Time</div>
-                                            <div className="text-sm font-semibold text-primary">{formatDuration(totalActiveTime)}</div>
+                                      <div className="mt-2">
+                                        {/* Mobile: Stacked layout */}
+                                        <div className="flex flex-wrap gap-2 sm:hidden">
+                                          <div className="flex items-center gap-2 px-2 py-1 bg-primary/10 rounded text-xs">
+                                            <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                                            <span className="text-primary-600 font-medium">Active:</span>
+                                            <span className="text-primary font-semibold">{formatDuration(totalActiveTime)}</span>
                                           </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 p-2 bg-warning/10 rounded-lg">
-                                          <div className="w-2 h-2 bg-warning rounded-full"></div>
-                                          <div>
-                                            <div className="text-xs text-warning-600 font-medium">Rest Time</div>
-                                            <div className="text-sm font-semibold text-warning">{formatDuration(totalRestTime)}</div>
+                                          <div className="flex items-center gap-2 px-2 py-1 bg-warning/10 rounded text-xs">
+                                            <div className="w-1.5 h-1.5 bg-warning rounded-full"></div>
+                                            <span className="text-warning-600 font-medium">Rest:</span>
+                                            <span className="text-warning font-semibold">{formatDuration(totalRestTime)}</span>
                                           </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 p-2 bg-secondary/10 rounded-lg">
-                                          <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                                          <div>
-                                            <div className="text-xs text-secondary-600 font-medium">Efficiency</div>
-                                            <div className="text-sm font-semibold text-secondary">
+                                          <div className="flex items-center gap-2 px-2 py-1 bg-secondary/10 rounded text-xs">
+                                            <div className="w-1.5 h-1.5 bg-secondary rounded-full"></div>
+                                            <span className="text-secondary-600 font-medium">Efficiency:</span>
+                                            <span className="text-secondary font-semibold">
                                               {totalWorkoutSeconds > 0 ? Math.round((totalActiveTime / totalWorkoutSeconds) * 100) : 0}%
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Desktop: Grid layout */}
+                                        <div className="hidden sm:grid grid-cols-3 gap-2">
+                                          <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
+                                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                            <div>
+                                              <div className="text-xs text-primary-600 font-medium">Active Time</div>
+                                              <div className="text-sm font-semibold text-primary">{formatDuration(totalActiveTime)}</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 p-2 bg-warning/10 rounded-lg">
+                                            <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                            <div>
+                                              <div className="text-xs text-warning-600 font-medium">Rest Time</div>
+                                              <div className="text-sm font-semibold text-warning">{formatDuration(totalRestTime)}</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 p-2 bg-secondary/10 rounded-lg">
+                                            <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                            <div>
+                                              <div className="text-xs text-secondary-600 font-medium">Efficiency</div>
+                                              <div className="text-sm font-semibold text-secondary">
+                                                {totalWorkoutSeconds > 0 ? Math.round((totalActiveTime / totalWorkoutSeconds) * 100) : 0}%
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
@@ -939,7 +957,33 @@ export default function UserProgressDashboard() {
                                 </div>
                                 <div className="space-y-2">
                                   <p className="text-sm font-medium text-foreground-700">Exercises completed:</p>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+                                  {/* Mobile: Stacked layout */}
+                                  <div className="space-y-2 sm:hidden">
+                                    {log.exercises.map((exercise, index) => (
+                                      <div key={index} className="text-sm p-2 bg-content2 rounded">
+                                        <div className="font-medium text-sm">{exercise.Exercise.name}</div>
+                                        <div className="text-xs text-foreground-500 flex flex-wrap gap-2 mt-1">
+                                          <span>{exercise.sets.length} sets</span>
+                                          {exercise.sets.some(set => set.restTimeSeconds) && (
+                                            <span className="text-warning-600">
+                                              • Rest: {formatDuration(
+                                                Math.round(
+                                                  exercise.sets
+                                                    .filter(set => set.restTimeSeconds)
+                                                    .reduce((sum, set) => sum + (set.restTimeSeconds || 0), 0) /
+                                                  exercise.sets.filter(set => set.restTimeSeconds).length
+                                                )
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Desktop: Grid layout */}
+                                  <div className="hidden sm:grid grid-cols-2 gap-2">
                                     {log.exercises.map((exercise, index) => (
                                       <div key={index} className="text-sm p-2 bg-content2 rounded">
                                         <div className="font-medium">{exercise.Exercise.name}</div>
@@ -976,35 +1020,42 @@ export default function UserProgressDashboard() {
         </CardBody>
       </Card>
 
-      {/* Edit Workout Modal */}
+      {/* Edit Workout Modal - Mobile Optimized */}
       <BottomSheet
         isOpen={isEditOpen}
         onClose={onEditClose}
         title="Edit Workout"
         size="5xl"
         footer={
-          <>
-            <Button variant="ghost" onPress={onEditClose}>
+          <div className="flex gap-2 w-full">
+            <Button variant="ghost" onPress={onEditClose} className="flex-1 sm:flex-initial">
               Cancel
             </Button>
-            <Button color="primary" onPress={handleSaveWorkout} isLoading={editLoading}>
-              <IconDeviceFloppy size={16} />
-              Save Changes
+            <Button
+              color="primary"
+              onPress={handleSaveWorkout}
+              isLoading={editLoading}
+              startContent={!editLoading && <IconDeviceFloppy size={16} />}
+              className="flex-1 sm:flex-initial"
+            >
+              <span className="hidden sm:inline">Save Changes</span>
+              <span className="sm:hidden">Save</span>
             </Button>
-          </>
+          </div>
         }
       >
         {editingWorkout && (
           <div className="space-y-6">
-            {/* Date and Duration */}
+            {/* Date and Duration - Mobile Optimized */}
             <Card>
-              <CardHeader className="text-lg px-4">Date & Duration</CardHeader>
-              <CardBody className="grid grid-cols-2 gap-4 px-4 pt-0">
+              <CardHeader className="text-base sm:text-lg px-3 sm:px-4 py-3">Date & Duration</CardHeader>
+              <CardBody className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 px-3 sm:px-4 pt-0">
                 <Input
                   type="number"
                   label="Duration (Minutes)"
                   value={editWorkoutDuration}
                   onChange={(e) => setEditWorkoutDuration(e.target.value)}
+                  size="sm"
                 />
                 <DatePicker
                   label="Date"
@@ -1014,80 +1065,134 @@ export default function UserProgressDashboard() {
               </CardBody>
             </Card>
 
-            {/* Exercises */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Exercises - Mobile Optimized */}
+            <div className="space-y-4">
               {editingWorkout.exercises.map((exercise: any, exerciseIndex: number) => (
                 <Card key={exercise.id}>
-                  <CardHeader className="text-lg px-4">{exercise.Exercise.name}</CardHeader>
-                  <CardBody className="pt-0 px-4">
-                    <Table removeWrapper shadow="none">
-                      <TableHeader>
-                        <TableColumn>SET</TableColumn>
-                        <TableColumn>WEIGHT</TableColumn>
-                        <TableColumn>
-                          {exercise.trackingType === "reps" ? "REPS" : "DURATION"}
-                        </TableColumn>
-                      </TableHeader>
-                      <TableBody>
-                        {editWorkoutSets[exerciseIndex]?.map((set: any, setIndex: number) => (
-                          <TableRow key={setIndex}>
-                            <TableCell>{setIndex + 1}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                size="sm"
-                                value={set.weight?.toString() || ""}
-                                onChange={(e) =>
-                                  handleSetChange(
-                                    exerciseIndex,
-                                    setIndex,
-                                    "weight",
-                                    parseFloat(e.target.value) || null
-                                  )
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                size="sm"
-                                value={
-                                  exercise.trackingType === "reps"
-                                    ? set.reps?.toString() || ""
-                                    : set.exerciseDuration?.toString() || ""
-                                }
-                                onChange={(e) =>
-                                  handleSetChange(
-                                    exerciseIndex,
-                                    setIndex,
-                                    exercise.trackingType === "reps" ? "reps" : "exerciseDuration",
-                                    parseFloat(e.target.value) || null
-                                  )
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <CardHeader className="text-lg px-3 sm:px-4 py-3">
+                    <h3 className="text-base sm:text-lg font-semibold truncate">{exercise.Exercise.name}</h3>
+                  </CardHeader>
+                  <CardBody className="pt-0 px-3 sm:px-4">
+                    {/* Mobile: Stacked layout */}
+                    <div className="space-y-3 sm:hidden">
+                      {editWorkoutSets[exerciseIndex]?.map((set: any, setIndex: number) => (
+                        <div key={setIndex} className="p-3 bg-content2 rounded-lg border border-divider">
+                          <div className="text-sm font-medium text-foreground-600 mb-2">Set {setIndex + 1}</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="number"
+                              label="Weight (kg)"
+                              placeholder="0"
+                              size="sm"
+                              value={set.weight?.toString() || ""}
+                              onChange={(e) =>
+                                handleSetChange(
+                                  exerciseIndex,
+                                  setIndex,
+                                  "weight",
+                                  parseFloat(e.target.value) || null
+                                )
+                              }
+                            />
+                            <Input
+                              type="number"
+                              label={exercise.trackingType === "reps" ? "Reps" : "Duration (s)"}
+                              placeholder="0"
+                              size="sm"
+                              value={
+                                exercise.trackingType === "reps"
+                                  ? set.reps?.toString() || ""
+                                  : set.exerciseDuration?.toString() || ""
+                              }
+                              onChange={(e) =>
+                                handleSetChange(
+                                  exerciseIndex,
+                                  setIndex,
+                                  exercise.trackingType === "reps" ? "reps" : "exerciseDuration",
+                                  parseFloat(e.target.value) || null
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop: Table layout */}
+                    <div className="hidden sm:block">
+                      <Table removeWrapper shadow="none">
+                        <TableHeader>
+                          <TableColumn>SET</TableColumn>
+                          <TableColumn>WEIGHT</TableColumn>
+                          <TableColumn>
+                            {exercise.trackingType === "reps" ? "REPS" : "DURATION"}
+                          </TableColumn>
+                        </TableHeader>
+                        <TableBody>
+                          {editWorkoutSets[exerciseIndex]?.map((set: any, setIndex: number) => (
+                            <TableRow key={setIndex}>
+                              <TableCell>{setIndex + 1}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  size="sm"
+                                  value={set.weight?.toString() || ""}
+                                  onChange={(e) =>
+                                    handleSetChange(
+                                      exerciseIndex,
+                                      setIndex,
+                                      "weight",
+                                      parseFloat(e.target.value) || null
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  size="sm"
+                                  value={
+                                    exercise.trackingType === "reps"
+                                      ? set.reps?.toString() || ""
+                                      : set.exerciseDuration?.toString() || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleSetChange(
+                                      exerciseIndex,
+                                      setIndex,
+                                      exercise.trackingType === "reps" ? "reps" : "exerciseDuration",
+                                      parseFloat(e.target.value) || null
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </CardBody>
-                  <CardFooter className="gap-2 px-4 bg-default-100">
-                    <ButtonGroup>
+                  <CardFooter className="gap-2 px-3 sm:px-4 bg-default-100">
+                    <ButtonGroup size="sm" className="w-full sm:w-auto">
                       <Button
                         size="sm"
                         onClick={() => handleAddSet(exerciseIndex)}
                         startContent={<IconPlus size={14} />}
+                        className="flex-1 sm:flex-initial"
                       >
-                        Add Set
+                        <span className="hidden sm:inline">Add Set</span>
+                        <span className="sm:hidden">Add</span>
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => handleRemoveSet(exerciseIndex)}
                         startContent={<IconMinus size={14} />}
+                        className="flex-1 sm:flex-initial"
                       >
-                        Remove Set
+                        <span className="hidden sm:inline">Remove Set</span>
+                        <span className="sm:hidden">Remove</span>
                       </Button>
                     </ButtonGroup>
                   </CardFooter>
@@ -1097,6 +1202,7 @@ export default function UserProgressDashboard() {
           </div>
         )}
       </BottomSheet>
+      </div>
     </div>
   );
 }

@@ -116,7 +116,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
         </Link>
         <IconChevronRight size={16} />
         <Link href="/admin/ninety-day-challenge" className="hover:text-foreground-700">
-          90-Day Challenge
+          Challenge Management
         </Link>
         <IconChevronRight size={16} />
         <span className="text-foreground-900 font-medium">
