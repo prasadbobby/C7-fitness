@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs";
+import { getAuth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId } = getAuth(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -28,21 +28,22 @@ export async function GET(request: NextRequest) {
       activeGoal = null; // Set to null so UI shows "no active goal"
     }
 
-    // Get today's step log
+    // Get today's step log - ensure UTC consistency
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Create a proper UTC date for today
+    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0));
 
     const todayLog = await prisma.stepLog.findUnique({
       where: {
         userId_date: {
           userId,
-          date: today,
+          date: todayUTC,
         },
       },
     });
 
     // Get last 7 days of step logs
-    const sevenDaysAgo = new Date(today);
+    const sevenDaysAgo = new Date(todayUTC);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
     const weeklyLogs = await prisma.stepLog.findMany({
@@ -50,14 +51,14 @@ export async function GET(request: NextRequest) {
         userId,
         date: {
           gte: sevenDaysAgo,
-          lte: today,
+          lte: todayUTC,
         },
       },
       orderBy: { date: "asc" },
     });
 
     // Get last 30 days for monthly stats
-    const thirtyDaysAgo = new Date(today);
+    const thirtyDaysAgo = new Date(todayUTC);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
 
     const monthlyLogs = await prisma.stepLog.findMany({
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
         userId,
         date: {
           gte: thirtyDaysAgo,
-          lte: today,
+          lte: todayUTC,
         },
       },
       orderBy: { date: "asc" },
@@ -75,10 +76,10 @@ export async function GET(request: NextRequest) {
     const stats = calculateStepStats(monthlyLogs, weeklyLogs, activeGoal);
 
     // Get current streak
-    const streak = await calculateStreak(userId, today);
+    const streak = await calculateStreak(userId, todayUTC);
 
     // Calculate weekly progress for current week
-    const currentWeekStart = new Date(today);
+    const currentWeekStart = new Date(todayUTC);
     const dayOfWeek = currentWeekStart.getDay();
     currentWeekStart.setDate(currentWeekStart.getDate() - dayOfWeek);
     currentWeekStart.setHours(0, 0, 0, 0);
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
         userId,
         date: {
           gte: currentWeekStart,
-          lte: today,
+          lte: todayUTC,
         },
       },
       orderBy: { date: "asc" },

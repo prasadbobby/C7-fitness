@@ -23,6 +23,9 @@ import {
   IconTrophy,
   IconChartBar,
 } from "@tabler/icons-react";
+import GoogleFitnessIntegration from "./GoogleFitnessIntegration";
+import FitnessDataCards from "./FitnessDataCards";
+import DeviceHealthIntegration from "./DeviceHealthIntegration";
 
 interface StepData {
   activeGoal: {
@@ -79,12 +82,73 @@ export default function StepDashboard() {
   const [logSteps, setLogSteps] = useState("");
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [submitting, setSubmitting] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [autoSyncing, setAutoSyncing] = useState(false);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
-    fetchStepData();
-  }, []);
+    initializeData();
+
+    // Set up periodic refresh for real-time step data (every 5 minutes)
+    const refreshInterval = setInterval(() => {
+      if (syncStatus?.isConnected) {
+        console.log("Performing periodic step data refresh...");
+        fetchStepData();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [syncStatus?.isConnected]);
+
+  const initializeData = async () => {
+    await checkSyncStatus();
+    await fetchStepData();
+  };
+
+  const checkSyncStatus = async () => {
+    try {
+      const response = await fetch("/api/fitness/auto-sync");
+      if (response.ok) {
+        const status = await response.json();
+        setSyncStatus(status);
+
+        // Auto-sync if connected and it's been more than 1 hour since last sync (more frequent for real-time data)
+        if (status.isConnected && status.syncEnabled) {
+          const lastSync = status.lastSyncAt ? new Date(status.lastSyncAt) : null;
+          const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
+
+          if (!lastSync || lastSync < oneHourAgo) {
+            console.log("Auto-syncing Google Fitness data...");
+            await performAutoSync();
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking sync status:", error);
+    }
+  };
+
+  const performAutoSync = async () => {
+    setAutoSyncing(true);
+    try {
+      const response = await fetch("/api/fitness/auto-sync", {
+        method: "POST"
+      });
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Auto-sync completed:", result);
+        // Refresh step data immediately after sync
+        await fetchStepData();
+        // Also update sync status
+        await checkSyncStatus();
+      }
+    } catch (error) {
+      console.error("Error performing auto-sync:", error);
+    } finally {
+      setAutoSyncing(false);
+    }
+  };
 
   const fetchStepData = async () => {
     try {
@@ -145,22 +209,69 @@ export default function StepDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Step Tracking</h2>
-          <p className="text-foreground-500">Track your daily steps and achieve your goals</p>
+          <h2 className="text-xl lg:text-2xl font-bold text-foreground">Step Tracking</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <p className="text-sm lg:text-base text-foreground-500">
+              {syncStatus?.isConnected
+                ? "Automatic step counting from Google Fit"
+                : "Track your daily steps and achieve your goals"
+              }
+            </p>
+            <div className="flex items-center gap-2">
+              {autoSyncing && (
+                <div className="flex items-center gap-1 text-primary">
+                  <div className="animate-spin h-3 w-3 border border-primary border-t-transparent rounded-full"></div>
+                  <span className="text-xs">Syncing...</span>
+                </div>
+              )}
+             
+            </div>
+          </div>
         </div>
-        <Button
-          color="primary"
-          startContent={<IconPlus size={20} />}
-          onPress={() => {
-            setLogDate(new Date().toISOString().split('T')[0]); // Reset to today when opening
-            onOpen();
-          }}
-        >
-          Log Steps
-        </Button>
+
+        <div className="flex justify-end lg:justify-start">
+          {syncStatus?.isConnected ? (
+            /* Show sync button when Google Fit is connected */
+            <Button
+              color="success"
+              variant="flat"
+              startContent={<IconTrendingUp size={16} />}
+              onPress={performAutoSync}
+              isLoading={autoSyncing}
+              size="md"
+              className="w-full sm:w-auto"
+            >
+              {autoSyncing ? "Syncing..." : "Sync Now"}
+            </Button>
+          ) : (
+            /* Show manual entry when not connected */
+            <Button
+              color="primary"
+              startContent={<IconPlus size={20} />}
+              onPress={() => {
+                setLogDate(new Date().toISOString().split('T')[0]);
+                onOpen();
+              }}
+              className="w-full sm:w-auto"
+            >
+              Log Steps
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Device Health Integration - supports all devices */}
+      <DeviceHealthIntegration onSyncComplete={fetchStepData} />
+
+      {/* Comprehensive Fitness Data - show if any device is connected */}
+      {syncStatus?.isConnected && (
+        <div>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Today's Fitness Data</h3>
+          <FitnessDataCards />
+        </div>
+      )}
 
       {!activeGoal ? (
         <Card shadow="none" className="shadow-md">

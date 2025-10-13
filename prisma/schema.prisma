@@ -333,6 +333,9 @@ model StepLog {
   carryOverSteps  Int       @default(0) // Steps carried over from previous day
   excessSteps     Int       @default(0) // Excess steps that reduce tomorrow's goal
   isCompleted     Boolean   @default(false) // Whether daily goal was met
+  dataSource      StepDataSource @default(MANUAL) // Whether manually entered or from Google Fit
+  googleFitDataId String?   // Reference to Google Fit data if auto-synced
+  lastUpdated     DateTime  @default(now()) // When this record was last updated
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -341,6 +344,7 @@ model StepLog {
 
   @@unique([userId, date])
   @@index([userId, date])
+  @@index([dataSource])
 }
 
 model StepChallenge {
@@ -655,4 +659,173 @@ enum TimerType {
   REST
   EXERCISE
   SET
+}
+
+// Google Fitness API Integration Models
+
+model GoogleFitnessConnection {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  accessToken       String    // Encrypted access token
+  refreshToken      String?   // Encrypted refresh token
+  tokenExpiry       DateTime  // When the access token expires
+  isConnected       Boolean   @default(true)
+  lastSyncAt        DateTime? // Last successful sync
+  syncEnabled       Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  fitnessData       GoogleFitnessData[]
+
+  @@index([userId, isConnected])
+}
+
+model GoogleFitnessData {
+  id                  String    @id @default(uuid())
+  userId              String
+  connectionId        String
+  dataType            FitnessDataType
+  date                DateTime  // Date for this data (date only, no time)
+  value               Float     // Primary value (steps, bpm, calories, etc.)
+  unit                String?   // Unit of measurement
+  startTime           DateTime? // For time-based data
+  endTime             DateTime? // For time-based data
+  sourceAppName       String?   // App that provided the data (Google Fit, etc.)
+  sourceDataStreamId  String?   // Google Fit data stream ID
+  isProcessed         Boolean   @default(false) // Whether data has been processed into our system
+  rawData             String?   // JSON string of raw Google Fit data
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  connection          GoogleFitnessConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dataType, date, startTime])
+  @@index([userId, dataType, date])
+  @@index([connectionId, isProcessed])
+}
+
+model FitnessDataSync {
+  id                String              @id @default(uuid())
+  userId            String
+  syncType          FitnessSyncType
+  status            FitnessSyncStatus   @default(PENDING)
+  startTime         DateTime            @default(now())
+  endTime           DateTime?
+  recordsProcessed  Int                 @default(0)
+  errorMessage      String?
+  syncPeriodStart   DateTime            // Start of the period being synced
+  syncPeriodEnd     DateTime            // End of the period being synced
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([userId, status])
+  @@index([syncType, status])
+}
+
+// Enhanced fitness data models
+model HeartRateData {
+  id                String    @id @default(uuid())
+  userId            String
+  date              DateTime  // Date for this heart rate data
+  averageHeartRate  Float?    // Average heart rate for the day (bpm)
+  maxHeartRate      Float?    // Maximum heart rate for the day (bpm)
+  minHeartRate      Float?    // Minimum heart rate for the day (bpm)
+  restingHeartRate  Float?    // Resting heart rate for the day (bpm)
+  dataSource        StepDataSource @default(MANUAL)
+  googleFitDataId   String?   // Reference to Google Fit data if auto-synced
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model CaloriesData {
+  id                String    @id @default(uuid())
+  userId            String
+  date              DateTime  // Date for this calories data
+  caloriesBurned    Float     // Total calories burned for the day
+  activeCalories    Float?    // Calories burned through active exercise
+  restingCalories   Float?    // Basal metabolic rate calories
+  dataSource        StepDataSource @default(MANUAL)
+  googleFitDataId   String?   // Reference to Google Fit data if auto-synced
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model SleepData {
+  id                String    @id @default(uuid())
+  userId            String
+  date              DateTime  // Date for this sleep data (the day the sleep ended)
+  sleepDuration     Float?    // Total sleep duration in hours
+  deepSleep         Float?    // Deep sleep duration in hours
+  lightSleep        Float?    // Light sleep duration in hours
+  remSleep          Float?    // REM sleep duration in hours
+  sleepEfficiency   Float?    // Sleep efficiency percentage
+  bedTime           DateTime? // When user went to bed
+  wakeTime          DateTime? // When user woke up
+  dataSource        StepDataSource @default(MANUAL)
+  googleFitDataId   String?   // Reference to Google Fit data if auto-synced
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model DistanceData {
+  id                String    @id @default(uuid())
+  userId            String
+  date              DateTime  // Date for this distance data
+  totalDistance     Float     // Total distance for the day (in meters)
+  walkingDistance   Float?    // Walking distance (in meters)
+  runningDistance   Float?    // Running distance (in meters)
+  cyclingDistance   Float?    // Cycling distance (in meters)
+  dataSource        StepDataSource @default(MANUAL)
+  googleFitDataId   String?   // Reference to Google Fit data if auto-synced
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// Enums for Google Fitness integration
+enum FitnessDataType {
+  STEPS
+  HEART_RATE
+  CALORIES_BURNED
+  DISTANCE
+  SLEEP
+  WEIGHT
+  BODY_FAT
+  ACTIVE_MINUTES
+  WORKOUT_SESSION
+}
+
+enum FitnessSyncType {
+  MANUAL
+  SCHEDULED
+  INITIAL
+  INCREMENTAL
+  FULL_RESYNC
+}
+
+enum FitnessSyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum StepDataSource {
+  MANUAL        // Manually entered by user
+  GOOGLE_FIT    // Automatically synced from Google Fit
+  HEALTH_CONNECT // Future: synced from Health Connect
 }
