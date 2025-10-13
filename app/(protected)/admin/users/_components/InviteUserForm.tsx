@@ -145,12 +145,12 @@ export function InviteUserForm({ onSuccess, onCancel }: InviteUserFormProps) {
         </div>
       )}
 
-      <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+      {/* <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
         <p className="text-sm text-warning-foreground">
           <strong>Note:</strong> The recipient will receive an email invitation from Clerk.
           Once they create their account, they will automatically be assigned the {selectedRoleOption?.label.toLowerCase()} role.
         </p>
-      </div>
+      </div> */}
 
       <div className="flex gap-2 justify-end">
         {onCancel && (

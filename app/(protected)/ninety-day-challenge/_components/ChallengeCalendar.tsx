@@ -32,6 +32,13 @@ export function ChallengeCalendar({ challengeId }: ChallengeCalendarProps) {
     }
   }, [currentDate, challengeId]);
 
+  // Reset calendar state when challenge changes
+  useEffect(() => {
+    setPosts([]);
+    setSelectedDate(null);
+    setCurrentDate(new Date());
+  }, [challengeId]);
+
   const fetchChallengeInfo = async () => {
     try {
       const response = await fetch(`/api/ninety-day-challenge/info?challengeId=${challengeId}`);

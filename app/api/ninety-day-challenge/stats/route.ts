@@ -4,17 +4,25 @@ import prisma from "@/prisma/prisma";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await currentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's active challenge participation
+    const { searchParams } = new URL(request.url);
+    const challengeId = searchParams.get('challengeId');
+
+    if (!challengeId) {
+      return NextResponse.json({ error: "Challenge ID is required" }, { status: 400 });
+    }
+
+    // Get user's participation in the specific challenge
     const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
       where: {
         userId: user.id,
+        challengeId: challengeId,
         isEnabled: true,
         challenge: {
           isActive: true,

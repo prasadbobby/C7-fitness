@@ -48,37 +48,68 @@ export async function GET(
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    // Fetch user data from Clerk for all participants
+    // Fetch user data from Clerk for all participants (optimized batch fetch)
     const { clerkClient } = await import("@clerk/nextjs");
-    const enhancedParticipants = await Promise.all(
-      challenge.participants.map(async (participant) => {
-        try {
-          const user = await clerkClient.users.getUser(participant.userId);
-          return {
-            ...participant,
-            user: {
-              firstName: user.firstName || "Unknown",
-              lastName: user.lastName || "User",
-              imageUrl: user.imageUrl || "",
-              email: user.emailAddresses?.[0]?.emailAddress || "",
-              username: user.username || user.firstName || "Unknown"
-            }
-          };
-        } catch (error) {
-          console.error(`Error fetching user ${participant.userId}:`, error);
-          return {
-            ...participant,
-            user: {
-              firstName: "Unknown",
-              lastName: "User",
-              imageUrl: "",
-              email: "unknown@example.com",
-              username: "Unknown"
-            }
-          };
-        }
-      })
-    );
+    const userIds = challenge.participants.map(p => p.userId);
+    let users: any[] = [];
+
+    try {
+      // Batch fetch users for better performance
+      if (userIds.length > 0) {
+        const batchResponse = await clerkClient.users.getUserList({
+          userId: userIds,
+          limit: 100 // Clerk API limit
+        });
+        users = batchResponse;
+      }
+    } catch (error) {
+      console.error("Error batch fetching users:", error);
+      // Fallback to individual fetches if batch fails
+      users = await Promise.all(
+        userIds.map(async (userId) => {
+          try {
+            return await clerkClient.users.getUser(userId);
+          } catch (err) {
+            console.error(`Error fetching user ${userId}:`, err);
+            return null;
+          }
+        })
+      );
+    }
+
+    // Create user lookup map for O(1) access
+    const userMap = new Map();
+    users.filter(Boolean).forEach(user => {
+      userMap.set(user.id, user);
+    });
+
+    const enhancedParticipants = challenge.participants.map((participant) => {
+      const user = userMap.get(participant.userId);
+
+      if (user) {
+        return {
+          ...participant,
+          user: {
+            firstName: user.firstName || "Unknown",
+            lastName: user.lastName || "User",
+            imageUrl: user.imageUrl || "",
+            email: user.emailAddresses?.[0]?.emailAddress || "",
+            username: user.username || user.firstName || "Unknown"
+          }
+        };
+      } else {
+        return {
+          ...participant,
+          user: {
+            firstName: "Unknown",
+            lastName: "User",
+            imageUrl: "",
+            email: "unknown@example.com",
+            username: "Unknown"
+          }
+        };
+      }
+    });
 
     const enhancedChallenge = {
       ...challenge,

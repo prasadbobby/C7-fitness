@@ -96,43 +96,55 @@ export function ChallengeAnalytics({ challenge }: ChallengeAnalyticsProps) {
         ? totalPosts / challenge.participants.length
         : 0;
 
-      const daysElapsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(challenge.startDate).getTime()) / (1000 * 60 * 60 * 24)));
-      const expectedPosts = Math.min(daysElapsed, 90) * challenge.participants.length;
+      // Use UTC dates for consistency
+      const now = new Date();
+      const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const startDateUTC = new Date(new Date(challenge.startDate).getUTCFullYear(), new Date(challenge.startDate).getUTCMonth(), new Date(challenge.startDate).getUTCDate());
+      const endDateUTC = new Date(new Date(challenge.endDate).getUTCFullYear(), new Date(challenge.endDate).getUTCMonth(), new Date(challenge.endDate).getUTCDate());
+
+      const daysElapsed = Math.max(1, Math.ceil((nowUTC.getTime() - startDateUTC.getTime()) / (1000 * 60 * 60 * 24)));
+      const totalChallengeDays = Math.ceil((endDateUTC.getTime() - startDateUTC.getTime()) / (1000 * 60 * 60 * 24));
+      const expectedPosts = Math.min(daysElapsed, totalChallengeDays) * challenge.participants.length;
       const participationRate = expectedPosts > 0 ? (totalPosts / expectedPosts) * 100 : 0;
 
       const retentionRate = challenge.participants.length > 0
         ? (activeParticipants.length / challenge.participants.length) * 100
         : 0;
 
-      // Wellness metrics
-      const sleepHours = allPosts.filter(p => p.sleepHours !== null).map(p => p.sleepHours!);
+      // Wellness metrics with validation
+      const sleepHours = allPosts
+        .filter(p => p.sleepHours !== null && typeof p.sleepHours === 'number' && !isNaN(p.sleepHours) && p.sleepHours >= 0 && p.sleepHours <= 24)
+        .map(p => p.sleepHours!);
       const avgSleepHours = sleepHours.length > 0
         ? sleepHours.reduce((sum, hours) => sum + hours, 0) / sleepHours.length
         : 0;
 
       const sleepQuality = allPosts
-        .filter(p => p.sleepQuality !== null)
-        .map(p => getSleepQualityScore(p.sleepQuality!));
+        .filter(p => p.sleepQuality !== null && typeof p.sleepQuality === 'string')
+        .map(p => getSleepQualityScore(p.sleepQuality!))
+        .filter(score => !isNaN(score) && score >= 0);
       const avgSleepQuality = sleepQuality.length > 0
         ? sleepQuality.reduce((sum, score) => sum + score, 0) / sleepQuality.length
         : 0;
 
       const moods = allPosts
-        .filter(p => p.mood !== null)
-        .map(p => getMoodScore(p.mood!));
+        .filter(p => p.mood !== null && typeof p.mood === 'string')
+        .map(p => getMoodScore(p.mood!))
+        .filter(score => !isNaN(score) && score >= 0);
       const avgMood = moods.length > 0
         ? moods.reduce((sum, score) => sum + score, 0) / moods.length
         : 0;
 
       const energies = allPosts
-        .filter(p => p.energy !== null)
-        .map(p => getEnergyScore(p.energy!));
+        .filter(p => p.energy !== null && typeof p.energy === 'string')
+        .map(p => getEnergyScore(p.energy!))
+        .filter(score => !isNaN(score) && score >= 0);
       const avgEnergy = energies.length > 0
         ? energies.reduce((sum, score) => sum + score, 0) / energies.length
         : 0;
 
       // Weekly data for trends
-      const weeklyData = calculateWeeklyData(allPosts, challenge.startDate);
+      const weeklyData = calculateWeeklyData(allPosts, challenge.startDate, totalChallengeDays);
       const trends = calculateTrends(weeklyData);
 
       setAnalytics({
@@ -192,25 +204,37 @@ export function ChallengeAnalytics({ challenge }: ChallengeAnalyticsProps) {
     return scores[energy] || 0;
   };
 
-  const calculateWeeklyData = (posts: Post[], startDate: string) => {
+  const calculateWeeklyData = (posts: Post[], startDate: string, totalChallengeDays: number) => {
     const weeks: { [key: number]: Post[] } = {};
-    const challengeStart = new Date(startDate);
+    // Use UTC dates for consistency with other date calculations
+    const challengeStartUTC = new Date(new Date(startDate).getUTCFullYear(), new Date(startDate).getUTCMonth(), new Date(startDate).getUTCDate());
 
     posts.forEach(post => {
-      const postDate = new Date(post.createdAt);
-      const daysDiff = Math.floor((postDate.getTime() - challengeStart.getTime()) / (1000 * 60 * 60 * 24));
+      // Use UTC date normalization for consistent calculations
+      const postDateUTC = new Date(new Date(post.createdAt).getUTCFullYear(), new Date(post.createdAt).getUTCMonth(), new Date(post.createdAt).getUTCDate());
+      const daysDiff = Math.floor((postDateUTC.getTime() - challengeStartUTC.getTime()) / (1000 * 60 * 60 * 24));
       const week = Math.floor(daysDiff / 7) + 1;
 
-      if (week > 0 && week <= 13) { // 90 days = ~13 weeks
+      const maxWeeks = Math.ceil(totalChallengeDays / 7);
+      if (week > 0 && week <= maxWeeks) {
         if (!weeks[week]) weeks[week] = [];
         weeks[week].push(post);
       }
     });
 
     return Object.entries(weeks).map(([week, weekPosts]) => {
-      const sleepHours = weekPosts.filter(p => p.sleepHours !== null).map(p => p.sleepHours!);
-      const moods = weekPosts.filter(p => p.mood !== null).map(p => getMoodScore(p.mood!));
-      const energies = weekPosts.filter(p => p.energy !== null).map(p => getEnergyScore(p.energy!));
+      // Add data validation consistent with main wellness calculations
+      const sleepHours = weekPosts
+        .filter(p => p.sleepHours !== null && typeof p.sleepHours === 'number' && !isNaN(p.sleepHours) && p.sleepHours >= 0 && p.sleepHours <= 24)
+        .map(p => p.sleepHours!);
+      const moods = weekPosts
+        .filter(p => p.mood !== null && typeof p.mood === 'string')
+        .map(p => getMoodScore(p.mood!))
+        .filter(score => !isNaN(score) && score >= 0);
+      const energies = weekPosts
+        .filter(p => p.energy !== null && typeof p.energy === 'string')
+        .map(p => getEnergyScore(p.energy!))
+        .filter(score => !isNaN(score) && score >= 0);
 
       return {
         week: parseInt(week),
@@ -222,7 +246,7 @@ export function ChallengeAnalytics({ challenge }: ChallengeAnalyticsProps) {
     }).sort((a, b) => a.week - b.week);
   };
 
-  const calculateTrends = (weeklyData: any[]) => {
+  const calculateTrends = (weeklyData: any[]): { sleepTrend: 'up' | 'down' | 'stable', moodTrend: 'up' | 'down' | 'stable', energyTrend: 'up' | 'down' | 'stable', participationTrend: 'up' | 'down' | 'stable' } => {
     if (weeklyData.length < 2) {
       return {
         sleepTrend: 'stable' as const,
@@ -235,7 +259,7 @@ export function ChallengeAnalytics({ challenge }: ChallengeAnalyticsProps) {
     const recent = weeklyData.slice(-3); // Last 3 weeks
     const earlier = weeklyData.slice(-6, -3); // 3 weeks before that
 
-    const getTrend = (recentAvg: number, earlierAvg: number) => {
+    const getTrend = (recentAvg: number, earlierAvg: number): 'up' | 'down' | 'stable' => {
       const diff = recentAvg - earlierAvg;
       if (Math.abs(diff) < 0.1) return 'stable';
       return diff > 0 ? 'up' : 'down';

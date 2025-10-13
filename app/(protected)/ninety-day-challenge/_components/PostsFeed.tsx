@@ -16,6 +16,7 @@ import {
   IconSparkles
 } from "@tabler/icons-react";
 import { formatDistanceToNow } from "date-fns";
+import { ImageModal } from "@/components/UI/ImageModal";
 
 interface PostReaction {
   id: string;
@@ -55,6 +56,9 @@ export function PostsFeed() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [initialImageIndex, setInitialImageIndex] = useState(0);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -149,6 +153,12 @@ export function PostsFeed() {
     }
   };
 
+  const handleImageClick = (images: string[], clickedIndex: number) => {
+    setSelectedImages(images);
+    setInitialImageIndex(clickedIndex);
+    setIsImageModalOpen(true);
+  };
+
   const getReactionIcon = (type: string, isActive: boolean) => {
     const iconProps = { size: 18, className: isActive ? 'text-primary' : 'text-zinc-400' };
 
@@ -238,7 +248,7 @@ export function PostsFeed() {
             <div className="flex items-center justify-between w-full">
               <User
                 name={`${post.user.firstName} ${post.user.lastName}`}
-                description={`${formatDistanceToNow(new Date(post.date))} ago`}
+                description={`${formatDistanceToNow(new Date(post.date), { addSuffix: true })}`}
                 avatarProps={{
                   src: post.user.imageUrl,
                 }}
@@ -314,12 +324,24 @@ export function PostsFeed() {
             {post.photos && post.photos.length > 0 && (
               <div className="grid grid-cols-2 gap-2">
                 {post.photos.map((photo, index) => (
-                  <img
+                  <div
                     key={index}
-                    src={photo}
-                    alt={`Progress photo ${index + 1}`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
+                    className="relative group cursor-pointer overflow-hidden rounded-lg"
+                    onClick={() => handleImageClick(post.photos, index)}
+                  >
+                    <img
+                      src={photo}
+                      alt={`Progress photo ${index + 1}`}
+                      className="w-full h-48 object-cover transition-transform duration-200 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
+                        <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -367,6 +389,14 @@ export function PostsFeed() {
           />
         </div>
       )}
+
+      {/* Image Modal */}
+      <ImageModal
+        images={selectedImages}
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        initialIndex={initialImageIndex}
+      />
     </div>
   );
 }

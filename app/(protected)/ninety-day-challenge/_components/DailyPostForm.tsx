@@ -10,6 +10,7 @@ import { Slider } from "@nextui-org/slider";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
+import { ImageModal } from "@/components/UI/ImageModal";
 
 interface TodaysPost {
   id: string;
@@ -35,6 +36,9 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
   const [todaysPost, setTodaysPost] = useState<TodaysPost | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [initialImageIndex, setInitialImageIndex] = useState(0);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     sleepHours: 8,
@@ -55,6 +59,24 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     }
   }, [challengeId]);
 
+  // Reset form state when challenge changes
+  useEffect(() => {
+    setHasPostedToday(false);
+    setIsEditing(false);
+    setTodaysPost(null);
+    setFormData({
+      sleepHours: 8,
+      sleepQuality: "",
+      mealTracking: "",
+      dayDescription: "",
+      mood: "",
+      energy: "",
+      achievements: "",
+      challenges: "",
+      photos: [],
+    });
+  }, [challengeId]);
+
   const checkUserRole = async () => {
     try {
       const response = await fetch('/api/user/role');
@@ -69,8 +91,10 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
 
   const checkTodaysPost = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/ninety-day-challenge/posts/today?date=${today}&challengeId=${challengeId}`);
+      // Get local date to avoid timezone issues
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+      const response = await fetch(`/api/ninety-day-challenge/posts/today?date=${localDate}&challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.post && !isAdmin) {
@@ -101,7 +125,9 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     setLoading(true);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Get local date to avoid timezone issues
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
       const method = (hasPostedToday && !isAdmin) ? 'PUT' : 'POST';
       const url = (hasPostedToday && !isAdmin)
         ? `/api/ninety-day-challenge/posts/${todaysPost?.id}`
@@ -114,7 +140,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
         },
         body: JSON.stringify({
           ...formData,
-          date: today,
+          date: localDate,
           challengeId: challengeId,
         }),
       });
@@ -191,6 +217,12 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
 
     // Clear the input
     event.target.value = '';
+  };
+
+  const handleImageClick = (images: string[], clickedIndex: number) => {
+    setSelectedImages(images);
+    setInitialImageIndex(clickedIndex);
+    setIsImageModalOpen(true);
   };
 
   const sleepQualityOptions = [
@@ -308,12 +340,24 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                 <span className="font-medium">Photos:</span>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {formData.photos.map((photo, index) => (
-                    <img
+                    <div
                       key={index}
-                      src={photo}
-                      alt={`Progress photo ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
+                      className="relative group cursor-pointer overflow-hidden rounded-lg"
+                      onClick={() => handleImageClick(formData.photos, index)}
+                    >
+                      <img
+                        src={photo}
+                        alt={`Progress photo ${index + 1}`}
+                        className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
+                          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -467,17 +511,29 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
               {formData.photos.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {formData.photos.map((photo, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={photo}
-                        alt={`Progress photo ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
+                    <div key={index} className="relative group">
+                      <div
+                        className="cursor-pointer overflow-hidden rounded-lg"
+                        onClick={() => handleImageClick(formData.photos, index)}
+                      >
+                        <img
+                          src={photo}
+                          alt={`Progress photo ${index + 1}`}
+                          className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
+                            <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
                       <Button
                         size="sm"
                         color="danger"
                         variant="flat"
-                        className="absolute top-2 right-2"
+                        className="absolute top-2 right-2 z-10"
                         onPress={() => {
                           const newPhotos = formData.photos.filter((_, i) => i !== index);
                           setFormData({ ...formData, photos: newPhotos });
@@ -513,6 +569,14 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
           </form>
         )}
       </CardBody>
+
+      {/* Image Modal */}
+      <ImageModal
+        images={selectedImages}
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        initialIndex={initialImageIndex}
+      />
     </Card>
   );
 }

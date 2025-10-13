@@ -49,6 +49,7 @@ interface EnhancedParticipant extends Participant {
     lastName: string;
     imageUrl: string;
     email: string;
+    username: string;
   };
   score: number;
   metrics: {
@@ -80,41 +81,49 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
           const posts = participant.posts;
           const totalPosts = posts.length;
 
-          // Sleep metrics
+          // Sleep metrics with validation
           const sleepHours = posts
-            .filter(p => p.sleepHours !== null)
+            .filter(p => p.sleepHours !== null && typeof p.sleepHours === 'number' && !isNaN(p.sleepHours) && p.sleepHours >= 0 && p.sleepHours <= 24)
             .map(p => p.sleepHours!);
           const avgSleepHours = sleepHours.length > 0
             ? sleepHours.reduce((sum, hours) => sum + hours, 0) / sleepHours.length
             : 0;
 
-          // Sleep quality (convert to number)
+          // Sleep quality (convert to number) with validation
           const sleepQuality = posts
-            .filter(p => p.sleepQuality !== null)
-            .map(p => getSleepQualityScore(p.sleepQuality!));
+            .filter(p => p.sleepQuality !== null && typeof p.sleepQuality === 'string')
+            .map(p => getSleepQualityScore(p.sleepQuality!))
+            .filter(score => !isNaN(score) && score >= 0);
           const avgSleepQuality = sleepQuality.length > 0
             ? sleepQuality.reduce((sum, score) => sum + score, 0) / sleepQuality.length
             : 0;
 
-          // Mood metrics
+          // Mood metrics with validation
           const moods = posts
-            .filter(p => p.mood !== null)
-            .map(p => getMoodScore(p.mood!));
+            .filter(p => p.mood !== null && typeof p.mood === 'string')
+            .map(p => getMoodScore(p.mood!))
+            .filter(score => !isNaN(score) && score >= 0);
           const avgMood = moods.length > 0
             ? moods.reduce((sum, score) => sum + score, 0) / moods.length
             : 0;
 
-          // Energy metrics
+          // Energy metrics with validation
           const energies = posts
-            .filter(p => p.energy !== null)
-            .map(p => getEnergyScore(p.energy!));
+            .filter(p => p.energy !== null && typeof p.energy === 'string')
+            .map(p => getEnergyScore(p.energy!))
+            .filter(score => !isNaN(score) && score >= 0);
           const avgEnergy = energies.length > 0
             ? energies.reduce((sum, score) => sum + score, 0) / energies.length
             : 0;
 
-          // Consistency (posting frequency)
-          const daysElapsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(participant.joinedAt).getTime()) / (1000 * 60 * 60 * 24)));
-          const consistency = Math.min(100, (totalPosts / Math.min(daysElapsed, 90)) * 100);
+          // Consistency (posting frequency) - use UTC dates for consistency
+          const now = new Date();
+          const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+          const joinedAtUTC = new Date(new Date(participant.joinedAt).getUTCFullYear(), new Date(participant.joinedAt).getUTCMonth(), new Date(participant.joinedAt).getUTCDate());
+
+          const daysElapsed = Math.max(1, Math.ceil((nowUTC.getTime() - joinedAtUTC.getTime()) / (1000 * 60 * 60 * 24)));
+          // Calculate expected posts based on days elapsed, not hardcoded 90 days
+          const consistency = Math.min(100, (totalPosts / daysElapsed) * 100);
 
           // Calculate overall score
           const score = calculateOverallScore({
@@ -124,7 +133,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
             avgMood,
             avgEnergy,
             consistency
-          });
+          }, daysElapsed);
 
           return {
             ...participant,
@@ -186,7 +195,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
     return scores[energy] || 0;
   };
 
-  const calculateOverallScore = (metrics: any): number => {
+  const calculateOverallScore = (metrics: any, daysElapsed: number): number => {
     const weights = {
       consistency: 0.3,     // 30% - Most important
       avgSleepHours: 0.2,   // 20% - Sleep is crucial
@@ -202,7 +211,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
       avgSleepQuality: metrics.avgSleepQuality / 5,
       avgMood: metrics.avgMood / 5,
       avgEnergy: metrics.avgEnergy / 5,
-      totalPosts: Math.min(90, metrics.totalPosts) / 90
+      totalPosts: Math.min(daysElapsed, metrics.totalPosts) / daysElapsed
     };
 
     return Object.entries(weights).reduce((score, [key, weight]) => {

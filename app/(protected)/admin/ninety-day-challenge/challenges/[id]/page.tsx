@@ -102,10 +102,18 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
     );
   }
 
-  const daysRemaining = Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
-  const daysElapsed = Math.max(0, Math.ceil((new Date().getTime() - new Date(challenge.startDate).getTime()) / (1000 * 60 * 60 * 24)));
-  const totalDays = 90;
-  const progressPercentage = Math.min(100, (daysElapsed / totalDays) * 100);
+  // Use UTC dates for consistent calculations across timezones
+  const now = new Date();
+  const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const startDateUTC = new Date(new Date(challenge.startDate).getUTCFullYear(), new Date(challenge.startDate).getUTCMonth(), new Date(challenge.startDate).getUTCDate());
+  const endDateUTC = new Date(new Date(challenge.endDate).getUTCFullYear(), new Date(challenge.endDate).getUTCMonth(), new Date(challenge.endDate).getUTCDate());
+
+  // Calculate dynamic challenge duration
+  const totalDays = Math.ceil((endDateUTC.getTime() - startDateUTC.getTime()) / (1000 * 60 * 60 * 24));
+
+  const daysRemaining = Math.max(0, Math.ceil((endDateUTC.getTime() - nowUTC.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysElapsed = Math.max(0, Math.ceil((nowUTC.getTime() - startDateUTC.getTime()) / (1000 * 60 * 60 * 24)));
+  const progressPercentage = Math.min(100, totalDays > 0 ? (daysElapsed / totalDays) * 100 : 0);
 
   return (
     <div className="space-y-6">
@@ -199,7 +207,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
                 <p className="text-3xl font-black text-secondary">
                   {daysElapsed}
                 </p>
-                <p className="text-xs text-secondary/60">of 90 days</p>
+                <p className="text-xs text-secondary/60">of {totalDays} days</p>
               </div>
               <div className="p-3 bg-secondary/15 rounded-xl">
                 <IconCalendarEvent className="w-6 h-6 text-secondary" />

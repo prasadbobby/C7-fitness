@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { Card, CardBody } from "@nextui-org/card";
 import { Progress } from "@nextui-org/progress";
 import { Chip } from "@nextui-org/chip";
+import { Button } from "@nextui-org/button";
 import { Calendar, Flame, TrendingUp, Users } from "lucide-react";
+import { IconTrophy } from "@tabler/icons-react";
+import { LeaderboardModal } from "./LeaderboardModal";
+import { useUser } from "@clerk/nextjs";
 
 interface ChallengeInfo {
   challengeTitle: string;
@@ -25,6 +29,8 @@ interface ChallengeStatsProps {
 export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
   const [stats, setStats] = useState<ChallengeInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const { user } = useUser();
 
   useEffect(() => {
     if (challengeId) {
@@ -164,12 +170,32 @@ export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
             <div className="text-sm text-zinc-600 dark:text-zinc-400">
               Total Participants
             </div>
-            <div className="text-xs text-purple-600">
-              Community strong!
+            <div className="mt-1">
+              <Button
+                size="sm"
+                variant="solid"
+                color="secondary"
+                startContent={<IconTrophy size={16} />}
+                onPress={() => setIsLeaderboardOpen(true)}
+                className="font-medium"
+              >
+                View Leaderboard
+              </Button>
             </div>
           </div>
         </div>
       </CardBody>
+
+      {/* Leaderboard Modal */}
+      {user && (
+        <LeaderboardModal
+          isOpen={isLeaderboardOpen}
+          onClose={() => setIsLeaderboardOpen(false)}
+          challengeId={challengeId}
+          challengeTitle={stats.challengeTitle}
+          currentUserId={user.id}
+        />
+      )}
     </Card>
   );
 }

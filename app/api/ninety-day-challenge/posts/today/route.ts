@@ -33,13 +33,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
     }
 
-    // Get post for the specified date
+    // Get post for the specified date - create date in UTC to match post creation logic
+    const [year, month, day] = date.split('-').map(Number);
+    const searchDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Create at noon UTC to match post creation
+
     const post = await prisma.ninetyDayChallengePost.findUnique({
       where: {
         userId_challengeId_date: {
           userId: user.id,
           challengeId: participant.challengeId,
-          date: new Date(date),
+          date: searchDate,
         },
       },
     });

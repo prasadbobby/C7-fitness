@@ -45,9 +45,14 @@ export function AddParticipantModal({
   const [adding, setAdding] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Debounced search effect
   useEffect(() => {
     if (userSearchTerm.length >= 2 && !selectedUser) {
-      searchUsers();
+      const timeoutId = setTimeout(() => {
+        searchUsers();
+      }, 300); // 300ms debounce
+
+      return () => clearTimeout(timeoutId);
     } else {
       setSearchResults([]);
     }
@@ -79,6 +84,7 @@ export function AddParticipantModal({
       }
     } catch (error) {
       console.error('Error searching users:', error);
+      toast.error('Unable to search users. Please check your connection and try again.');
     } finally {
       setSearching(false);
     }
@@ -119,11 +125,26 @@ export function AddParticipantModal({
         handleClose();
       } else {
         console.error('Failed to add participant:', data);
-        toast.error(`Failed to add participant: ${data.error || 'Unknown error'}`);
+        // User-friendly error messages based on common scenarios
+        let errorMessage = 'Failed to add participant';
+        if (data.error?.includes('already exists') || data.error?.includes('duplicate')) {
+          errorMessage = 'This user is already a participant in the challenge';
+        } else if (data.error?.includes('not found')) {
+          errorMessage = 'User not found or no longer exists';
+        } else if (data.error?.includes('permission') || data.error?.includes('unauthorized')) {
+          errorMessage = 'You do not have permission to add participants';
+        } else if (data.error?.includes('limit') || data.error?.includes('maximum')) {
+          errorMessage = 'Challenge has reached maximum participant limit';
+        }
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error adding participant:', error);
-      toast.error(`Error adding participant: ${error.message}`);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast.error('Connection error. Please check your internet and try again.');
+      } else {
+        toast.error('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setAdding(false);
     }

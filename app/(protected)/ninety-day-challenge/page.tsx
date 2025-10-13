@@ -112,7 +112,7 @@ export default async function NinetyDayChallengePage({ searchParams }: PageProps
       </div>
 
       {/* Challenge Overview */}
-      <ChallengeStats challengeId={selectedChallenge.id} />
+      <ChallengeStats key={`stats-${selectedChallenge.id}`} challengeId={selectedChallenge.id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Calendar View */}
@@ -121,7 +121,7 @@ export default async function NinetyDayChallengePage({ searchParams }: PageProps
             <h2 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200 mb-4">
               Challenge Calendar
             </h2>
-            <ChallengeCalendar challengeId={selectedChallenge.id} />
+            <ChallengeCalendar key={`calendar-${selectedChallenge.id}`} challengeId={selectedChallenge.id} />
           </div>
         </div>
 
@@ -130,7 +130,7 @@ export default async function NinetyDayChallengePage({ searchParams }: PageProps
           <h2 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200">
             Today's Update
           </h2>
-          <DailyPostForm challengeId={selectedChallenge.id} />
+          <DailyPostForm key={`form-${selectedChallenge.id}`} challengeId={selectedChallenge.id} />
         </div>
       </div>
 

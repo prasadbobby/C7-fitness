@@ -259,9 +259,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
     }
 
-    // Create date in local timezone to avoid timezone shifting
+    // Create date in UTC to ensure consistent timezone handling
     const [year, month, day] = date.split('-').map(Number);
-    let postDate = new Date(year, month - 1, day); // month is 0-indexed
+    let postDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Create at noon UTC to avoid date shifts
 
     // Check if user already posted for this date (skip check for admins)
     if (!isAdmin) {
@@ -282,8 +282,8 @@ export async function POST(request: NextRequest) {
 
     if (isAdmin) {
       // Check if there are existing posts for this date and add seconds to make it unique
-      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+      const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
       const existingPosts = await prisma.ninetyDayChallengePost.findMany({
         where: {
