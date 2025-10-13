@@ -96,13 +96,14 @@ export default function SidebarNav() {
               href="/admin/workouts"
               active={pathname === "/admin/workouts"}
             />
-
+{/* comment for step tracking */}
             <NavItem
               icon={<IconTrendingUp size={22} className="shrink-0" />}
               label="Step Tracking"
               href="/admin/step-tracking"
               active={pathname === "/admin/step-tracking"}
             />
+{/* comment for step tracking */}
 
             <NavItem
               icon={<IconChartBar size={22} className="shrink-0" />}
@@ -195,6 +196,7 @@ export default function SidebarNav() {
               href="/activity"
               active={pathname === "/activity"}
             />
+{/* comment for step tracking */}
 
             <NavItem
               icon={<IconTrendingUp size={22} className="shrink-0" />}
@@ -202,6 +204,7 @@ export default function SidebarNav() {
               href="/step-tracking"
               active={pathname === "/step-tracking"}
             />
+{/* comment for step tracking */}
 
             {isChallengeEnabled && (
               <>
