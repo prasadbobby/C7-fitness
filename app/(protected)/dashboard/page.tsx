@@ -5,9 +5,6 @@ import DashboardLinks from "./_components/DashboardLinks";
 import DashboardRecentActivity from "./_components/DashboardRecentActivity";
 import DashboardCards from "./_components/DashboardCards/DashboardCards";
 import DashboardCharts from "./_components/DashboardCharts/DashboardCharts";
-import DashboardGoals from "./_components/DashboardGoals/DashboardGoals";
-import DashboardAssignedWorkouts from "./_components/DashboardAssignedWorkouts";
-import StepDashboard from "@/components/StepTracker/StepDashboard";
 import { checkAdminAuth } from "@/utils/adminAuth";
 
 export const dynamic = 'force-dynamic';
@@ -48,12 +45,6 @@ export default async function DashboardPage({
         chart4DateRange={chart4DateRange}
       />
 
-
-      <DashboardAssignedWorkouts />
-
-      <StepDashboard />
-
-      <DashboardGoals />
 
       <Suspense fallback={<div>Loading Recent Activity...</div>}>
         <DashboardRecentActivity />

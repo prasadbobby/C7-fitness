@@ -32,10 +32,10 @@ export default function MobileNavbarClient({
   const { toggleMobileMenu, mobileMenuOpen } = useSidebarToggleContext();
 
   const handleMenuToggle = () => {
-    console.log('Hamburger clicked, current state:', mobileMenuOpen);
-    console.log('toggleMobileMenu function:', toggleMobileMenu);
+    // console.log('Hamburger clicked, current state:', mobileMenuOpen);
+    // console.log('toggleMobileMenu function:', toggleMobileMenu);
     toggleMobileMenu();
-    console.log('After toggle - should be:', !mobileMenuOpen);
+    // console.log('After toggle - should be:', !mobileMenuOpen);
   };
 
   return (
