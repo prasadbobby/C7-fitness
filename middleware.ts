@@ -2,7 +2,7 @@ import { authMiddleware } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 
 export default authMiddleware({
-  publicRoutes: ["/", "/sign-in", "/sign-up"],
+  publicRoutes: ["/", "/sign-in", "/sign-up", "/privacy-policy", "/terms"],
   beforeAuth: (req) => {
     // Block direct access to sign-up unless it's via invitation
     if (req.nextUrl.pathname === "/sign-up") {

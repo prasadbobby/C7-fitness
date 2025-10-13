@@ -32,6 +32,8 @@ import {
   IconX,
   IconCalendarEvent,
   IconWorldStar,
+  IconScale,
+  IconLock,
 } from "@tabler/icons-react";
 
 export default function SidebarNav() {
@@ -157,6 +159,23 @@ export default function SidebarNav() {
               href="/admin/settings"
               active={pathname === "/admin/settings"}
             />
+
+            {/* Legal Section for Admin */}
+            <SubMenuTitle title="Legal" />
+
+            <NavItem
+              icon={<IconLock size={22} className="shrink-0" />}
+              label="Privacy Policy"
+              href="/privacy-policy"
+              active={pathname === "/privacy-policy"}
+            />
+
+            <NavItem
+              icon={<IconScale size={22} className="shrink-0" />}
+              label="Terms of Service"
+              href="/terms"
+              active={pathname === "/terms"}
+            />
           </>
         ) : (
           <>
@@ -225,6 +244,20 @@ export default function SidebarNav() {
               label="Support"
               href="/support"
               active={pathname === "/support"}
+            />
+
+            <NavItem
+              icon={<IconLock size={22} className="shrink-0" />}
+              label="Privacy Policy"
+              href="/privacy-policy"
+              active={pathname === "/privacy-policy"}
+            />
+
+            <NavItem
+              icon={<IconScale size={22} className="shrink-0" />}
+              label="Terms of Service"
+              href="/terms"
+              active={pathname === "/terms"}
             />
           </>
         )}
