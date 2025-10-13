@@ -754,6 +754,11 @@ export default function WorkoutAssignment() {
     return true;
   });
 
+  // Paginate the filtered assignments
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  const paginatedAssignments = filteredAssignments.slice(startIndex, endIndex);
+
   const stats = {
     totalAssignments: assignments.length,
     pendingAssignments: assignments.filter(a => a.status === "PENDING").length,
@@ -1419,7 +1424,7 @@ export default function WorkoutAssignment() {
                   <TableColumn>ACTIONS</TableColumn>
                 </TableHeader>
                 <TableBody emptyContent="No assignments found">
-                  {filteredAssignments.map((assignment) => (
+                  {paginatedAssignments.map((assignment) => (
                     <TableRow key={assignment.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -1503,11 +1508,6 @@ export default function WorkoutAssignment() {
                               </Chip>
                             )}
                           </div>
-                          {assignment.workoutPlan.trainingType && (
-                            <p className="text-sm text-foreground-500">
-                              {assignment.workoutPlan.trainingType}
-                            </p>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1595,7 +1595,7 @@ export default function WorkoutAssignment() {
 
           {/* Pagination */}
           <AdminPagination
-            totalResults={assignments.length}
+            totalResults={filteredAssignments.length}
             limit={limit}
             showControls
           />
