@@ -55,9 +55,11 @@ export async function GET(request: NextRequest) {
     // Create a map for easy lookup
     const clerkUserMap = new Map(clerkUsers.map(user => [user.id, user]));
 
-    // Combine data
+    // Combine data - Include all users from database even if Clerk data is missing
     const users = userInfos.map(userInfo => {
       const clerkUser = clerkUserMap.get(userInfo.userId);
+
+      // If no Clerk user found, still include the database user with fallback data
       return {
         id: userInfo.id,
         userId: userInfo.userId,
@@ -68,15 +70,15 @@ export async function GET(request: NextRequest) {
         createdAt: userInfo.createdAt.toISOString(),
         updatedAt: userInfo.updatedAt.toISOString(),
         _count: userInfo._count,
-        // Clerk data
-        email: clerkUser?.emailAddresses?.[0]?.emailAddress || "",
-        firstName: clerkUser?.firstName || "",
-        lastName: clerkUser?.lastName || "",
-        username: clerkUser?.username || "",
+        // Clerk data with fallbacks for missing users
+        email: clerkUser?.emailAddresses?.[0]?.emailAddress || `missing_${userInfo.userId.slice(-8)}@clerk.deleted`,
+        firstName: clerkUser?.firstName || "Deleted",
+        lastName: clerkUser?.lastName || "User",
+        username: clerkUser?.username || `deleted_${userInfo.userId.slice(-8)}`,
         imageUrl: clerkUser?.imageUrl || "",
         name: clerkUser?.firstName && clerkUser?.lastName
           ? `${clerkUser.firstName} ${clerkUser.lastName}`
-          : clerkUser?.username || clerkUser?.emailAddresses?.[0]?.emailAddress || "Unknown User",
+          : clerkUser?.username || clerkUser?.emailAddresses?.[0]?.emailAddress || `Deleted User (${userInfo.userId.slice(-8)})`,
       };
     });
 
@@ -112,7 +114,7 @@ export async function GET(request: NextRequest) {
         createdAt: inv.createdAt.toISOString(),
         updatedAt: inv.updatedAt.toISOString(),
       })),
-      total: filteredUsers.length,
+      total: total, // Use database total count, not filtered count
       pagination: {
         page,
         limit,
