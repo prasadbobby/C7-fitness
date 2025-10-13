@@ -4,28 +4,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
-
-function formatDuration(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m`;
-}
-
-// Helper function to format seconds to time display
-function formatDurationFromSeconds(seconds?: number): string {
-  if (!seconds || seconds === 0) return "0s";
-
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  }
-}
+import { formatDuration } from "@/utils/time";
 
 export default async function DashboardRecentActivity() {
   const { userId }: { userId: string | null } = auth();
@@ -122,11 +101,11 @@ export default async function DashboardRecentActivity() {
                         <div className="mt-1 flex gap-2 text-xs">
                           <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded">
                             <div className="w-1 h-1 bg-primary rounded-full"></div>
-                            <span className="text-primary-600">Active: {formatDurationFromSeconds(totalActiveTime)}</span>
+                            <span className="text-primary-600">Active: {formatDuration(totalActiveTime)}</span>
                           </div>
                           <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 rounded">
                             <div className="w-1 h-1 bg-warning rounded-full"></div>
-                            <span className="text-warning-600">Rest: {formatDurationFromSeconds(totalRestTime)}</span>
+                            <span className="text-warning-600">Rest: {formatDuration(totalRestTime)}</span>
                           </div>
                         </div>
                       )}

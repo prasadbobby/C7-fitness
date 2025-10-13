@@ -491,7 +491,7 @@ export default function UserProgressDashboard() {
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-warning-600 font-semibold uppercase tracking-wide truncate">Avg Duration</p>
-                <p className="text-xl sm:text-2xl font-bold text-warning">{stats?.avgWorkoutDuration || 0}m</p>
+                <p className="text-xl sm:text-2xl font-bold text-warning">{formatDuration(stats?.avgWorkoutDuration || 0)}</p>
               </div>
               <div className="p-2 sm:p-3 bg-warning/20 rounded-full flex-shrink-0 ml-2">
                 <IconClock size={20} className="text-warning sm:w-6 sm:h-6" />

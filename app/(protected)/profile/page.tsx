@@ -16,6 +16,7 @@ import {
   IconTarget,
   IconClock,
 } from "@tabler/icons-react";
+import { formatDuration } from "@/utils/time";
 
 import ProfileDetails from "./_components/ProfileDetails";
 import ProfileMeasurements from "./_components/ProfileMeasurements";
@@ -221,7 +222,7 @@ export default async function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-warning-600 font-semibold uppercase tracking-wide">Avg Duration</p>
-                <p className="text-2xl font-bold text-warning">{avgDuration}m</p>
+                <p className="text-2xl font-bold text-warning">{formatDuration(avgDuration)}</p>
               </div>
               <div className="p-3 bg-warning/20 rounded-full">
                 <IconClock size={20} className="text-warning" />
