@@ -10,8 +10,8 @@ import {
   PopoverContent
 } from "@nextui-org/popover";
 
-// Reaction types similar to DEV Community
-export type ReactionType = "LIKE" | "LOVE" | "UNICORN" | "FIRE" | "BOOKMARK" | "HANDS";
+// Reaction types for fitness community engagement
+export type ReactionType = "LIKE" | "LOVE" | "SUPPORT" | "STRONG" | "FIRE" | "CLAP";
 
 export interface ReactionData {
   type: ReactionType;
@@ -23,10 +23,10 @@ export interface ReactionData {
 export const REACTIONS: ReactionData[] = [
   { type: "LIKE", emoji: "👍", label: "Like", color: "text-blue-500" },
   { type: "LOVE", emoji: "❤️", label: "Love", color: "text-red-500" },
-  { type: "UNICORN", emoji: "🦄", label: "Unicorn", color: "text-purple-500" },
+  { type: "SUPPORT", emoji: "🤝", label: "Support", color: "text-green-500" },
+  { type: "STRONG", emoji: "💪", label: "Strong", color: "text-purple-500" },
   { type: "FIRE", emoji: "🔥", label: "Fire", color: "text-orange-500" },
-  { type: "BOOKMARK", emoji: "🔖", label: "Bookmark", color: "text-yellow-500" },
-  { type: "HANDS", emoji: "🙌", label: "Hands", color: "text-green-500" },
+  { type: "CLAP", emoji: "👏", label: "Clap", color: "text-yellow-500" },
 ];
 
 interface PostReactionsProps {
