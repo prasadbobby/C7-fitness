@@ -47,6 +47,14 @@ interface PostComment {
     imageUrl: string;
     username: string;
   };
+  reactionCounts: Record<string, number>;
+  userReaction: {
+    id: string;
+    type: string;
+  } | null;
+  _count: {
+    reactions: number;
+  };
 }
 
 interface Post {
@@ -257,6 +265,26 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       }
     } catch (error) {
       console.error('Error deleting comment:', error);
+    }
+  };
+
+  const handleCommentReaction = async (commentId: string, reactionType: ReactionType) => {
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/comments/${commentId}/reactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: reactionType,
+        }),
+      });
+
+      if (response.ok) {
+        fetchPosts(); // Refresh posts to show updated comment reactions
+      }
+    } catch (error) {
+      console.error('Error adding comment reaction:', error);
     }
   };
 
@@ -720,11 +748,15 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                                 {comment.content}
                               </p>
                             </div>
-                            <div className="flex items-center gap-4 mt-1 px-3">
-                              <button className="text-zinc-500 hover:text-red-500 transition-colors text-xs">
-                                <IconHeart size={14} className="inline mr-1" />
-                                Like
-                              </button>
+                            <div className="flex items-center justify-between mt-1 px-3">
+                              <PostReactions
+                                postId={comment.id}
+                                reactions={comment.reactionCounts || {}}
+                                userReaction={comment.userReaction?.type as ReactionType || null}
+                                onReactionToggle={handleCommentReaction}
+                                size="sm"
+                                showCounts={true}
+                              />
                               {(comment.author.userId === currentUserId) && (
                                 <button
                                   onClick={() => handleDeleteComment(comment.id)}

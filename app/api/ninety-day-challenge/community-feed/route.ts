@@ -97,7 +97,13 @@ export async function GET(request: NextRequest) {
                 select: {
                   userId: true,
                 }
-              }
+              },
+              reactions: true,
+              _count: {
+                select: {
+                  reactions: true,
+                },
+              },
             },
             orderBy: {
               createdAt: 'asc'
@@ -181,17 +187,34 @@ export async function GET(request: NextRequest) {
         return acc;
       }, {} as Record<string, number>);
 
-      // Enhance comments with user info
-      const enhancedComments = post.comments.map(comment => ({
-        ...comment,
-        author: userInfoMap[comment.userId] || {
-          userId: comment.userId,
-          firstName: "Unknown",
-          lastName: "User",
-          imageUrl: "",
-          username: "Unknown",
-        }
-      }));
+      // Enhance comments with user info and reaction data
+      const enhancedComments = post.comments.map(comment => {
+        const userCommentReaction = comment.reactions.find(reaction =>
+          reaction.userId === user.id
+        );
+
+        // Calculate comment reaction counts by type
+        const commentReactionCounts = comment.reactions.reduce((acc, reaction) => {
+          acc[reaction.reactionType] = (acc[reaction.reactionType] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        return {
+          ...comment,
+          author: userInfoMap[comment.userId] || {
+            userId: comment.userId,
+            firstName: "Unknown",
+            lastName: "User",
+            imageUrl: "",
+            username: "Unknown",
+          },
+          reactionCounts: commentReactionCounts,
+          userReaction: userCommentReaction ? {
+            id: userCommentReaction.id,
+            type: userCommentReaction.reactionType,
+          } : null,
+        };
+      });
 
       return {
         ...post,
