@@ -117,7 +117,7 @@ export default function PostReactions({
         <PopoverContent className="p-1">
           <Card shadow="sm" className="border-none">
             <CardBody className="p-2">
-              <div className="grid grid-cols-3 gap-1">
+              <div className="flex items-center gap-1">
                 {REACTIONS.map((reaction) => (
                   <Button
                     key={reaction.type}

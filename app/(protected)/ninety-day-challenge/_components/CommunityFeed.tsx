@@ -748,15 +748,26 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                                 {comment.content}
                               </p>
                             </div>
-                            <div className="flex items-center justify-between mt-1 px-3">
-                              <PostReactions
-                                postId={comment.id}
-                                reactions={comment.reactionCounts || {}}
-                                userReaction={comment.userReaction?.type as ReactionType || null}
-                                onReactionToggle={handleCommentReaction}
-                                size="sm"
-                                showCounts={true}
-                              />
+                            <div className="flex items-center gap-4 mt-1 px-3">
+                              <button
+                                onClick={() => handleCommentReaction(comment.id, "LIKE")}
+                                className={`flex items-center gap-1 text-xs transition-colors ${
+                                  comment.userReaction?.type === "LIKE"
+                                    ? "text-red-500"
+                                    : "text-zinc-500 hover:text-red-500"
+                                }`}
+                              >
+                                <IconHeart
+                                  size={14}
+                                  className={comment.userReaction?.type === "LIKE" ? "fill-current" : ""}
+                                />
+                                <span>
+                                  {comment.reactionCounts?.LIKE || 0 > 0
+                                    ? `${comment.reactionCounts.LIKE} Like${comment.reactionCounts.LIKE !== 1 ? 's' : ''}`
+                                    : 'Like'
+                                  }
+                                </span>
+                              </button>
                               {(comment.author.userId === currentUserId) && (
                                 <button
                                   onClick={() => handleDeleteComment(comment.id)}
