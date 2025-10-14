@@ -74,8 +74,7 @@ export default function RoutineMenu({ routineId }: { routineId: string }) {
           <DropdownItem
             startContent={<IconTrash size={20} />}
             key="delete"
-            className="text-danger"
-            color="danger"
+            danger
           >
             Delete Routine
           </DropdownItem>

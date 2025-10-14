@@ -397,9 +397,9 @@ export default function WorkoutAssignment() {
         onDeleteWorkoutClose();
         setWorkoutToDelete(null);
       } else {
-        if (data.error === "Cannot delete workout with existing assignments or logs") {
+        if (data.error === "Cannot delete workout with existing assignments") {
           toast.error(
-            `Cannot delete workout: It has ${data.details.assignments} assignments and ${data.details.logs} workout logs. Remove all assignments and logs first.`
+            `Cannot delete workout: It has ${data.details.assignments} active assignments. Remove all assignments first.`
           );
         } else {
           toast.error(data.error || "Failed to delete workout");

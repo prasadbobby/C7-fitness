@@ -114,22 +114,13 @@ export default async function WorkoutPage() {
     }
   }
 
-  const whereClause: Prisma.WorkoutPlanWhereInput[] = [];
-
-  if (userId && typeof userId === "string") {
-    whereClause.push({
-      userId: userId,
-    });
-  }
-
-  // Get all workouts (both user-created and admin-created)
-  if (whereClause.length === 0) {
-    whereClause.push({});
-  }
-
+  // Get all workouts (user-created and admin-created system workouts)
   const routines: ExtendedWorkoutPlan[] = await prisma.workoutPlan.findMany({
     where: {
-      OR: whereClause,
+      OR: [
+        { userId: userId }, // User's own workouts
+        { userId: null },   // Admin-created system workouts (available to all users)
+      ],
     },
     orderBy: {
       createdAt: "desc",
@@ -161,7 +152,7 @@ export default async function WorkoutPage() {
   });
 
   const userRoutines = routines.filter((routine) => routine.userId === userId);
-  const adminRoutines = routines.filter((routine) => routine.userId !== userId);
+  const systemRoutines = routines.filter((routine) => routine.userId === null); // Admin-created workouts available to all
 
   return (
     <>
@@ -180,6 +171,19 @@ export default async function WorkoutPage() {
             }))}
             isSystem={false}
             isAssigned={true}
+            isAdmin={isAdmin}
+          />
+        </>
+      )}
+
+      {systemRoutines.length > 0 && (
+        <>
+          <h2 className="font-semibold text-xl md:text-2xl mb-3">Workout Library</h2>
+          <RoutineCards
+            routines={systemRoutines}
+            isSystem={true}
+            isAssigned={false}
+            isAdmin={isAdmin}
           />
         </>
       )}
@@ -187,17 +191,17 @@ export default async function WorkoutPage() {
       <YourRoutinesSection userRoutines={userRoutines} isAdmin={isAdmin} />
 
 
-      {/* Message for users with no assigned workouts */}
-      {!isAdmin && assignedWorkouts.length === 0 && (
+      {/* Message for users with no workouts available */}
+      {!isAdmin && assignedWorkouts.length === 0 && systemRoutines.length === 0 && userRoutines.length === 0 && (
         <div className="text-center py-12">
           <div className="space-y-4">
             <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
               <IconPlus className="w-8 h-8 text-zinc-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-foreground mb-2">No Workouts Assigned</h3>
+              <h3 className="font-semibold text-lg text-foreground mb-2">No Workouts Available</h3>
               <p className="text-zinc-500 text-sm max-w-md mx-auto">
-                You don't have any workouts assigned yet. Contact your trainer or administrator to get started with your fitness journey.
+                You don't have any workouts available yet. Contact your trainer or administrator to get started with your fitness journey.
               </p>
             </div>
           </div>

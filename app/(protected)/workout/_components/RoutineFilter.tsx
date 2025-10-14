@@ -40,6 +40,7 @@ export default function RoutineFilter({
           variant="flat"
           startContent={<IconFilter size={16} />}
           className="max-w-xs"
+          aria-label="Filter workouts by training category"
         >
           {trainingCategories.map((category) => (
             <SelectItem key={category.key} value={category.key}>

@@ -47,7 +47,7 @@ export default function YourRoutinesSection({
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
-        <h2 className="font-semibold text-xl md:text-2xl mb-3 md:mb-0">Your Routines</h2>
+        <h2 className="font-semibold text-xl md:text-2xl mb-3 md:mb-0">My Custom Workouts</h2>
         <Button
           as={Link}
           href="/edit-routine/step-1"
@@ -67,7 +67,7 @@ export default function YourRoutinesSection({
             routineCount={filteredRoutines.length}
             totalCount={userRoutines.length}
           />
-          <RoutineCards routines={filteredRoutines} isSystem={false} />
+          <RoutineCards routines={filteredRoutines} isSystem={false} isAdmin={isAdmin} />
         </>
       ) : (
         <div className="text-center py-8 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg">

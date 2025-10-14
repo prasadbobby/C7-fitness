@@ -98,11 +98,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if workout has any assignments or logs
-    if (workout._count.assignedWorkouts > 0 || workout._count.logs > 0) {
+    // Check if workout has any active assignments (logs will be cascade deleted)
+    if (workout._count.assignedWorkouts > 0) {
       return NextResponse.json(
         {
-          error: "Cannot delete workout with existing assignments or logs",
+          error: "Cannot delete workout with existing assignments",
           details: {
             assignments: workout._count.assignedWorkouts,
             logs: workout._count.logs,
@@ -112,12 +112,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete workout plan exercises first (foreign key constraint)
-    await prisma.workoutPlanExercise.deleteMany({
-      where: { workoutPlanId: workoutId },
-    });
-
-    // Delete the workout plan
+    // Delete the workout plan (cascade will handle WorkoutPlanExercise, WorkoutLog, and RestTimer)
     await prisma.workoutPlan.delete({
       where: { id: workoutId },
     });

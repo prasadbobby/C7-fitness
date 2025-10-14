@@ -48,16 +48,40 @@ export async function GET(
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    // Fetch user data from Clerk for all participants (optimized batch fetch)
-    const { clerkClient } = await import("@clerk/nextjs");
+    // Get user roles from database to filter out admins
     const userIds = challenge.participants.map(p => p.userId);
+    const userRoles = await prisma.userInfo.findMany({
+      where: {
+        userId: { in: userIds }
+      },
+      select: {
+        userId: true,
+        role: true
+      }
+    });
+
+    // Create role lookup map
+    const roleMap = new Map();
+    userRoles.forEach(userRole => {
+      roleMap.set(userRole.userId, userRole.role);
+    });
+
+    // Filter out admin participants (exclude ADMIN and SUPER_ADMIN from leaderboard)
+    const nonAdminParticipants = challenge.participants.filter(participant => {
+      const role = roleMap.get(participant.userId);
+      return role !== 'ADMIN' && role !== 'SUPER_ADMIN';
+    });
+
+    // Fetch user data from Clerk for non-admin participants only (optimized batch fetch)
+    const { clerkClient } = await import("@clerk/nextjs");
+    const nonAdminUserIds = nonAdminParticipants.map(p => p.userId);
     let users: any[] = [];
 
     try {
       // Batch fetch users for better performance
-      if (userIds.length > 0) {
+      if (nonAdminUserIds.length > 0) {
         const batchResponse = await clerkClient.users.getUserList({
-          userId: userIds,
+          userId: nonAdminUserIds,
           limit: 100 // Clerk API limit
         });
         users = batchResponse;
@@ -66,7 +90,7 @@ export async function GET(
       console.error("Error batch fetching users:", error);
       // Fallback to individual fetches if batch fails
       users = await Promise.all(
-        userIds.map(async (userId) => {
+        nonAdminUserIds.map(async (userId) => {
           try {
             return await clerkClient.users.getUser(userId);
           } catch (err) {
@@ -83,7 +107,7 @@ export async function GET(
       userMap.set(user.id, user);
     });
 
-    const enhancedParticipants = challenge.participants.map((participant) => {
+    const enhancedParticipants = nonAdminParticipants.map((participant) => {
       const user = userMap.get(participant.userId);
 
       if (user) {
@@ -113,7 +137,11 @@ export async function GET(
 
     const enhancedChallenge = {
       ...challenge,
-      participants: enhancedParticipants
+      participants: enhancedParticipants,
+      _count: {
+        ...challenge._count,
+        participants: enhancedParticipants.length // Update count to reflect non-admin participants only
+      }
     };
 
     return NextResponse.json({

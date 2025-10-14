@@ -24,12 +24,14 @@ type RoutineCardsProps = {
   routines: ExtendedWorkoutPlan[];
   isSystem: boolean;
   isAssigned?: boolean;
+  isAdmin?: boolean;
 };
 
 export default function RoutineCards({
   routines,
   isSystem,
   isAssigned = false,
+  isAdmin = false,
 }: RoutineCardsProps) {
   const { activeWorkoutRoutine } = useWorkoutControls();
 
@@ -42,6 +44,7 @@ export default function RoutineCards({
           isSystem={isSystem}
           isAssigned={isAssigned}
           activeWorkoutRoutine={activeWorkoutRoutine}
+          isAdmin={isAdmin}
         />
       ))}
     </div>

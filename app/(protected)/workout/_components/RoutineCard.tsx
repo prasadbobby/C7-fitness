@@ -41,6 +41,7 @@ type RoutineCardProps = {
   isSystem: boolean;
   isAssigned?: boolean;
   activeWorkoutRoutine: string | null;
+  isAdmin?: boolean;
 };
 
 type Color =
@@ -84,6 +85,7 @@ export default function RoutineCard({
   isSystem,
   isAssigned = false,
   activeWorkoutRoutine,
+  isAdmin = false,
 }: RoutineCardProps) {
   const isAnotherWorkoutInProgress =
     activeWorkoutRoutine !== null && activeWorkoutRoutine !== routine.id;
@@ -135,7 +137,7 @@ export default function RoutineCard({
             </p>
           )}
         </div>
-        {!isSystem && !isAssigned && <RoutineMenu routineId={routine.id} />}
+        {((!isSystem && !isAssigned) || (isSystem && isAdmin)) && <RoutineMenu routineId={routine.id} />}
       </CardHeader>
 
       <CardBody className="pt-0 px-5">
@@ -151,32 +153,38 @@ export default function RoutineCard({
         </ul>
       </CardBody>
       <CardFooter className="pt-0 px-5 pb-4 block">
-        <Button
-          variant="flat"
-          as={Link}
-          href={isAssigned && routine._assignmentId ?
-            `/workout/${routine.id}?assignmentId=${routine._assignmentId}` :
-            `/workout/${routine.id}`
-          }
-          size="sm"
-          //color={isAnotherWorkoutInProgress ? "danger" : "primary"}
-          className="gap-unit-1"
-          isDisabled={isAnotherWorkoutInProgress}
-        >
-          {isCurrentWorkout ? (
-            <>
-              <IconPlayerPlayFilled size={16} />
-              Continue Workout
-            </>
-          ) : isAnotherWorkoutInProgress ? (
-            "Another Workout is in Progress"
-          ) : (
-            <>
-              <IconPlayerPlayFilled size={16} />
-              Start Workout
-            </>
-          )}
-        </Button>
+        {!isAdmin ? (
+          <Button
+            variant="flat"
+            as={Link}
+            href={isAssigned && routine._assignmentId ?
+              `/workout/${routine.id}?assignmentId=${routine._assignmentId}` :
+              `/workout/${routine.id}`
+            }
+            size="sm"
+            //color={isAnotherWorkoutInProgress ? "danger" : "primary"}
+            className="gap-unit-1"
+            isDisabled={isAnotherWorkoutInProgress}
+          >
+            {isCurrentWorkout ? (
+              <>
+                <IconPlayerPlayFilled size={16} />
+                Continue Workout
+              </>
+            ) : isAnotherWorkoutInProgress ? (
+              "Another Workout is in Progress"
+            ) : (
+              <>
+                <IconPlayerPlayFilled size={16} />
+                Start Workout
+              </>
+            )}
+          </Button>
+        ) : (
+          <div className="flex items-center justify-center min-h-[2rem] text-sm text-zinc-500 dark:text-zinc-400">
+            {routine.WorkoutPlanExercise.length} exercises
+          </div>
+        )}
         <div className="lex-wrap gap-1 hidden">
           {Array.from(uniqueCategories as Set<string>).map(
             (category: string, index: number) => (
