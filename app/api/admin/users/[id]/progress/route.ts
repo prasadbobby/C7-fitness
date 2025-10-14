@@ -20,6 +20,7 @@ export async function GET(
       select: {
         id: true,
         userId: true,
+        c7UserId: true,
         age: true,
         height: true,
         weight: true,
@@ -150,6 +151,7 @@ export async function GET(
     const user = {
       id: userInfo.id,
       userId: userInfo.userId,
+      c7UserId: userInfo.c7UserId,
       username: clerkUser?.username,
       firstName: clerkUser?.firstName,
       email: clerkUser?.emailAddresses?.[0]?.emailAddress,

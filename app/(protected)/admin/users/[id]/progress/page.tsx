@@ -45,6 +45,7 @@ interface UserProgress {
   user: {
     id: string;
     userId: string;
+    c7UserId?: string;
     username?: string;
     firstName?: string;
     email?: string;
@@ -436,7 +437,7 @@ export default function UserProgressDashboard() {
                 )}
               </div>
               <div className="text-xs text-foreground-400 mt-2">
-                ID: {user?.userId}
+                ID: {user?.c7UserId || user?.userId}
               </div>
             </div>
           </div>
