@@ -318,11 +318,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update participant's completed days and last active date
+    // Update participant's completed days and last active date (but not for admins to exclude them from points)
     await prisma.ninetyDayChallengeParticipant.update({
       where: { id: participantId },
       data: {
-        completedDays: { increment: 1 },
+        completedDays: isAdmin ? undefined : { increment: 1 }, // Don't increment for admins
         lastActiveDate: new Date(),
       },
     });

@@ -42,9 +42,16 @@ export async function GET(request: Request) {
         challenge: {
           isActive: true,
         },
+        // Exclude admins from leaderboard by checking user role
+        user: {
+          role: {
+            notIn: ['ADMIN', 'SUPER_ADMIN']
+          }
+        }
       },
       include: {
         challenge: true,
+        user: true, // Include user data for role checking
         posts: {
           where: {
             challengeId: challengeId,

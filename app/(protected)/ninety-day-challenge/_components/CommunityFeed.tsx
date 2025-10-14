@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { User } from "@nextui-org/user";
@@ -9,7 +9,6 @@ import { Pagination } from "@nextui-org/pagination";
 import { Textarea } from "@nextui-org/input";
 import DatePicker from "@/components/UI/DatePicker";
 import { Avatar } from "@nextui-org/avatar";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/dropdown";
 import { formatDistanceToNow, format } from "date-fns";
 import {
   IconMessage2,
@@ -19,10 +18,13 @@ import {
   IconCalendar,
   IconPhoto,
   IconX,
-  IconHeart
+  IconHeart,
+  IconEdit
 } from "@tabler/icons-react";
 import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 import { ImageModal } from "@/components/UI/ImageModal";
+import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
+import BottomSheet from "@/components/UI/BottomSheet";
 
 interface PostReaction {
   id: string;
@@ -82,9 +84,10 @@ interface Post {
 interface CommunityFeedProps {
   challengeId?: string;
   showTodayByDefault?: boolean;
+  isAdmin?: boolean;
 }
 
-export function CommunityFeed({ challengeId, showTodayByDefault = false }: CommunityFeedProps = {}) {
+export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin = false }: CommunityFeedProps = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,10 +100,34 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [initialImageIndex, setInitialImageIndex] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedPostForAction, setSelectedPostForAction] = useState<Post | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    dayDescription: '',
+    photos: [] as File[]
+  });
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     fetchPosts();
   }, [currentPage, selectedDate, challengeId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown && dropdownRefs.current[openDropdown]) {
+        if (!dropdownRefs.current[openDropdown]?.contains(event.target as Node)) {
+          setOpenDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openDropdown]);
 
   const fetchPosts = async () => {
     try {
@@ -196,6 +223,80 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
     } catch (error) {
       console.error('Error deleting comment:', error);
     }
+  };
+
+  const handleDeletePost = async () => {
+    if (!selectedPostForAction) return;
+
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/posts/${selectedPostForAction.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchPosts(); // Refresh posts to remove deleted post
+        setIsDeleteModalOpen(false);
+        setSelectedPostForAction(null);
+      } else {
+        alert('Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Error deleting post');
+    }
+  };
+
+  const handleEditPost = (post: Post) => {
+    setSelectedPostForAction(post);
+    setEditFormData({
+      dayDescription: post.dayDescription || '',
+      photos: []
+    });
+    setIsEditModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const handleSubmitEdit = async () => {
+    if (!selectedPostForAction) return;
+
+    setIsSubmittingEdit(true);
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/posts/${selectedPostForAction.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dayDescription: editFormData.dayDescription,
+          // Keep existing photos for now, can be enhanced later
+          photos: selectedPostForAction.photos
+        }),
+      });
+
+      if (response.ok) {
+        fetchPosts(); // Refresh posts to show updated post
+        setIsEditModalOpen(false);
+        setSelectedPostForAction(null);
+        setEditFormData({ dayDescription: '', photos: [] });
+      } else {
+        alert('Failed to update post');
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Error updating post');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const openDeleteModal = (post: Post) => {
+    setSelectedPostForAction(post);
+    setIsDeleteModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const toggleDropdown = (postId: string) => {
+    setOpenDropdown(openDropdown === postId ? null : postId);
   };
 
   const handleImageClick = (images: string[], clickedIndex: number) => {
@@ -348,6 +449,11 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
                         <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                           {post.author.firstName} {post.author.lastName}
                         </p>
+                        {post.author.isAdmin && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                            Admin
+                          </span>
+                        )}
                         <span className="text-zinc-500 text-sm">•</span>
                         <span className="text-zinc-500 text-sm">
                           Day {getDayNumber(post.date)}
@@ -361,6 +467,41 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
                         {format(new Date(post.date), 'MMM d, yyyy')}
                       </p>
                     </div>
+
+                    {/* Admin Controls */}
+                    {isAdmin && (
+                      <div className="relative" ref={(el) => dropdownRefs.current[post.id] = el}>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          className="text-zinc-500 hover:text-zinc-700"
+                          onPress={() => toggleDropdown(post.id)}
+                        >
+                          <IconDots size={16} />
+                        </Button>
+
+                        {/* Custom Dropdown Menu */}
+                        {openDropdown === post.id && (
+                          <div className="absolute right-0 top-8 z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[140px]">
+                            <button
+                              onClick={() => handleEditPost(post)}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                            >
+                              <IconEdit size={16} />
+                              Edit Post
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(post)}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <IconTrash size={16} />
+                              Delete Post
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Post Content */}
@@ -368,9 +509,9 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
                     {/* Day Description */}
                     {post.dayDescription && (
                       <div>
-                        <p className="text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                        <div className="text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap">
                           {post.dayDescription}
-                        </p>
+                        </div>
                       </div>
                     )}
 
@@ -608,6 +749,95 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
         onClose={() => setIsImageModalOpen(false)}
         initialIndex={initialImageIndex}
       />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedPostForAction(null);
+        }}
+        onConfirm={handleDeletePost}
+        itemName={selectedPostForAction ? `post from ${selectedPostForAction.author.firstName} ${selectedPostForAction.author.lastName}` : 'this post'}
+        itemType="post"
+      />
+
+      {/* Edit Post Modal */}
+      <BottomSheet
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedPostForAction(null);
+          setEditFormData({ dayDescription: '', photos: [] });
+        }}
+        title="Edit Post"
+        subtitle={selectedPostForAction ? `Edit post from ${format(new Date(selectedPostForAction.date), 'MMM d, yyyy')}` : ''}
+        size="2xl"
+        footer={
+          <>
+            <Button
+              variant="light"
+              onPress={() => {
+                setIsEditModalOpen(false);
+                setSelectedPostForAction(null);
+                setEditFormData({ dayDescription: '', photos: [] });
+              }}
+              isDisabled={isSubmittingEdit}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleSubmitEdit}
+              isLoading={isSubmittingEdit}
+              isDisabled={!editFormData.dayDescription.trim()}
+              className="font-medium"
+            >
+              Update Post
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Post Content */}
+          <Textarea
+            label="What's happening?"
+            placeholder="Share an update, motivation, or announcement with the community..."
+            value={editFormData.dayDescription}
+            onChange={(e) => setEditFormData(prev => ({ ...prev, dayDescription: e.target.value }))}
+            minRows={4}
+            maxRows={8}
+            isRequired
+            classNames={{
+              input: "text-base",
+              inputWrapper: "border-2 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 focus-within:border-primary-500"
+            }}
+          />
+
+          {/* Show existing photos */}
+          {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Current Photos
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {selectedPostForAction.photos.map((photo, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={photo}
+                      alt={`Photo ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500">
+                Photo editing will be available in a future update
+              </p>
+            </div>
+          )}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

@@ -117,7 +117,7 @@ export function PostsClientWrapper({
       )}
 
       {/* Community Feed */}
-      <CommunityFeed challengeId={challengeId} showTodayByDefault={showTodayByDefault} />
+      <CommunityFeed challengeId={challengeId} showTodayByDefault={showTodayByDefault} isAdmin={isAdmin} />
 
       {/* Admin Post Modal */}
       <BottomSheet

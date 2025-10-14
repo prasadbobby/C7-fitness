@@ -88,3 +88,4 @@ VERCEL_BLOB_SETUP.md
 rds-schema-check.sql
 rds-schema-sync.sql
 GOOGLE_FITNESS_SETUP.md
+backup-data.sh
