@@ -199,7 +199,6 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false }: Commu
   };
 
   const handleImageClick = (images: string[], clickedIndex: number) => {
-    console.log('Image clicked:', images[clickedIndex]); // Debug log
     setSelectedImages(images);
     setInitialImageIndex(clickedIndex);
     setIsImageModalOpen(true);
