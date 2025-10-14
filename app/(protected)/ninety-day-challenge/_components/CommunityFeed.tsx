@@ -7,6 +7,8 @@ import { User } from "@nextui-org/user";
 import { Divider } from "@nextui-org/divider";
 import { Pagination } from "@nextui-org/pagination";
 import { Textarea } from "@nextui-org/input";
+import { Select, SelectItem } from "@nextui-org/select";
+import { Slider } from "@nextui-org/slider";
 import DatePicker from "@/components/UI/DatePicker";
 import { Avatar } from "@nextui-org/avatar";
 import { formatDistanceToNow, format } from "date-fns";
@@ -89,6 +91,32 @@ interface CommunityFeedProps {
 
 export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin = false }: CommunityFeedProps = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
+
+  // Form options
+  const sleepQualityOptions = [
+    { key: "POOR", label: "Poor" },
+    { key: "FAIR", label: "Fair" },
+    { key: "GOOD", label: "Good" },
+    { key: "VERY_GOOD", label: "Very Good" },
+    { key: "EXCELLENT", label: "Excellent" },
+  ];
+
+  const moodOptions = [
+    { key: "VERY_LOW", label: "Very Low" },
+    { key: "LOW", label: "Low" },
+    { key: "NEUTRAL", label: "Neutral" },
+    { key: "GOOD", label: "Good" },
+    { key: "VERY_GOOD", label: "Very Good" },
+    { key: "EXCELLENT", label: "Excellent" },
+  ];
+
+  const energyOptions = [
+    { key: "VERY_LOW", label: "Very Low" },
+    { key: "LOW", label: "Low" },
+    { key: "MODERATE", label: "Moderate" },
+    { key: "HIGH", label: "High" },
+    { key: "VERY_HIGH", label: "Very High" },
+  ];
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -105,7 +133,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPostForAction, setSelectedPostForAction] = useState<Post | null>(null);
   const [editFormData, setEditFormData] = useState({
+    sleepHours: 8,
+    sleepQuality: '',
+    mealTracking: '',
     dayDescription: '',
+    mood: '',
+    energy: '',
+    achievements: '',
+    challenges: '',
     photos: [] as File[]
   });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
@@ -249,7 +284,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   const handleEditPost = (post: Post) => {
     setSelectedPostForAction(post);
     setEditFormData({
+      sleepHours: post.sleepHours || 8,
+      sleepQuality: post.sleepQuality || '',
+      mealTracking: post.mealTracking || '',
       dayDescription: post.dayDescription || '',
+      mood: post.mood || '',
+      energy: post.energy || '',
+      achievements: post.achievements || '',
+      challenges: post.challenges || '',
       photos: []
     });
     setIsEditModalOpen(true);
@@ -266,9 +308,20 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        body: JSON.stringify((isAdmin && selectedPostForAction?.author.isAdmin) ? {
+          // Admin editing their own post - only basic content
           dayDescription: editFormData.dayDescription,
-          // Keep existing photos for now, can be enhanced later
+          photos: selectedPostForAction.photos
+        } : {
+          // User editing their post OR admin editing user post - all fields
+          sleepHours: editFormData.sleepHours,
+          sleepQuality: editFormData.sleepQuality,
+          mealTracking: editFormData.mealTracking,
+          dayDescription: editFormData.dayDescription,
+          mood: editFormData.mood,
+          energy: editFormData.energy,
+          achievements: editFormData.achievements,
+          challenges: editFormData.challenges,
           photos: selectedPostForAction.photos
         }),
       });
@@ -277,7 +330,17 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         fetchPosts(); // Refresh posts to show updated post
         setIsEditModalOpen(false);
         setSelectedPostForAction(null);
-        setEditFormData({ dayDescription: '', photos: [] });
+        setEditFormData({
+          sleepHours: 8,
+          sleepQuality: '',
+          mealTracking: '',
+          dayDescription: '',
+          mood: '',
+          energy: '',
+          achievements: '',
+          challenges: '',
+          photos: []
+        });
       } else {
         alert('Failed to update post');
       }
@@ -663,23 +726,13 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                                 Like
                               </button>
                               {(comment.author.userId === currentUserId) && (
-                                <Dropdown>
-                                  <DropdownTrigger>
-                                    <button className="text-zinc-500 hover:text-zinc-700 transition-colors">
-                                      <IconDots size={14} />
-                                    </button>
-                                  </DropdownTrigger>
-                                  <DropdownMenu>
-                                    <DropdownItem
-                                      key="delete"
-                                      startContent={<IconTrash size={16} />}
-                                      color="danger"
-                                      onPress={() => handleDeleteComment(comment.id)}
-                                    >
-                                      Delete
-                                    </DropdownItem>
-                                  </DropdownMenu>
-                                </Dropdown>
+                                <button
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="text-zinc-500 hover:text-red-500 transition-colors text-xs"
+                                >
+                                  <IconTrash size={14} className="inline mr-1" />
+                                  Delete
+                                </button>
                               )}
                             </div>
                           </div>
@@ -768,7 +821,17 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedPostForAction(null);
-          setEditFormData({ dayDescription: '', photos: [] });
+          setEditFormData({
+          sleepHours: 8,
+          sleepQuality: '',
+          mealTracking: '',
+          dayDescription: '',
+          mood: '',
+          energy: '',
+          achievements: '',
+          challenges: '',
+          photos: []
+        });
         }}
         title="Edit Post"
         subtitle={selectedPostForAction ? `Edit post from ${format(new Date(selectedPostForAction.date), 'MMM d, yyyy')}` : ''}
@@ -780,7 +843,17 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
               onPress={() => {
                 setIsEditModalOpen(false);
                 setSelectedPostForAction(null);
-                setEditFormData({ dayDescription: '', photos: [] });
+                setEditFormData({
+          sleepHours: 8,
+          sleepQuality: '',
+          mealTracking: '',
+          dayDescription: '',
+          mood: '',
+          energy: '',
+          achievements: '',
+          challenges: '',
+          photos: []
+        });
               }}
               isDisabled={isSubmittingEdit}
             >
@@ -799,41 +872,180 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         }
       >
         <div className="space-y-4">
-          {/* Post Content */}
-          <Textarea
-            label="What's happening?"
-            placeholder="Share an update, motivation, or announcement with the community..."
-            value={editFormData.dayDescription}
-            onChange={(e) => setEditFormData(prev => ({ ...prev, dayDescription: e.target.value }))}
-            minRows={4}
-            maxRows={8}
-            isRequired
-            classNames={{
-              input: "text-base",
-              inputWrapper: "border-2 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 focus-within:border-primary-500"
-            }}
-          />
+          {isAdmin && selectedPostForAction?.author.isAdmin ? (
+            // Admin Edit Form - Simple
+            <>
+              {/* Post Content */}
+              <Textarea
+                label="What's happening?"
+                placeholder="Share an update, motivation, or announcement with the community..."
+                value={editFormData.dayDescription}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, dayDescription: e.target.value }))}
+                minRows={4}
+                maxRows={8}
+                isRequired
+                classNames={{
+                  input: "text-base",
+                  inputWrapper: "border-2 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 focus-within:border-primary-500"
+                }}
+              />
 
-          {/* Show existing photos */}
-          {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Current Photos
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {selectedPostForAction.photos.map((photo, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={photo}
-                      alt={`Photo ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
+              {/* Show existing photos */}
+              {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Current Photos
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {selectedPostForAction.photos.map((photo, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={photo}
+                          alt={`Photo ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  <p className="text-xs text-zinc-500">
+                    Photo editing will be available in a future update
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            // User Post Edit Form - Complete (shown for user posts or when non-admin is editing)
+            <div className="space-y-6">
+              {/* Sleep Section */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Sleep Tracking</h4>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sleep Hours: {editFormData.sleepHours}h</label>
+                  <Slider
+                    size="sm"
+                    step={0.5}
+                    minValue={0}
+                    maxValue={12}
+                    value={editFormData.sleepHours}
+                    onChange={(value) => setEditFormData(prev => ({ ...prev, sleepHours: value as number }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <Select
+                  label="Sleep Quality"
+                  placeholder="Select sleep quality"
+                  selectedKeys={editFormData.sleepQuality ? [editFormData.sleepQuality] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setEditFormData(prev => ({ ...prev, sleepQuality: selected }));
+                  }}
+                >
+                  {sleepQualityOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </Select>
               </div>
-              <p className="text-xs text-zinc-500">
-                Photo editing will be available in a future update
-              </p>
+
+              {/* Meals Section */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Meal Tracking</h4>
+                <Textarea
+                  placeholder="Describe your meals today..."
+                  value={editFormData.mealTracking}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, mealTracking: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+
+              {/* Mood & Energy */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select
+                  label="Mood"
+                  placeholder="Select your mood"
+                  selectedKeys={editFormData.mood ? [editFormData.mood] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setEditFormData(prev => ({ ...prev, mood: selected }));
+                  }}
+                >
+                  {moodOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </Select>
+
+                <Select
+                  label="Energy Level"
+                  placeholder="Select your energy level"
+                  selectedKeys={editFormData.energy ? [editFormData.energy] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setEditFormData(prev => ({ ...prev, energy: selected }));
+                  }}
+                >
+                  {energyOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Day Description */}
+              <Textarea
+                label="How was your day?"
+                placeholder="Tell us about your day..."
+                value={editFormData.dayDescription}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, dayDescription: e.target.value }))}
+                rows={3}
+              />
+
+              {/* Achievements & Challenges */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Textarea
+                  label="Today's Achievements"
+                  placeholder="What did you accomplish?"
+                  value={editFormData.achievements}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, achievements: e.target.value }))}
+                  rows={2}
+                />
+
+                <Textarea
+                  label="Challenges Faced"
+                  placeholder="What was difficult today?"
+                  value={editFormData.challenges}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, challenges: e.target.value }))}
+                  rows={2}
+                />
+              </div>
+
+              {/* Show existing photos */}
+              {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Current Photos
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {selectedPostForAction.photos.map((photo, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={photo}
+                          alt={`Photo ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Photo editing will be available in a future update
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

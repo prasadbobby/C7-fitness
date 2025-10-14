@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useDisclosure } from "@nextui-org/react";
 import { Button } from "@nextui-org/button";
 import { Input, Textarea, Select, SelectItem, Chip } from "@nextui-org/react";
-import { IconPlus, IconX } from "@tabler/icons-react";
+import { IconPlus, IconX, IconUpload, IconFileImport } from "@tabler/icons-react";
 import { toast } from "sonner";
 import BottomSheet from "@/components/UI/BottomSheet";
 import ImageUpload from "../ImageUpload";
@@ -98,6 +98,8 @@ export default function AddExerciseModal({ isOpen, onClose, onExerciseAdded }: A
   const [newInstruction, setNewInstruction] = useState("");
   const [newTip, setNewTip] = useState("");
   const [uploadedImagePaths, setUploadedImagePaths] = useState<string[]>([]);
+  const [jsonInput, setJsonInput] = useState("");
+  const [showJsonInput, setShowJsonInput] = useState(false);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -124,6 +126,60 @@ export default function AddExerciseModal({ isOpen, onClose, onExerciseAdded }: A
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index)
     }));
+  };
+
+  const parseJsonData = () => {
+    try {
+      const parsedData = JSON.parse(jsonInput);
+
+      // Map JSON data to form fields
+      const newFormData = {
+        name: parsedData.name || "",
+        aliases: parsedData.aliases || [],
+        primary_muscles: parsedData.primaryMuscles || [],
+        secondary_muscles: parsedData.secondaryMuscles || [],
+        force: parsedData.force || "",
+        level: parsedData.level || "",
+        mechanic: parsedData.mechanic || "",
+        equipment: parsedData.equipment || "",
+        category: parsedData.category || "",
+        instructions: parsedData.instructions || [],
+        description: parsedData.description || "",
+        tips: parsedData.tips || [],
+        image: formData.image, // Keep existing image
+      };
+
+      setFormData(newFormData);
+      setJsonInput("");
+      setShowJsonInput(false);
+      toast.success("JSON data imported successfully!");
+    } catch (error) {
+      toast.error("Invalid JSON format. Please check your data and try again.");
+      console.error("JSON parsing error:", error);
+    }
+  };
+
+  const clearForm = () => {
+    setFormData({
+      name: "",
+      aliases: [],
+      primary_muscles: [],
+      secondary_muscles: [],
+      force: "",
+      level: "",
+      mechanic: "",
+      equipment: "",
+      category: "",
+      instructions: [],
+      description: "",
+      tips: [],
+      image: "",
+    });
+    setNewAlias("");
+    setNewInstruction("");
+    setNewTip("");
+    setUploadedImagePaths([]);
+    toast.success("Form cleared!");
   };
 
   const handleSubmit = async () => {
@@ -192,6 +248,8 @@ export default function AddExerciseModal({ isOpen, onClose, onExerciseAdded }: A
     setNewInstruction("");
     setNewTip("");
     setUploadedImagePaths([]);
+    setJsonInput("");
+    setShowJsonInput(false);
     onClose();
   };
 
@@ -213,6 +271,84 @@ export default function AddExerciseModal({ isOpen, onClose, onExerciseAdded }: A
       }
     >
       <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+        {/* JSON Import Section */}
+        <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <IconFileImport size={20} />
+              Quick Import
+            </h3>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="flat"
+                onPress={() => setShowJsonInput(!showJsonInput)}
+                startContent={<IconUpload size={16} />}
+              >
+                {showJsonInput ? "Hide" : "Import JSON"}
+              </Button>
+              {Object.values(formData).some(value =>
+                Array.isArray(value) ? value.length > 0 : value !== ""
+              ) && (
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="warning"
+                  onPress={clearForm}
+                  startContent={<IconX size={16} />}
+                >
+                  Clear Form
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {showJsonInput && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Paste JSON data to automatically fill the form fields. You can still modify any field manually after import.
+              </p>
+              <Textarea
+                placeholder={`Paste your JSON data here. Example:
+{
+  "name": "Push-ups",
+  "force": "push",
+  "level": "beginner",
+  "mechanic": "compound",
+  "equipment": "body_only",
+  "primaryMuscles": ["chest", "shoulders", "triceps"],
+  "secondaryMuscles": ["abdominals"],
+  "instructions": ["Start in plank position", "Lower body to ground", "Push back up"],
+  "category": "strength"
+}`}
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+                rows={8}
+                className="font-mono text-sm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  color="primary"
+                  onPress={parseJsonData}
+                  isDisabled={!jsonInput.trim()}
+                  startContent={<IconFileImport size={16} />}
+                >
+                  Import Data
+                </Button>
+                <Button
+                  variant="flat"
+                  onPress={() => {
+                    setJsonInput("");
+                    setShowJsonInput(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>

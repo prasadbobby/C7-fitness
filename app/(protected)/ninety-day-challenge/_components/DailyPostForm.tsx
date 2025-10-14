@@ -384,7 +384,8 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
               </div>
 
               <Select
-                placeholder="Sleep Quality"
+                label="Sleep Quality"
+                placeholder="Select sleep quality"
                 selectedKeys={formData.sleepQuality ? [formData.sleepQuality] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
@@ -414,7 +415,8 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             {/* Mood & Energy */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
-                placeholder="Mood"
+                label="Mood"
+                placeholder="Select your mood"
                 selectedKeys={formData.mood ? [formData.mood] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
@@ -430,7 +432,8 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
               </Select>
 
               <Select
-                placeholder="Energy Level"
+                label="Energy Level"
+                placeholder="Select your energy level"
                 selectedKeys={formData.energy ? [formData.energy] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
