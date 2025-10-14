@@ -30,7 +30,37 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     const total = await prisma.userInfo.count({ where });
 
-    // Get users with pagination
+    // Get all users from Clerk (this approach works like the search API)
+    let allClerkUsers: any[] = [];
+    try {
+      // Get all users from Clerk - use pagination to get all users
+      let hasMore = true;
+      let offset = 0;
+      const clerkLimit = 100; // Clerk's max limit per request
+
+      while (hasMore) {
+        const clerkResponse = await clerkClient.users.getUserList({
+          limit: clerkLimit,
+          offset: offset,
+        });
+
+        allClerkUsers.push(...clerkResponse);
+        hasMore = clerkResponse.length === clerkLimit;
+        offset += clerkLimit;
+
+        // Safety break to avoid infinite loops
+        if (offset > 10000) break;
+      }
+
+      console.log(`Found ${allClerkUsers.length} users in Clerk`);
+    } catch (error) {
+      console.warn("Error fetching all Clerk users:", error);
+    }
+
+    // Create a map of Clerk users by their ID
+    const clerkUserMap = new Map(allClerkUsers.map(user => [user.id, user]));
+
+    // Get users from database and combine with Clerk data
     const userInfos = await prisma.userInfo.findMany({
       where,
       include: {
@@ -41,46 +71,42 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
     });
 
-    // Get Clerk user data for each user
-    const userIds = userInfos.map(u => u.userId);
-    const clerkUsers = await clerkClient.users.getUserList({
-      userId: userIds,
-      limit: userIds.length,
-    });
+    // Filter users to only include those that exist in Clerk
+    const validUsers = userInfos
+      .filter(userInfo => clerkUserMap.has(userInfo.userId))
+      .map(userInfo => {
+        const clerkUser = clerkUserMap.get(userInfo.userId)!;
 
-    // Create a map for easy lookup
-    const clerkUserMap = new Map(clerkUsers.map(user => [user.id, user]));
+        return {
+          id: userInfo.id,
+          userId: userInfo.userId,
+          role: userInfo.role,
+          age: userInfo.age,
+          height: userInfo.height,
+          weight: userInfo.weight,
+          createdAt: userInfo.createdAt.toISOString(),
+          updatedAt: userInfo.updatedAt.toISOString(),
+          _count: userInfo._count,
+          // Full Clerk data
+          email: clerkUser.emailAddresses?.[0]?.emailAddress || "No email",
+          firstName: clerkUser.firstName || "",
+          lastName: clerkUser.lastName || "",
+          username: clerkUser.username || "",
+          imageUrl: clerkUser.imageUrl || "",
+          name: clerkUser.firstName && clerkUser.lastName
+            ? `${clerkUser.firstName} ${clerkUser.lastName}`
+            : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown User",
+        };
+      });
 
-    // Combine data - Include all users from database even if Clerk data is missing
-    const users = userInfos.map(userInfo => {
-      const clerkUser = clerkUserMap.get(userInfo.userId);
+    // Apply pagination to the valid users
+    const totalValidUsers = validUsers.length;
+    const paginatedUsers = validUsers.slice((page - 1) * limit, page * limit);
 
-      // If no Clerk user found, still include the database user with fallback data
-      return {
-        id: userInfo.id,
-        userId: userInfo.userId,
-        role: userInfo.role,
-        age: userInfo.age,
-        height: userInfo.height,
-        weight: userInfo.weight,
-        createdAt: userInfo.createdAt.toISOString(),
-        updatedAt: userInfo.updatedAt.toISOString(),
-        _count: userInfo._count,
-        // Clerk data with fallbacks for missing users
-        email: clerkUser?.emailAddresses?.[0]?.emailAddress || `missing_${userInfo.userId.slice(-8)}@clerk.deleted`,
-        firstName: clerkUser?.firstName || "Deleted",
-        lastName: clerkUser?.lastName || "User",
-        username: clerkUser?.username || `deleted_${userInfo.userId.slice(-8)}`,
-        imageUrl: clerkUser?.imageUrl || "",
-        name: clerkUser?.firstName && clerkUser?.lastName
-          ? `${clerkUser.firstName} ${clerkUser.lastName}`
-          : clerkUser?.username || clerkUser?.emailAddresses?.[0]?.emailAddress || `Deleted User (${userInfo.userId.slice(-8)})`,
-      };
-    });
+    // This is our final users array
+    const users = paginatedUsers;
 
     // Filter by search term if provided
     let filteredUsers = users;
@@ -114,12 +140,12 @@ export async function GET(request: NextRequest) {
         createdAt: inv.createdAt.toISOString(),
         updatedAt: inv.updatedAt.toISOString(),
       })),
-      total: total, // Use database total count, not filtered count
+      total: totalValidUsers, // Use count of users that exist in both DB and Clerk
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: totalValidUsers,
+        totalPages: Math.ceil(totalValidUsers / limit),
       },
     });
 

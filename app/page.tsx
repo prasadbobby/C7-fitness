@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import { Button } from "@nextui-org/button";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
+import Footer from "@/components/Footer/Footer";
 //import PricingCard from "@/components/LandingPage/PricingCard";
 
 export default function Home() {
@@ -41,6 +42,7 @@ export default function Home() {
   ];
 
   return (
+    <>
     <main className="min-h-dvh bg-gradient-to-b from-white to-zinc-200 dark:from-zinc-900 dark:to-zinc-950">
       <nav className="px-3 md:px-10 py-3 mb-5 flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -122,7 +124,7 @@ export default function Home() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-          <PricingCard 
+          <PricingCard
             title="Standard"
             subtitle="For the basics"
             price="$0"
@@ -138,7 +140,7 @@ export default function Home() {
             ]}
           />
 
-          <PricingCard 
+          <PricingCard
             title="Pro (Monthly)"
             subtitle="Per month, cancel anytime."
             price="$4.99"
@@ -157,7 +159,7 @@ export default function Home() {
             ]}
           />
 
-          <PricingCard 
+          <PricingCard
             title="Pro (Yearly)"
             subtitle="Per month, cancel anytime."
             price="$49.99"
@@ -177,6 +179,10 @@ export default function Home() {
 
         </div>
       </section> */}
-    </main>
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </>
   );
 }

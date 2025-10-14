@@ -8,12 +8,13 @@ datasource db {
 }
 
 model UserInfo {
-  id     String @id @default(uuid())
-  userId String @unique
-  age    Int?
-  height Float?
-  weight Float?
-  role   UserRole @default(USER)
+  id       String  @id @default(uuid())
+  userId   String  @unique
+  c7UserId String? @unique // New C7 format user ID (C70001, C70002, etc.)
+  age      Int?
+  height   Float?
+  weight   Float?
+  role     UserRole @default(USER)
 
   // Membership validity fields
   membershipStartDate DateTime?
