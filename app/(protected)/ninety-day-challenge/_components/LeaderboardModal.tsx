@@ -340,8 +340,8 @@ export function LeaderboardModal({
                       <Avatar
                         src={leaderboard[0].user.imageUrl}
                         name={`${leaderboard[0].user.firstName} ${leaderboard[0].user.lastName}`}
-                        size="xl"
-                        className="mx-auto mb-2 ring-4 ring-yellow-200"
+                        size="lg"
+                        className="mx-auto mb-2 ring-4 ring-yellow-200 w-20 h-20"
                       />
                       <div className="absolute -top-3 -right-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-full">
                         <IconTrophy className="w-5 h-5 text-yellow-500" />
