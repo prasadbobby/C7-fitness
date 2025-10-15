@@ -541,12 +541,12 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       {/* Date Filter Header */}
       <Card className="shadow-sm border border-zinc-200 dark:border-zinc-700">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between w-full">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
+            <div className="flex-shrink-0">
               <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Community Feed</h3>
               <p className="text-sm text-zinc-500">Connect and motivate each other</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:min-w-0 sm:flex-shrink-0">
               <DatePicker
                 label="Filter by date"
                 value={selectedDate || undefined}
@@ -556,7 +556,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 }}
                 size="sm"
                 placeholder="Select a date..."
-                className="w-48"
+                className="flex-1 sm:w-48 min-w-0"
               />
               {selectedDate && (
                 <Button
@@ -564,6 +564,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                   variant="light"
                   onPress={clearDateFilter}
                   startContent={<IconX size={14} />}
+                  className="flex-shrink-0 whitespace-nowrap"
                 >
                   Clear
                 </Button>
@@ -659,8 +660,8 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                             Post Views
                           </button>
 
-                          {/* Admin only options */}
-                          {isAdmin && (
+                          {/* Edit and Delete options - Available for admins and post owners */}
+                          {(isAdmin || post.author.userId === currentUserId) && (
                             <>
                               <button
                                 onClick={() => handleEditPost(post)}
