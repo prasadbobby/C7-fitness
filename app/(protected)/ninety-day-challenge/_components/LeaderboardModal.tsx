@@ -7,7 +7,7 @@ import { Card, CardBody } from "@nextui-org/card";
 import { Avatar } from "@nextui-org/avatar";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
-import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy, IconX } from "@tabler/icons-react";
+import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy } from "@tabler/icons-react";
 
 interface Post {
   date: string;
@@ -268,24 +268,14 @@ export function LeaderboardModal({
     >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-warning/20 to-warning/10 rounded-xl">
-                <IconTrophy className="w-6 h-6 text-warning" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Challenge Leaderboard</h2>
-                <p className="text-sm text-foreground-500">{challengeTitle}</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-warning/20 to-warning/10 rounded-xl">
+              <IconTrophy className="w-6 h-6 text-warning" />
             </div>
-            <Button
-              isIconOnly
-              variant="light"
-              onPress={onClose}
-              className="text-foreground-500 hover:text-foreground-700"
-            >
-              <IconX size={20} />
-            </Button>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Challenge Leaderboard</h2>
+              <p className="text-sm text-foreground-500">{challengeTitle}</p>
+            </div>
           </div>
           {currentUserRank && (
             <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
