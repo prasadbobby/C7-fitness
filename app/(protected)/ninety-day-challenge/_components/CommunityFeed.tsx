@@ -68,6 +68,7 @@ interface Post {
   challenges: string | null;
   photos: string[];
   createdAt: string;
+  updatedAt: string;
   author: {
     userId: string;
     firstName: string;
@@ -499,6 +500,13 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     return Math.max(1, Math.min(90, daysDiff)); // Ensure it's between 1-90
   };
 
+  const isPostEdited = (post: Post) => {
+    // Check if the post was updated after creation (with a small buffer for normal save operations)
+    const created = new Date(post.createdAt).getTime();
+    const updated = new Date(post.updatedAt).getTime();
+    return updated > created + 5000; // 5 second buffer
+  };
+
   if (loading) {
     return (
       <Card>
@@ -591,6 +599,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                       className="flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
+                      {/* First line: Name, Admin badge, Day */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                           {post.author.firstName} {post.author.lastName}
@@ -600,18 +609,30 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                             Admin
                           </span>
                         )}
+                        {isPostEdited(post) && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+                            Edited
+                          </span>
+                        )}
                         <span className="text-zinc-500 text-sm">•</span>
                         <span className="text-zinc-500 text-sm">
                           Day {getDayNumber(post.date)}
                         </span>
-                        <span className="text-zinc-500 text-sm">•</span>
+                      </div>
+
+                      {/* Second line: Date and timestamps */}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-zinc-500 text-sm">
-                          {formatDistanceToNow(new Date(post.createdAt))} ago
+                          {format(new Date(post.date), 'MMM d, yyyy')}
+                        </span>
+                        <span className="text-zinc-400 text-sm">•</span>
+                        <span className="text-zinc-500 text-sm">
+                          {isPostEdited(post)
+                            ? `${formatDistanceToNow(new Date(post.updatedAt))} ago`
+                            : `${formatDistanceToNow(new Date(post.createdAt))} ago`
+                          }
                         </span>
                       </div>
-                      <p className="text-zinc-500 text-sm mt-0.5">
-                        {format(new Date(post.date), 'MMM d, yyyy')}
-                      </p>
                     </div>
 
                     {/* Post Menu - Available for all users */}
