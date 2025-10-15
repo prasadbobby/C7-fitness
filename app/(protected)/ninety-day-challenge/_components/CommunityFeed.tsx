@@ -933,7 +933,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                         <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">
                           🏆 Achievements
                         </p>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300">{post.achievements}</p>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{post.achievements}</p>
                       </div>
                     )}
 
@@ -943,7 +943,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                         <p className="text-sm font-medium text-orange-700 dark:text-orange-400 mb-1">
                           💪 Challenges
                         </p>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300">{post.challenges}</p>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{post.challenges}</p>
                       </div>
                     )}
 
@@ -953,7 +953,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                         <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">
                           🍽️ Meals
                         </p>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300">{post.mealTracking}</p>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{post.mealTracking}</p>
                       </div>
                     )}
 

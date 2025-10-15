@@ -3,12 +3,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
-import { Input } from "@nextui-org/input";
 import { Textarea } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Slider } from "@nextui-org/slider";
 import { Chip } from "@nextui-org/chip";
-import { Progress } from "@nextui-org/progress";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
 import { ImageModal } from "@/components/UI/ImageModal";
 import { processUploadedFiles } from "@/utils/imageUtils";
