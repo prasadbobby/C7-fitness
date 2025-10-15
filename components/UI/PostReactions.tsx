@@ -9,6 +9,8 @@ import {
   PopoverTrigger,
   PopoverContent
 } from "@nextui-org/popover";
+import { Avatar } from "@nextui-org/avatar";
+import BottomSheet from "@/components/UI/BottomSheet";
 
 // Reaction types for fitness community engagement
 export type ReactionType = "LIKE" | "LOVE" | "SUPPORT" | "STRONG" | "FIRE" | "CLAP";
@@ -32,6 +34,7 @@ export const REACTIONS: ReactionData[] = [
 interface PostReactionsProps {
   postId: string;
   reactions: { [key in ReactionType]?: number };
+  reactionUsers?: { [key in ReactionType]?: Array<{userId: string, firstName: string, lastName: string, imageUrl: string, username: string, isAdmin: boolean}> };
   userReaction?: ReactionType | null;
   onReactionToggle: (postId: string, reactionType: ReactionType) => void;
   size?: "sm" | "md" | "lg";
@@ -41,6 +44,7 @@ interface PostReactionsProps {
 export default function PostReactions({
   postId,
   reactions,
+  reactionUsers = {},
   userReaction,
   onReactionToggle,
   size = "md",
@@ -48,6 +52,8 @@ export default function PostReactions({
 }: PostReactionsProps) {
   const [isAnimating, setIsAnimating] = useState<ReactionType | null>(null);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const { isOpen: isUsersModalOpen, onOpen: onUsersModalOpen, onClose: onUsersModalClose, onOpenChange: onUsersModalOpenChange } = useDisclosure();
+  const [selectedReactionType, setSelectedReactionType] = useState<ReactionType | null>(null);
 
   const handleReactionClick = (reactionType: ReactionType) => {
     setIsAnimating(reactionType);
@@ -56,6 +62,11 @@ export default function PostReactions({
 
     // Reset animation after completion
     setTimeout(() => setIsAnimating(null), 600);
+  };
+
+  const handleShowUsers = (reactionType: ReactionType) => {
+    setSelectedReactionType(reactionType);
+    onUsersModalOpen();
   };
 
   const getEmojiSize = () => {
@@ -163,15 +174,61 @@ export default function PostReactions({
             .slice(0, 3) // Show only top 3 reaction types
             .map(([type, count]) => {
               const reactionData = REACTIONS.find(r => r.type === type);
+              const users = reactionUsers[type as ReactionType] || [];
               return reactionData ? (
-                <div key={type} className="flex items-center gap-0.5">
+                <button
+                  key={type}
+                  onClick={() => handleShowUsers(type as ReactionType)}
+                  className="flex items-center gap-0.5 hover:bg-default-100 px-1 py-0.5 rounded transition-colors cursor-pointer"
+                  disabled={users.length === 0}
+                >
                   <span>{reactionData.emoji}</span>
                   <span>{count}</span>
-                </div>
+                </button>
               ) : null;
             })}
         </div>
       )}
+
+      {/* Users BottomSheet */}
+      <BottomSheet
+        isOpen={isUsersModalOpen}
+        onClose={onUsersModalClose}
+        title={selectedReactionType ? `${REACTIONS.find(r => r.type === selectedReactionType)?.emoji} ${REACTIONS.find(r => r.type === selectedReactionType)?.label}` : 'Reactions'}
+        subtitle="People who reacted"
+        size="sm"
+      >
+        <div className="space-y-3 pb-4">
+          {selectedReactionType && reactionUsers[selectedReactionType]?.map((user) => (
+            <div key={user.userId} className="flex items-center gap-3">
+              <Avatar
+                src={user.imageUrl}
+                alt={`${user.firstName} ${user.lastName}`}
+                size="sm"
+                className="flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  {user.isAdmin && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                      Admin
+                    </span>
+                  )}
+                </div>
+                {user.username && (
+                  <p className="text-xs text-foreground-500">@{user.username}</p>
+                )}
+              </div>
+            </div>
+          ))}
+          {selectedReactionType && (!reactionUsers[selectedReactionType] || reactionUsers[selectedReactionType]?.length === 0) && (
+            <p className="text-center text-foreground-500 py-8">No users found</p>
+          )}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

@@ -119,10 +119,14 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Get user info from Clerk and database for all post authors and comment authors
+    // Get user info from Clerk and database for all post authors, comment authors, and reaction users
     const postUserIds = posts.map(post => post.userId);
     const commentUserIds = posts.flatMap(post => post.comments.map(comment => comment.userId));
-    const userIds = [...new Set([...postUserIds, ...commentUserIds])];
+    const reactionUserIds = posts.flatMap(post => post.reactions.map(reaction => reaction.userId));
+    const commentReactionUserIds = posts.flatMap(post =>
+      post.comments.flatMap(comment => comment.reactions.map(reaction => reaction.userId))
+    );
+    const userIds = [...new Set([...postUserIds, ...commentUserIds, ...reactionUserIds, ...commentReactionUserIds])];
 
     // Get user roles from database
     const userRoles = await prisma.userInfo.findMany({
@@ -181,6 +185,25 @@ export async function GET(request: NextRequest) {
         return acc;
       }, {} as Record<string, number>);
 
+      // Group reactions by type with user info
+      const reactionsByType = post.reactions.reduce((acc, reaction) => {
+        if (!acc[reaction.reactionType]) {
+          acc[reaction.reactionType] = [];
+        }
+        const reactionUser = userInfoMap[reaction.userId];
+        if (reactionUser) {
+          acc[reaction.reactionType].push({
+            userId: reaction.userId,
+            firstName: reactionUser.firstName,
+            lastName: reactionUser.lastName,
+            imageUrl: reactionUser.imageUrl,
+            username: reactionUser.username,
+            isAdmin: reactionUser.isAdmin,
+          });
+        }
+        return acc;
+      }, {} as Record<string, Array<{userId: string, firstName: string, lastName: string, imageUrl: string, username: string, isAdmin: boolean}>>);
+
       // Enhance comments with user info and reaction data
       const enhancedComments = post.comments.map(comment => {
         const userCommentReaction = comment.reactions.find(reaction =>
@@ -215,6 +238,7 @@ export async function GET(request: NextRequest) {
         author: userInfo,
         comments: enhancedComments,
         reactionCounts,
+        reactionsByType,
         userReaction: userReaction ? {
           id: userReaction.id,
           type: userReaction.reactionType,

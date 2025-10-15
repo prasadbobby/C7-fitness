@@ -81,6 +81,14 @@ interface Post {
     comments: number;
   };
   reactionCounts: Record<string, number>;
+  reactionsByType: Record<string, Array<{
+    userId: string;
+    firstName: string;
+    lastName: string;
+    imageUrl: string;
+    username: string;
+    isAdmin: boolean;
+  }>>;
   userReaction: {
     id: string;
     type: string;
@@ -701,6 +709,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                       <PostReactions
                         postId={post.id}
                         reactions={post.reactionCounts || {}}
+                        reactionUsers={post.reactionsByType || {}}
                         userReaction={post.userReaction?.type as ReactionType || null}
                         onReactionToggle={handleReaction}
                         size="sm"
