@@ -42,16 +42,9 @@ export async function GET(request: Request) {
         challenge: {
           isActive: true,
         },
-        // Exclude admins from leaderboard by checking user role
-        user: {
-          role: {
-            notIn: ['ADMIN', 'SUPER_ADMIN']
-          }
-        }
       },
       include: {
         challenge: true,
-        user: true, // Include user data for role checking
         posts: {
           where: {
             challengeId: challengeId,
@@ -63,9 +56,32 @@ export async function GET(request: Request) {
       },
     });
 
-    // Fetch user information from Clerk for all participants
+    // Get user roles to filter out admins
+    const userRoles = await prisma.userInfo.findMany({
+      where: {
+        userId: { in: participants.map(p => p.userId) }
+      },
+      select: {
+        userId: true,
+        role: true
+      }
+    });
+
+    // Create role lookup map
+    const roleMap = new Map();
+    userRoles.forEach(userRole => {
+      roleMap.set(userRole.userId, userRole.role);
+    });
+
+    // Filter out admin participants (exclude ADMIN and SUPER_ADMIN from leaderboard)
+    const nonAdminParticipants = participants.filter(participant => {
+      const role = roleMap.get(participant.userId);
+      return role !== 'ADMIN' && role !== 'SUPER_ADMIN';
+    });
+
+    // Fetch user information from Clerk for non-admin participants only
     const participantsWithUserInfo = await Promise.all(
-      participants.map(async (participant) => {
+      nonAdminParticipants.map(async (participant) => {
         try {
           const clerkUser = await clerkClient.users.getUser(participant.userId);
           return {
@@ -96,7 +112,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       participants: participantsWithUserInfo,
-      challengeTitle: participants[0]?.challenge?.title || "Challenge",
+      challengeTitle: nonAdminParticipants[0]?.challenge?.title || "Challenge",
     });
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
