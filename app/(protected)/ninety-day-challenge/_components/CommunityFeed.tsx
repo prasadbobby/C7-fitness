@@ -23,7 +23,8 @@ import {
   IconEdit,
   IconEye,
   IconPin,
-  IconPinFilled
+  IconPinFilled,
+  IconCamera
 } from "@tabler/icons-react";
 import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 import { ImageModal } from "@/components/UI/ImageModal";
@@ -159,13 +160,86 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     energy: '',
     achievements: '',
     challenges: '',
-    photos: [] as File[]
+    existingPhotos: [] as string[],
+    newPhotos: [] as File[]
   });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [isPostViewsModalOpen, setIsPostViewsModalOpen] = useState(false);
   const [postViewsData, setPostViewsData] = useState<{views: any[], totalViews: number} | null>(null);
   const [loadingPostViews, setLoadingPostViews] = useState(false);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Helper functions for photo management
+  const handleNewPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setEditFormData(prev => ({
+        ...prev,
+        newPhotos: [...prev.newPhotos, ...files]
+      }));
+    }
+  };
+
+  const removeExistingPhoto = (index: number) => {
+    setEditFormData(prev => ({
+      ...prev,
+      existingPhotos: prev.existingPhotos.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeNewPhoto = (index: number) => {
+    setEditFormData(prev => ({
+      ...prev,
+      newPhotos: prev.newPhotos.filter((_, i) => i !== index)
+    }));
+  };
+
+  const resetEditFormData = () => {
+    setEditFormData({
+      sleepHours: 8,
+      sleepQuality: '',
+      mealTracking: '',
+      dayDescription: '',
+      mood: '',
+      energy: '',
+      achievements: '',
+      challenges: '',
+      existingPhotos: [],
+      newPhotos: []
+    });
+  };
+
+  // Helper function to check if any changes have been made to the post
+  const hasPostChanges = () => {
+    if (!selectedPostForAction) return false;
+
+    const original = selectedPostForAction;
+    const current = editFormData;
+
+    // Check if photos have changed
+    const photosChanged =
+      current.newPhotos.length > 0 ||
+      current.existingPhotos.length !== original.photos.length ||
+      !current.existingPhotos.every((photo, index) => photo === original.photos[index]);
+
+    // For admin editing their own posts, only check dayDescription and photos
+    if (isAdmin && selectedPostForAction?.author.isAdmin) {
+      return current.dayDescription !== (original.dayDescription || '') || photosChanged;
+    }
+
+    // For regular users or admin editing user posts, check all fields
+    const fieldsChanged =
+      current.sleepHours !== (original.sleepHours || 8) ||
+      current.sleepQuality !== (original.sleepQuality || '') ||
+      current.mealTracking !== (original.mealTracking || '') ||
+      current.dayDescription !== (original.dayDescription || '') ||
+      current.mood !== (original.mood || '') ||
+      current.energy !== (original.energy || '') ||
+      current.achievements !== (original.achievements || '') ||
+      current.challenges !== (original.challenges || '');
+
+    return fieldsChanged || photosChanged;
+  };
 
   useEffect(() => {
     fetchPosts();
@@ -357,7 +431,8 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       energy: post.energy || '',
       achievements: post.achievements || '',
       challenges: post.challenges || '',
-      photos: []
+      existingPhotos: post.photos || [],
+      newPhotos: []
     });
     setIsEditModalOpen(true);
     setOpenDropdown(null);
@@ -368,44 +443,73 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
 
     setIsSubmittingEdit(true);
     try {
-      const response = await fetch(`/api/ninety-day-challenge/posts/${selectedPostForAction.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify((isAdmin && selectedPostForAction?.author.isAdmin) ? {
+      // Check if we have new photos or need to handle photo changes
+      const hasPhotoChanges = editFormData.newPhotos.length > 0 ||
+        editFormData.existingPhotos.length !== selectedPostForAction.photos.length ||
+        !editFormData.existingPhotos.every((photo, index) => photo === selectedPostForAction.photos[index]);
+
+      let response;
+
+      if (hasPhotoChanges) {
+        // Use FormData when there are photo changes
+        const formData = new FormData();
+
+        if (isAdmin && selectedPostForAction?.author.isAdmin) {
           // Admin editing their own post - only basic content
-          dayDescription: editFormData.dayDescription,
-          photos: selectedPostForAction.photos
-        } : {
+          formData.append('dayDescription', editFormData.dayDescription);
+        } else {
           // User editing their post OR admin editing user post - all fields
-          sleepHours: editFormData.sleepHours,
-          sleepQuality: editFormData.sleepQuality,
-          mealTracking: editFormData.mealTracking,
-          dayDescription: editFormData.dayDescription,
-          mood: editFormData.mood,
-          energy: editFormData.energy,
-          achievements: editFormData.achievements,
-          challenges: editFormData.challenges,
-          photos: selectedPostForAction.photos
-        }),
-      });
+          formData.append('sleepHours', editFormData.sleepHours.toString());
+          formData.append('sleepQuality', editFormData.sleepQuality);
+          formData.append('mealTracking', editFormData.mealTracking);
+          formData.append('dayDescription', editFormData.dayDescription);
+          formData.append('mood', editFormData.mood);
+          formData.append('energy', editFormData.energy);
+          formData.append('achievements', editFormData.achievements);
+          formData.append('challenges', editFormData.challenges);
+        }
+
+        // Add existing photos that weren't removed
+        formData.append('existingPhotos', JSON.stringify(editFormData.existingPhotos));
+
+        // Add new photos
+        editFormData.newPhotos.forEach((photo) => {
+          formData.append('newPhotos', photo);
+        });
+
+        response = await fetch(`/api/ninety-day-challenge/posts/${selectedPostForAction.id}`, {
+          method: 'PUT',
+          body: formData,
+        });
+      } else {
+        // Use JSON when no photo changes (existing behavior)
+        response = await fetch(`/api/ninety-day-challenge/posts/${selectedPostForAction.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify((isAdmin && selectedPostForAction?.author.isAdmin) ? {
+            // Admin editing their own post - only basic content
+            dayDescription: editFormData.dayDescription,
+          } : {
+            // User editing their post OR admin editing user post - all fields
+            sleepHours: editFormData.sleepHours,
+            sleepQuality: editFormData.sleepQuality,
+            mealTracking: editFormData.mealTracking,
+            dayDescription: editFormData.dayDescription,
+            mood: editFormData.mood,
+            energy: editFormData.energy,
+            achievements: editFormData.achievements,
+            challenges: editFormData.challenges,
+          }),
+        });
+      }
 
       if (response.ok) {
         fetchPosts(); // Refresh posts to show updated post
         setIsEditModalOpen(false);
         setSelectedPostForAction(null);
-        setEditFormData({
-          sleepHours: 8,
-          sleepQuality: '',
-          mealTracking: '',
-          dayDescription: '',
-          mood: '',
-          energy: '',
-          achievements: '',
-          challenges: '',
-          photos: []
-        });
+        resetEditFormData();
       } else {
         alert('Failed to update post');
       }
@@ -579,7 +683,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 label="Filter by date"
                 value={selectedDate || undefined}
                 onChange={(date) => {
-                  setSelectedDate(date);
+                  setSelectedDate(date || null);
                   setCurrentPage(1);
                 }}
                 size="sm"
@@ -1008,17 +1112,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedPostForAction(null);
-          setEditFormData({
-          sleepHours: 8,
-          sleepQuality: '',
-          mealTracking: '',
-          dayDescription: '',
-          mood: '',
-          energy: '',
-          achievements: '',
-          challenges: '',
-          photos: []
-        });
+          resetEditFormData();
         }}
         title="Edit Post"
         subtitle={selectedPostForAction ? `Edit post from ${format(new Date(selectedPostForAction.date), 'MMM d, yyyy')}` : ''}
@@ -1030,17 +1124,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
               onPress={() => {
                 setIsEditModalOpen(false);
                 setSelectedPostForAction(null);
-                setEditFormData({
-          sleepHours: 8,
-          sleepQuality: '',
-          mealTracking: '',
-          dayDescription: '',
-          mood: '',
-          energy: '',
-          achievements: '',
-          challenges: '',
-          photos: []
-        });
+                resetEditFormData();
               }}
               isDisabled={isSubmittingEdit}
             >
@@ -1050,7 +1134,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
               color="primary"
               onPress={handleSubmitEdit}
               isLoading={isSubmittingEdit}
-              isDisabled={!editFormData.dayDescription.trim()}
+              isDisabled={!hasPostChanges()}
               className="font-medium"
             >
               Update Post
@@ -1077,28 +1161,90 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 }}
               />
 
-              {/* Show existing photos */}
-              {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
-                <div className="space-y-2">
+              {/* Photo Management Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <IconCamera size={20} className="text-zinc-500" />
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Current Photos
+                    Photos
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {selectedPostForAction.photos.map((photo, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={photo}
-                          alt={`Photo ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    Photo editing will be available in a future update
-                  </p>
                 </div>
-              )}
+
+                {/* Existing Photos */}
+                {editFormData.existingPhotos.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Current Photos
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {editFormData.existingPhotos.map((photo, index) => (
+                        <div key={`existing-${index}`} className="relative">
+                          <img
+                            src={photo}
+                            alt={`Existing photo ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            color="danger"
+                            variant="faded"
+                            className="absolute top-1 right-1"
+                            onPress={() => removeExistingPhoto(index)}
+                          >
+                            <IconX size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Photos */}
+                {editFormData.newPhotos.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      New Photos
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {editFormData.newPhotos.map((photo, index) => (
+                        <div key={`new-${index}`} className="relative">
+                          <img
+                            src={URL.createObjectURL(photo)}
+                            alt={`New photo ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            color="danger"
+                            variant="faded"
+                            className="absolute top-1 right-1"
+                            onPress={() => removeNewPhoto(index)}
+                          >
+                            <IconX size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add New Photos */}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleNewPhotoUpload}
+                  className="block w-full text-sm text-zinc-500 dark:text-zinc-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary-50 file:text-primary-700
+                    hover:file:bg-primary-100
+                    dark:file:bg-primary-900/50 dark:file:text-primary-300"
+                />
+              </div>
             </>
           ) : (
             // User Post Edit Form - Complete (shown for user posts or when non-admin is editing)
@@ -1211,28 +1357,90 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 />
               </div>
 
-              {/* Show existing photos */}
-              {selectedPostForAction?.photos && selectedPostForAction.photos.length > 0 && (
-                <div className="space-y-2">
+              {/* Photo Management Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <IconCamera size={20} className="text-zinc-500" />
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Current Photos
+                    Progress Photos
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {selectedPostForAction.photos.map((photo, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={photo}
-                          alt={`Photo ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    Photo editing will be available in a future update
-                  </p>
                 </div>
-              )}
+
+                {/* Existing Photos */}
+                {editFormData.existingPhotos.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Current Photos
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {editFormData.existingPhotos.map((photo, index) => (
+                        <div key={`existing-${index}`} className="relative">
+                          <img
+                            src={photo}
+                            alt={`Existing photo ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            color="danger"
+                            variant="faded"
+                            className="absolute top-1 right-1"
+                            onPress={() => removeExistingPhoto(index)}
+                          >
+                            <IconX size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Photos */}
+                {editFormData.newPhotos.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      New Photos
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {editFormData.newPhotos.map((photo, index) => (
+                        <div key={`new-${index}`} className="relative">
+                          <img
+                            src={URL.createObjectURL(photo)}
+                            alt={`New photo ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            color="danger"
+                            variant="faded"
+                            className="absolute top-1 right-1"
+                            onPress={() => removeNewPhoto(index)}
+                          >
+                            <IconX size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add New Photos */}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleNewPhotoUpload}
+                  className="block w-full text-sm text-zinc-500 dark:text-zinc-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary-50 file:text-primary-700
+                    hover:file:bg-primary-100
+                    dark:file:bg-primary-900/50 dark:file:text-primary-300"
+                />
+              </div>
             </div>
           )}
         </div>
