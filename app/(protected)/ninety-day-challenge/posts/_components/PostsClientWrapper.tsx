@@ -8,6 +8,7 @@ import BottomSheet from "@/components/UI/BottomSheet";
 import { Textarea } from "@nextui-org/input";
 import { IconCamera, IconX } from "@tabler/icons-react";
 import DatePicker from "@/components/UI/DatePicker";
+import { processUploadedFiles } from "@/utils/imageUtils";
 
 interface PostsClientWrapperProps {
   challengeId: string | null;
@@ -31,10 +32,17 @@ export function PostsClientWrapper({
     photos: [] as File[],
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setFormData(prev => ({ ...prev, photos: [...prev.photos, ...files] }));
+      try {
+        // Process files to convert HEIC to JPEG if necessary
+        const processedFiles = await processUploadedFiles(files);
+        setFormData(prev => ({ ...prev, photos: [...prev.photos, ...processedFiles] }));
+      } catch (error) {
+        console.error('Error processing uploaded files:', error);
+        alert('Some images could not be processed. Please try again.');
+      }
     }
   };
 
@@ -197,7 +205,7 @@ export function PostsClientWrapper({
             <input
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.heic,.HEIC"
               onChange={handleFileChange}
               className="block w-full text-sm text-zinc-500 dark:text-zinc-400
                 file:mr-4 file:py-2 file:px-4

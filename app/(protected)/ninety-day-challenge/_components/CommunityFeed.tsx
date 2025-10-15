@@ -30,6 +30,7 @@ import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 import { ImageModal } from "@/components/UI/ImageModal";
 import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
 import BottomSheet from "@/components/UI/BottomSheet";
+import { processUploadedFiles } from "@/utils/imageUtils";
 
 interface PostReaction {
   id: string;
@@ -170,13 +171,20 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Helper functions for photo management
-  const handleNewPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setEditFormData(prev => ({
-        ...prev,
-        newPhotos: [...prev.newPhotos, ...files]
-      }));
+      try {
+        // Process files to convert HEIC to JPEG if necessary
+        const processedFiles = await processUploadedFiles(files);
+        setEditFormData(prev => ({
+          ...prev,
+          newPhotos: [...prev.newPhotos, ...processedFiles]
+        }));
+      } catch (error) {
+        console.error('Error processing uploaded files:', error);
+        alert('Some images could not be processed. Please try again.');
+      }
     }
   };
 
@@ -1234,7 +1242,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,.heic,.HEIC"
                   onChange={handleNewPhotoUpload}
                   className="block w-full text-sm text-zinc-500 dark:text-zinc-400
                     file:mr-4 file:py-2 file:px-4
@@ -1430,7 +1438,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,.heic,.HEIC"
                   onChange={handleNewPhotoUpload}
                   className="block w-full text-sm text-zinc-500 dark:text-zinc-400
                     file:mr-4 file:py-2 file:px-4
