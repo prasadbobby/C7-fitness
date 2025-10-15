@@ -17,12 +17,13 @@ import {
   IconSend,
   IconDots,
   IconTrash,
-  IconCalendar,
   IconPhoto,
   IconX,
   IconHeart,
   IconEdit,
-  IconEye
+  IconEye,
+  IconPin,
+  IconPinFilled
 } from "@tabler/icons-react";
 import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 import { ImageModal } from "@/components/UI/ImageModal";
@@ -69,6 +70,9 @@ interface Post {
   photos: string[];
   createdAt: string;
   updatedAt: string;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
   author: {
     userId: string;
     firstName: string;
@@ -446,6 +450,30 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     setOpenDropdown(openDropdown === postId ? null : postId);
   };
 
+  const handlePinToggle = async (post: Post) => {
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/posts/${post.id}/pin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(data.message);
+        fetchPosts(); // Refresh posts to show updated pin status
+        setOpenDropdown(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update pin status');
+      }
+    } catch (error) {
+      console.error('Error toggling pin status:', error);
+      alert('Error updating pin status');
+    }
+  };
+
   const handleImageClick = (images: string[], clickedIndex: number) => {
     setSelectedImages(images);
     setInitialImageIndex(clickedIndex);
@@ -600,7 +628,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                       className="flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      {/* First line: Name, Admin badge, Day */}
+                      {/* First line: Name, Admin badge, Pinned badge, Day */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                           {post.author.firstName} {post.author.lastName}
@@ -608,6 +636,12 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                         {post.author.isAdmin && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
                             Admin
+                          </span>
+                        )}
+                        {post.isPinned && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200">
+                            <IconPinFilled size={12} />
+                            Pinned
                           </span>
                         )}
                         {isPostEdited(post) && (
@@ -659,6 +693,26 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                             <IconEye size={16} />
                             Post Views
                           </button>
+
+                          {/* Pin/Unpin option - Available for admins only */}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handlePinToggle(post)}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                            >
+                              {post.isPinned ? (
+                                <>
+                                  <IconPin size={16} />
+                                  Unpin Post
+                                </>
+                              ) : (
+                                <>
+                                  <IconPinFilled size={16} />
+                                  Pin Post
+                                </>
+                              )}
+                            </button>
+                          )}
 
                           {/* Edit and Delete options - Available for admins and post owners */}
                           {(isAdmin || post.author.userId === currentUserId) && (

@@ -110,7 +110,11 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: [
+          { isPinned: "desc" },        // Pinned posts first
+          { pinnedAt: "desc" },        // Latest pinned posts first among pinned
+          { updatedAt: "desc" }        // Then by update time for regular posts
+        ],
         skip,
         take: limit,
       }),

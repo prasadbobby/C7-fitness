@@ -431,6 +431,9 @@ model NinetyDayChallengePost {
   achievements    String?                  // Daily achievements or wins
   challenges      String?                  // Daily challenges faced
   photos          String[]                 // Array of photo URLs for transformation tracking
+  isPinned        Boolean                  @default(false) // Admin can pin posts to show at top
+  pinnedAt        DateTime?                // When the post was pinned
+  pinnedBy        String?                  // Admin user ID who pinned the post
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -444,6 +447,7 @@ model NinetyDayChallengePost {
   @@unique([userId, challengeId, date])
   @@index([challengeId, date])
   @@index([userId, date])
+  @@index([challengeId, isPinned, pinnedAt])
 }
 
 model NinetyDayChallengeReaction {
