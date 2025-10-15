@@ -18,6 +18,10 @@ import {
   IconBolt
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import {
+  calculateParticipantMetrics,
+  calculateChallengeScore
+} from "@/utils/challengeScoring";
 
 interface Post {
   date: string;
@@ -96,61 +100,31 @@ export function ChallengeDetails({ challenge }: ChallengeDetailsProps) {
           // User info is already included in participant data
           const userInfo = participant.user;
 
-          // Calculate metrics
-          const posts = participant.posts;
-          const totalPosts = posts.length;
+          // Calculate metrics using unified scoring system
+          const metrics = calculateParticipantMetrics(participant.posts, participant.joinedAt);
 
-          // Sleep metrics
-          const sleepHours = posts
-            .filter(p => p.sleepHours !== null)
-            .map(p => p.sleepHours!);
-          const avgSleepHours = sleepHours.length > 0
-            ? sleepHours.reduce((sum, hours) => sum + hours, 0) / sleepHours.length
-            : 0;
+          // Calculate score using unified scoring system
+          const now = new Date();
+          const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+          const joinedAtUTC = new Date(new Date(participant.joinedAt).getUTCFullYear(), new Date(participant.joinedAt).getUTCMonth(), new Date(participant.joinedAt).getUTCDate());
+          const daysElapsed = Math.max(1, Math.ceil((nowUTC.getTime() - joinedAtUTC.getTime()) / (1000 * 60 * 60 * 24)));
 
-          // Mood metrics
-          const moods = posts
-            .filter(p => p.mood !== null)
-            .map(p => getMoodScore(p.mood!));
-          const avgMood = moods.length > 0
-            ? moods.reduce((sum, score) => sum + score, 0) / moods.length
-            : 0;
-
-          // Energy metrics
-          const energies = posts
-            .filter(p => p.energy !== null)
-            .map(p => getEnergyScore(p.energy!));
-          const avgEnergy = energies.length > 0
-            ? energies.reduce((sum, score) => sum + score, 0) / energies.length
-            : 0;
-
-          // Consistency
-          const daysElapsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(participant.joinedAt).getTime()) / (1000 * 60 * 60 * 24)));
-          const consistency = Math.min(100, (totalPosts / Math.min(daysElapsed, 90)) * 100);
+          const score = calculateChallengeScore(metrics, daysElapsed);
 
           // Last active
-          const lastActive = posts.length > 0
-            ? posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
+          const lastActive = participant.posts.length > 0
+            ? participant.posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
             : null;
-
-          // Calculate score
-          const score = calculateScore({
-            totalPosts,
-            avgSleepHours,
-            avgMood,
-            avgEnergy,
-            consistency
-          });
 
           return {
             ...participant,
             user: userInfo,
             metrics: {
-              totalPosts,
-              avgSleepHours,
-              avgMood,
-              avgEnergy,
-              consistency,
+              totalPosts: metrics.totalPosts,
+              avgSleepHours: metrics.avgSleepHours,
+              avgMood: metrics.avgMood,
+              avgEnergy: metrics.avgEnergy,
+              consistency: metrics.consistency,
               lastActive
             },
             score
@@ -166,50 +140,6 @@ export function ChallengeDetails({ challenge }: ChallengeDetailsProps) {
     }
   };
 
-  const getMoodScore = (mood: string): number => {
-    const scores: Record<string, number> = {
-      'EXCELLENT': 5,
-      'VERY_GOOD': 4,
-      'GOOD': 3,
-      'NEUTRAL': 2,
-      'LOW': 1,
-      'VERY_LOW': 0
-    };
-    return scores[mood] || 0;
-  };
-
-  const getEnergyScore = (energy: string): number => {
-    const scores: Record<string, number> = {
-      'VERY_HIGH': 5,
-      'HIGH': 4,
-      'MODERATE': 3,
-      'LOW': 2,
-      'VERY_LOW': 1
-    };
-    return scores[energy] || 0;
-  };
-
-  const calculateScore = (metrics: any): number => {
-    const weights = {
-      consistency: 0.3,
-      avgSleepHours: 0.2,
-      avgMood: 0.25,
-      avgEnergy: 0.2,
-      totalPosts: 0.05
-    };
-
-    const normalizedMetrics = {
-      consistency: Math.min(100, metrics.consistency) / 100,
-      avgSleepHours: Math.min(12, Math.max(0, metrics.avgSleepHours)) / 12,
-      avgMood: metrics.avgMood / 5,
-      avgEnergy: metrics.avgEnergy / 5,
-      totalPosts: Math.min(90, metrics.totalPosts) / 90
-    };
-
-    return Object.entries(weights).reduce((score, [key, weight]) => {
-      return score + (normalizedMetrics[key as keyof typeof normalizedMetrics] * weight * 100);
-    }, 0);
-  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "success";
