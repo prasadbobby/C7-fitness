@@ -470,6 +470,7 @@ model NinetyDayChallengeComment {
   userId        String                        // User who commented
   participantId String?                       // Optional for admin users
   content       String                        // Comment content
+  parentCommentId String?                     // For reply functionality - null if top-level comment
   createdAt     DateTime                      @default(now())
   updatedAt     DateTime                      @updatedAt
 
@@ -478,8 +479,13 @@ model NinetyDayChallengeComment {
   participant   NinetyDayChallengeParticipant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
   reactions     NinetyDayChallengeCommentReaction[]
 
+  // Self-referencing relations for replies
+  parentComment NinetyDayChallengeComment?    @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       NinetyDayChallengeComment[]   @relation("CommentReplies")
+
   @@index([postId])
   @@index([userId])
+  @@index([parentCommentId])
 }
 
 model NinetyDayChallengeCommentReaction {

@@ -11,10 +11,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { postId, content } = await request.json();
+    const { postId, content, parentCommentId } = await request.json();
 
     if (!postId || !content?.trim()) {
       return NextResponse.json({ error: "Post ID and content are required" }, { status: 400 });
+    }
+
+    // If this is a reply, verify the parent comment exists and belongs to the same post
+    if (parentCommentId) {
+      const parentComment = await prisma.ninetyDayChallengeComment.findUnique({
+        where: { id: parentCommentId },
+        select: { postId: true }
+      });
+
+      if (!parentComment) {
+        return NextResponse.json({ error: "Parent comment not found" }, { status: 404 });
+      }
+
+      if (parentComment.postId !== postId) {
+        return NextResponse.json({ error: "Parent comment does not belong to this post" }, { status: 400 });
+      }
     }
 
     // Check if user is a participant in the challenge that owns this post
@@ -56,6 +72,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         participantId: participant?.id, // Can be null for admin users
         content: content.trim(),
+        parentCommentId: parentCommentId || null,
       },
       include: {
         participant: {

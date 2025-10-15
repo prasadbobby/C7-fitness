@@ -92,6 +92,9 @@ export async function GET(request: NextRequest) {
         include: {
           reactions: true,
           comments: {
+            where: {
+              parentCommentId: null, // Only get top-level comments
+            },
             include: {
               participant: {
                 select: {
@@ -99,6 +102,19 @@ export async function GET(request: NextRequest) {
                 }
               },
               reactions: true,
+              replies: {
+                include: {
+                  participant: {
+                    select: {
+                      userId: true,
+                    }
+                  },
+                  reactions: true,
+                },
+                orderBy: {
+                  createdAt: 'asc'
+                }
+              },
             },
             orderBy: {
               createdAt: 'asc'
@@ -123,14 +139,22 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Get user info from Clerk and database for all post authors, comment authors, and reaction users
+    // Get user info from Clerk and database for all post authors, comment authors, reply authors, and reaction users
     const postUserIds = posts.map(post => post.userId);
     const commentUserIds = posts.flatMap(post => post.comments.map(comment => comment.userId));
+    const replyUserIds = posts.flatMap(post =>
+      post.comments.flatMap(comment => comment.replies?.map(reply => reply.userId) || [])
+    );
     const reactionUserIds = posts.flatMap(post => post.reactions.map(reaction => reaction.userId));
     const commentReactionUserIds = posts.flatMap(post =>
       post.comments.flatMap(comment => comment.reactions.map(reaction => reaction.userId))
     );
-    const userIds = [...new Set([...postUserIds, ...commentUserIds, ...reactionUserIds, ...commentReactionUserIds])];
+    const replyReactionUserIds = posts.flatMap(post =>
+      post.comments.flatMap(comment =>
+        comment.replies?.flatMap(reply => reply.reactions.map(reaction => reaction.userId)) || []
+      )
+    );
+    const userIds = [...new Set([...postUserIds, ...commentUserIds, ...replyUserIds, ...reactionUserIds, ...commentReactionUserIds, ...replyReactionUserIds])];
 
     // Get user roles from database
     const userRoles = await prisma.userInfo.findMany({
@@ -208,7 +232,7 @@ export async function GET(request: NextRequest) {
         return acc;
       }, {} as Record<string, Array<{userId: string, firstName: string, lastName: string, imageUrl: string, username: string, isAdmin: boolean}>>);
 
-      // Enhance comments with user info and reaction data
+      // Enhance comments with user info and reaction data, including replies
       const enhancedComments = post.comments.map(comment => {
         const userCommentReaction = comment.reactions.find(reaction =>
           reaction.userId === user.id
@@ -219,6 +243,35 @@ export async function GET(request: NextRequest) {
           acc[reaction.reactionType] = (acc[reaction.reactionType] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
+
+        // Enhance replies with user info and reaction data
+        const enhancedReplies = (comment.replies || []).map(reply => {
+          const userReplyReaction = reply.reactions.find(reaction =>
+            reaction.userId === user.id
+          );
+
+          // Calculate reply reaction counts by type
+          const replyReactionCounts = reply.reactions.reduce((acc, reaction) => {
+            acc[reaction.reactionType] = (acc[reaction.reactionType] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+          return {
+            ...reply,
+            author: userInfoMap[reply.userId] || {
+              userId: reply.userId,
+              firstName: "Unknown",
+              lastName: "User",
+              imageUrl: "",
+              username: "Unknown",
+            },
+            reactionCounts: replyReactionCounts,
+            userReaction: userReplyReaction ? {
+              id: userReplyReaction.id,
+              type: userReplyReaction.reactionType,
+            } : null,
+          };
+        });
 
         return {
           ...comment,
@@ -234,6 +287,7 @@ export async function GET(request: NextRequest) {
             id: userCommentReaction.id,
             type: userCommentReaction.reactionType,
           } : null,
+          replies: enhancedReplies,
         };
       });
 

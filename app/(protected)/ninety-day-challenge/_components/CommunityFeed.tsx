@@ -45,6 +45,7 @@ interface PostComment {
   id: string;
   content: string;
   createdAt: string;
+  parentCommentId?: string | null;
   author: {
     userId: string;
     firstName: string;
@@ -57,6 +58,7 @@ interface PostComment {
     id: string;
     type: string;
   } | null;
+  replies?: PostComment[];
 }
 
 interface Post {
@@ -144,6 +146,9 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [newComments, setNewComments] = useState<Record<string, string>>({});
   const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [newReplies, setNewReplies] = useState<Record<string, string>>({});
+  const [replyLoading, setReplyLoading] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(showTodayByDefault ? new Date() : null);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -364,6 +369,37 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       console.error('Error adding comment:', error);
     } finally {
       setCommentLoading(prev => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const handleAddReply = async (postId: string, parentCommentId: string) => {
+    const content = newReplies[parentCommentId]?.trim();
+    if (!content) return;
+
+    setReplyLoading(prev => ({ ...prev, [parentCommentId]: true }));
+
+    try {
+      const response = await fetch('/api/ninety-day-challenge/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId,
+          content,
+          parentCommentId,
+        }),
+      });
+
+      if (response.ok) {
+        setNewReplies(prev => ({ ...prev, [parentCommentId]: '' }));
+        setReplyingTo(null);
+        fetchPosts(); // Refresh posts to show new reply
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
+    } finally {
+      setReplyLoading(prev => ({ ...prev, [parentCommentId]: false }));
     }
   };
 
@@ -989,58 +1025,180 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                     <div className="space-y-3 pt-4">
                       {/* Existing Comments */}
                       {post.comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-3">
-                          <Avatar
-                            src={comment.author.imageUrl}
-                            alt={`${comment.author.firstName} ${comment.author.lastName}`}
-                            size="sm"
-                            className="flex-shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl px-3 py-2">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                                  {comment.author.firstName} {comment.author.lastName}
-                                </span>
-                                <span className="text-xs text-zinc-500">
-                                  {formatDistanceToNow(new Date(comment.createdAt))} ago
-                                </span>
+                        <div key={comment.id} className="space-y-3">
+                          {/* Main Comment */}
+                          <div className="flex gap-3">
+                            <Avatar
+                              src={comment.author.imageUrl}
+                              alt={`${comment.author.firstName} ${comment.author.lastName}`}
+                              size="sm"
+                              className="flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl px-3 py-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                                    {comment.author.firstName} {comment.author.lastName}
+                                  </span>
+                                  <span className="text-xs text-zinc-500">
+                                    {formatDistanceToNow(new Date(comment.createdAt))} ago
+                                  </span>
+                                </div>
+                                <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                  {comment.content}
+                                </p>
                               </div>
-                              <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
-                                {comment.content}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4 mt-1 px-3">
-                              <button
-                                onClick={() => handleCommentReaction(comment.id, "LIKE")}
-                                className={`flex items-center gap-1 text-xs transition-colors ${
-                                  comment.userReaction?.type === "LIKE"
-                                    ? "text-red-500"
-                                    : "text-zinc-500 hover:text-red-500"
-                                }`}
-                              >
-                                <IconHeart
-                                  size={14}
-                                  className={comment.userReaction?.type === "LIKE" ? "fill-current" : ""}
-                                />
-                                <span>
-                                  {comment.reactionCounts?.LIKE || 0 > 0
-                                    ? `${comment.reactionCounts.LIKE} Like${comment.reactionCounts.LIKE !== 1 ? 's' : ''}`
-                                    : 'Like'
-                                  }
-                                </span>
-                              </button>
-                              {(comment.author.userId === currentUserId) && (
+                              <div className="flex items-center gap-4 mt-1 px-3">
                                 <button
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  className="text-zinc-500 hover:text-red-500 transition-colors text-xs"
+                                  onClick={() => handleCommentReaction(comment.id, "LIKE")}
+                                  className={`flex items-center gap-1 text-xs transition-colors ${
+                                    comment.userReaction?.type === "LIKE"
+                                      ? "text-red-500"
+                                      : "text-zinc-500 hover:text-red-500"
+                                  }`}
                                 >
-                                  <IconTrash size={14} className="inline mr-1" />
-                                  Delete
+                                  <IconHeart
+                                    size={14}
+                                    className={comment.userReaction?.type === "LIKE" ? "fill-current" : ""}
+                                  />
+                                  <span>
+                                    {comment.reactionCounts?.LIKE || 0 > 0
+                                      ? `${comment.reactionCounts.LIKE} Like${comment.reactionCounts.LIKE !== 1 ? 's' : ''}`
+                                      : 'Like'
+                                    }
+                                  </span>
                                 </button>
-                              )}
+                                <button
+                                  onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                                  className="text-zinc-500 hover:text-blue-500 transition-colors text-xs"
+                                >
+                                  Reply
+                                </button>
+                                {(comment.author.userId === currentUserId) && (
+                                  <button
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    className="text-zinc-500 hover:text-red-500 transition-colors text-xs"
+                                  >
+                                    <IconTrash size={14} className="inline mr-1" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
+
+                          {/* Replies */}
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="ml-12 space-y-3">
+                              {comment.replies.map((reply) => (
+                                <div key={reply.id} className="flex gap-3">
+                                  <Avatar
+                                    src={reply.author.imageUrl}
+                                    alt={`${reply.author.firstName} ${reply.author.lastName}`}
+                                    size="sm"
+                                    className="flex-shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl px-3 py-2">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                                          {reply.author.firstName} {reply.author.lastName}
+                                        </span>
+                                        <span className="text-xs text-zinc-500">
+                                          {formatDistanceToNow(new Date(reply.createdAt))} ago
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                        {reply.content}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-4 mt-1 px-3">
+                                      <button
+                                        onClick={() => handleCommentReaction(reply.id, "LIKE")}
+                                        className={`flex items-center gap-1 text-xs transition-colors ${
+                                          reply.userReaction?.type === "LIKE"
+                                            ? "text-red-500"
+                                            : "text-zinc-500 hover:text-red-500"
+                                        }`}
+                                      >
+                                        <IconHeart
+                                          size={14}
+                                          className={reply.userReaction?.type === "LIKE" ? "fill-current" : ""}
+                                        />
+                                        <span>
+                                          {reply.reactionCounts?.LIKE || 0 > 0
+                                            ? `${reply.reactionCounts.LIKE} Like${reply.reactionCounts.LIKE !== 1 ? 's' : ''}`
+                                            : 'Like'
+                                          }
+                                        </span>
+                                      </button>
+                                      {(reply.author.userId === currentUserId) && (
+                                        <button
+                                          onClick={() => handleDeleteComment(reply.id)}
+                                          className="text-zinc-500 hover:text-red-500 transition-colors text-xs"
+                                        >
+                                          <IconTrash size={14} className="inline mr-1" />
+                                          Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Reply Input */}
+                          {replyingTo === comment.id && (
+                            <div className="ml-12 flex gap-3">
+                              <Avatar
+                                size="sm"
+                                className="flex-shrink-0"
+                              />
+                              <div className="flex-1">
+                                <div className="flex gap-2">
+                                  <Textarea
+                                    placeholder={`Reply to ${comment.author.firstName}...`}
+                                    value={newReplies[comment.id] || ''}
+                                    onChange={(e) => setNewReplies(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                    minRows={2}
+                                    maxRows={4}
+                                    className="flex-1"
+                                    variant="bordered"
+                                    classNames={{
+                                      input: "text-sm",
+                                      inputWrapper: "rounded-2xl border-zinc-300 dark:border-zinc-600"
+                                    }}
+                                  />
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      size="sm"
+                                      color="primary"
+                                      isLoading={replyLoading[comment.id]}
+                                      onPress={() => handleAddReply(post.id, comment.id)}
+                                      isDisabled={!newReplies[comment.id]?.trim()}
+                                      className="rounded-full"
+                                      isIconOnly
+                                    >
+                                      {!replyLoading[comment.id] && <IconSend size={16} />}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="light"
+                                      onPress={() => {
+                                        setReplyingTo(null);
+                                        setNewReplies(prev => ({ ...prev, [comment.id]: '' }));
+                                      }}
+                                      className="rounded-full"
+                                      isIconOnly
+                                    >
+                                      <IconX size={16} />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
 
