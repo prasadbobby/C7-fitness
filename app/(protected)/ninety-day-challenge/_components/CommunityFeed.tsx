@@ -21,7 +21,8 @@ import {
   IconPhoto,
   IconX,
   IconHeart,
-  IconEdit
+  IconEdit,
+  IconEye
 } from "@tabler/icons-react";
 import PostReactions, { ReactionType } from "@/components/UI/PostReactions";
 import { ImageModal } from "@/components/UI/ImageModal";
@@ -156,11 +157,21 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     photos: [] as File[]
   });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [isPostViewsModalOpen, setIsPostViewsModalOpen] = useState(false);
+  const [postViewsData, setPostViewsData] = useState<{views: any[], totalViews: number} | null>(null);
+  const [loadingPostViews, setLoadingPostViews] = useState(false);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     fetchPosts();
   }, [currentPage, selectedDate, challengeId]);
+
+  // Auto-record post views when posts are loaded
+  useEffect(() => {
+    if (posts.length > 0) {
+      recordPostViews();
+    }
+  }, [posts]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -198,6 +209,23 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       console.error('Error fetching community feed:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const recordPostViews = async () => {
+    // Record views for all visible posts
+    for (const post of posts) {
+      try {
+        await fetch(`/api/ninety-day-challenge/posts/${post.id}/views`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error) {
+        // Silently fail for individual view recordings to not affect user experience
+        console.debug('Error recording view for post:', post.id, error);
+      }
     }
   };
 
@@ -390,6 +418,29 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     setOpenDropdown(null);
   };
 
+  const handleViewPostViews = async (post: Post) => {
+    setSelectedPostForAction(post);
+    setLoadingPostViews(true);
+    setIsPostViewsModalOpen(true);
+    setOpenDropdown(null);
+
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/posts/${post.id}/views`);
+      if (response.ok) {
+        const data = await response.json();
+        setPostViewsData(data);
+      } else {
+        console.error('Failed to fetch post views');
+        setPostViewsData({ views: [], totalViews: 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching post views:', error);
+      setPostViewsData({ views: [], totalViews: 0 });
+    } finally {
+      setLoadingPostViews(false);
+    }
+  };
+
   const toggleDropdown = (postId: string) => {
     setOpenDropdown(openDropdown === postId ? null : postId);
   };
@@ -563,40 +614,52 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                       </p>
                     </div>
 
-                    {/* Admin Controls */}
-                    {isAdmin && (
-                      <div className="relative" ref={(el) => dropdownRefs.current[post.id] = el}>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          className="text-zinc-500 hover:text-zinc-700"
-                          onPress={() => toggleDropdown(post.id)}
-                        >
-                          <IconDots size={16} />
-                        </Button>
+                    {/* Post Menu - Available for all users */}
+                    <div className="relative" ref={(el) => dropdownRefs.current[post.id] = el}>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        className="text-zinc-500 hover:text-zinc-700"
+                        onPress={() => toggleDropdown(post.id)}
+                      >
+                        <IconDots size={16} />
+                      </Button>
 
-                        {/* Custom Dropdown Menu */}
-                        {openDropdown === post.id && (
-                          <div className="absolute right-0 top-8 z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[140px]">
-                            <button
-                              onClick={() => handleEditPost(post)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-                            >
-                              <IconEdit size={16} />
-                              Edit Post
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(post)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            >
-                              <IconTrash size={16} />
-                              Delete Post
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      {/* Custom Dropdown Menu */}
+                      {openDropdown === post.id && (
+                        <div className="absolute right-0 top-8 z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[140px]">
+                          {/* Post Views - Available for all users */}
+                          <button
+                            onClick={() => handleViewPostViews(post)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                          >
+                            <IconEye size={16} />
+                            Post Views
+                          </button>
+
+                          {/* Admin only options */}
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => handleEditPost(post)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                              >
+                                <IconEdit size={16} />
+                                Edit Post
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(post)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <IconTrash size={16} />
+                                Delete Post
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Post Content */}
@@ -1094,6 +1157,69 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                   </p>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Post Views BottomSheet */}
+      <BottomSheet
+        isOpen={isPostViewsModalOpen}
+        onClose={() => {
+          setIsPostViewsModalOpen(false);
+          setSelectedPostForAction(null);
+          setPostViewsData(null);
+        }}
+        title="Post Views"
+        subtitle={selectedPostForAction ? `Who viewed this post` : ''}
+        size="md"
+      >
+        <div className="space-y-3 pb-4">
+          {loadingPostViews ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : postViewsData && postViewsData.views.length > 0 ? (
+            <>
+              <div className="text-sm text-zinc-500 mb-4">
+                {postViewsData.totalViews} {postViewsData.totalViews === 1 ? 'view' : 'views'}
+              </div>
+              {postViewsData.views.map((view) => (
+                <div key={view.id} className="flex items-center gap-3">
+                  <Avatar
+                    src={view.user.imageUrl}
+                    alt={`${view.user.firstName} ${view.user.lastName}`}
+                    size="sm"
+                    className="flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {view.user.firstName} {view.user.lastName}
+                      </p>
+                      {view.user.isAdmin && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {view.user.username && (
+                        <p className="text-xs text-foreground-500">@{view.user.username}</p>
+                      )}
+                      <p className="text-xs text-foreground-500">
+                        Viewed {formatDistanceToNow(new Date(view.viewedAt))} ago
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <IconEye size={48} className="text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
+              <p className="text-zinc-500">No views yet</p>
+              <p className="text-zinc-400 text-sm">Be the first to view this post!</p>
             </div>
           )}
         </div>

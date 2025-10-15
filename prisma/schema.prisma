@@ -439,6 +439,7 @@ model NinetyDayChallengePost {
   participant     NinetyDayChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   reactions       NinetyDayChallengeReaction[]
   comments        NinetyDayChallengeComment[]
+  views           NinetyDayChallengePostView[]
 
   @@unique([userId, challengeId, date])
   @@index([challengeId, date])
@@ -489,6 +490,20 @@ model NinetyDayChallengeCommentReaction {
 
   @@unique([userId, commentId, reactionType])
   @@index([commentId, reactionType])
+}
+
+model NinetyDayChallengePostView {
+  id        String                 @id @default(uuid())
+  userId    String                 // User who viewed the post
+  postId    String
+  viewedAt  DateTime               @default(now())
+
+  // Relations
+  post      NinetyDayChallengePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
 }
 
 enum SleepQuality {
