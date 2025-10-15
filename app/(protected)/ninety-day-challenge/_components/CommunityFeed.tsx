@@ -31,6 +31,7 @@ import { ImageModal } from "@/components/UI/ImageModal";
 import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
 import BottomSheet from "@/components/UI/BottomSheet";
 import { processUploadedFiles } from "@/utils/imageUtils";
+import { toast } from "sonner";
 
 interface PostReaction {
   id: string;
@@ -183,7 +184,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         }));
       } catch (error) {
         console.error('Error processing uploaded files:', error);
-        alert('Some images could not be processed. Please try again.');
+        toast.error('Some images could not be processed. Please try again.');
       }
     }
   };
@@ -419,12 +420,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         fetchPosts(); // Refresh posts to remove deleted post
         setIsDeleteModalOpen(false);
         setSelectedPostForAction(null);
+        toast.success('Post deleted successfully!');
       } else {
-        alert('Failed to delete post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }));
+        toast.error(errorData.error || `Failed to delete post (${response.status})`);
       }
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Error deleting post');
+      toast.error(error instanceof Error ? error.message : 'Network error occurred while deleting post');
     }
   };
 
@@ -518,12 +521,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         setIsEditModalOpen(false);
         setSelectedPostForAction(null);
         resetEditFormData();
+        toast.success('Post updated successfully!');
       } else {
-        alert('Failed to update post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }));
+        toast.error(errorData.error || `Failed to update post (${response.status})`);
       }
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('Error updating post');
+      toast.error(error instanceof Error ? error.message : 'Network error occurred while updating post');
     } finally {
       setIsSubmittingEdit(false);
     }
@@ -576,13 +581,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         console.log(data.message);
         fetchPosts(); // Refresh posts to show updated pin status
         setOpenDropdown(null);
+        toast.success(post.isPinned ? 'Post unpinned successfully!' : 'Post pinned successfully!');
       } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to update pin status');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }));
+        toast.error(errorData.error || `Failed to update pin status (${response.status})`);
       }
     } catch (error) {
       console.error('Error toggling pin status:', error);
-      alert('Error updating pin status');
+      toast.error(error instanceof Error ? error.message : 'Network error occurred while updating pin status');
     }
   };
 
@@ -1112,6 +1118,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         onConfirm={handleDeletePost}
         itemName={selectedPostForAction ? `post from ${selectedPostForAction.author.firstName} ${selectedPostForAction.author.lastName}` : 'this post'}
         itemType="post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
       />
 
       {/* Edit Post Modal */}
@@ -1122,8 +1129,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
           setSelectedPostForAction(null);
           resetEditFormData();
         }}
-        title="Edit Post"
-        subtitle={selectedPostForAction ? `Edit post from ${format(new Date(selectedPostForAction.date), 'MMM d, yyyy')}` : ''}
+        title={selectedPostForAction ? `Edit post from ${format(new Date(selectedPostForAction.date), 'MMM d, yyyy')}` : 'Edit Post'}
         size="2xl"
         footer={
           <>
@@ -1463,7 +1469,6 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
           setPostViewsData(null);
         }}
         title="Post Views"
-        subtitle={selectedPostForAction ? `Who viewed this post` : ''}
         size="md"
       >
         <div className="space-y-3 pb-4">
