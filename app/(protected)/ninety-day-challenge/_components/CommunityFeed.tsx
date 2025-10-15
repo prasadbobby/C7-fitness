@@ -52,9 +52,6 @@ interface PostComment {
     id: string;
     type: string;
   } | null;
-  _count: {
-    reactions: number;
-  };
 }
 
 interface Post {
@@ -81,7 +78,6 @@ interface Post {
   reactions: PostReaction[];
   comments: PostComment[];
   _count: {
-    reactions: number;
     comments: number;
   };
   reactionCounts: Record<string, number>;

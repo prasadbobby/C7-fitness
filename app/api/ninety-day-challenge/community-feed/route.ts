@@ -99,11 +99,6 @@ export async function GET(request: NextRequest) {
                 }
               },
               reactions: true,
-              _count: {
-                select: {
-                  reactions: true,
-                },
-              },
             },
             orderBy: {
               createdAt: 'asc'
@@ -111,7 +106,6 @@ export async function GET(request: NextRequest) {
           },
           _count: {
             select: {
-              reactions: true,
               comments: true,
             },
           },
