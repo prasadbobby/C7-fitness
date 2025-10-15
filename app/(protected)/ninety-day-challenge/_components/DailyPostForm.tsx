@@ -11,6 +11,7 @@ import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
 import { ImageModal } from "@/components/UI/ImageModal";
+import { processUploadedFiles } from "@/utils/imageUtils";
 
 interface TodaysPost {
   id: string;
@@ -175,42 +176,53 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setUploadingPhoto(true);
 
     try {
+      // Process files to convert HEIC to JPEG if necessary
+      const filesArray = Array.from(files);
       console.log('Starting photo upload:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
+        fileCount: filesArray.length,
+        files: filesArray.map(f => ({ name: f.name, size: f.size, type: f.type }))
       });
 
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      const processedFiles = await processUploadedFiles(filesArray);
+      const uploadedUrls: string[] = [];
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
+      // Upload each processed file
+      for (const file of processedFiles) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
 
-      const data = await response.json();
-      console.log('Upload response:', { status: response.status, data });
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
 
-      if (response.ok) {
+        const data = await response.json();
+        console.log('Upload response:', { fileName: file.name, status: response.status, data });
+
+        if (response.ok) {
+          uploadedUrls.push(data.url);
+        } else {
+          console.error('Upload failed for', file.name, ':', data);
+          alert(`Failed to upload ${file.name}: ${data.error || 'Unknown error'}`);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
         setFormData(prev => ({
           ...prev,
-          photos: [...prev.photos, data.url],
+          photos: [...prev.photos, ...uploadedUrls],
         }));
-        console.log('Photo added to form data successfully');
-      } else {
-        console.error('Upload failed:', data);
-        alert(`Failed to upload photo: ${data.error || 'Unknown error'}`);
+        console.log(`${uploadedUrls.length} photos added to form data successfully`);
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Error uploading photo. Please try again.');
+      console.error('Error processing/uploading files:', error);
+      alert('Error processing photos. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -302,7 +314,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             {formData.mealTracking && (
               <div>
                 <span className="font-medium">Meals:</span>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 whitespace-pre-wrap">
                   {formData.mealTracking}
                 </p>
               </div>
@@ -311,7 +323,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             {formData.dayDescription && (
               <div>
                 <span className="font-medium">How was your day:</span>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 whitespace-pre-wrap">
                   {formData.dayDescription}
                 </p>
               </div>
@@ -320,7 +332,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             {formData.achievements && (
               <div>
                 <span className="font-medium">Achievements:</span>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 whitespace-pre-wrap">
                   {formData.achievements}
                 </p>
               </div>
@@ -329,7 +341,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             {formData.challenges && (
               <div>
                 <span className="font-medium">Challenges:</span>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 whitespace-pre-wrap">
                   {formData.challenges}
                 </p>
               </div>
@@ -484,7 +496,8 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
               <div className="flex items-center gap-4">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.HEIC"
+                  multiple
                   onChange={handlePhotoUpload}
                   className="hidden"
                   id="photo-upload"
@@ -500,7 +513,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                 >
                   <IconCamera size={20} />
                   <span className="text-sm">
-                    {uploadingPhoto ? 'Uploading...' : 'Add Photo'}
+                    {uploadingPhoto ? 'Uploading...' : 'Add Photos'}
                   </span>
                 </label>
                 {uploadingPhoto && (
