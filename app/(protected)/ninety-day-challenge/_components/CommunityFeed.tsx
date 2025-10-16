@@ -115,6 +115,7 @@ interface CommunityFeedProps {
 
 export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin = false }: CommunityFeedProps = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [challengeStartDate, setChallengeStartDate] = useState<string | null>(null);
 
   // Form options
   const sleepQualityOptions = [
@@ -306,6 +307,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
         setPosts(data.posts);
         setTotalPages(data.totalPages);
         setCurrentUserId(data.currentUserId || '');
+        setChallengeStartDate(data.challengeStartDate || null);
       }
     } catch (error) {
       console.error('Error fetching community feed:', error);
@@ -683,9 +685,9 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     }
   };
 
-  const getDayNumber = (postDate: string, challengeStartDate?: string) => {
+  const getDayNumber = (postDate: string, challengeStartDate?: string | null) => {
     const post = new Date(postDate);
-    // For now, calculate from a fixed start date (can be made dynamic later)
+    // Use the actual challenge start date if available, otherwise fallback to a reasonable default
     const challengeStart = challengeStartDate ? new Date(challengeStartDate) : new Date('2025-01-01');
     const daysDiff = Math.ceil((post.getTime() - challengeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return Math.max(1, Math.min(90, daysDiff)); // Ensure it's between 1-90
@@ -814,7 +816,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                         )}
                         <span className="text-zinc-500 text-sm">•</span>
                         <span className="text-zinc-500 text-sm">
-                          Day {getDayNumber(post.date)}
+                          Day {getDayNumber(post.date, challengeStartDate)}
                         </span>
                       </div>
 

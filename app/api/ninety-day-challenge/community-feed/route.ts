@@ -306,12 +306,23 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(totalCount / limit);
 
+    // Get challenge start date for day number calculation
+    let challengeStartDate = null;
+    if (whereClause.challengeId) {
+      const challenge = await prisma.ninetyDayChallenge.findUnique({
+        where: { id: whereClause.challengeId },
+        select: { startDate: true }
+      });
+      challengeStartDate = challenge?.startDate || null;
+    }
+
     return NextResponse.json({
       posts: enhancedPosts,
       totalPages,
       currentPage: page,
       totalCount,
       currentUserId: user.id,
+      challengeStartDate: challengeStartDate,
     });
   } catch (error) {
     console.error("Error fetching community feed:", error);
