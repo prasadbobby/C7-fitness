@@ -686,10 +686,26 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   };
 
   const getDayNumber = (postDate: string, challengeStartDate?: string | null) => {
-    const post = new Date(postDate);
-    // Use the actual challenge start date if available, otherwise fallback to a reasonable default
-    const challengeStart = challengeStartDate ? new Date(challengeStartDate) : new Date('2025-01-01');
-    const daysDiff = Math.ceil((post.getTime() - challengeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    // Parse dates in a timezone-consistent way by using UTC dates
+    // This ensures consistent calculation regardless of server timezone
+    const parseUTCDate = (dateStr: string) => {
+      // If the date string is in YYYY-MM-DD format, parse it as UTC date
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, day)); // month is 0-indexed, use UTC
+      }
+      return new Date(dateStr);
+    };
+
+    const postUTC = parseUTCDate(postDate);
+    const challengeStartUTC = challengeStartDate
+      ? parseUTCDate(challengeStartDate)
+      : new Date(Date.UTC(2025, 0, 1)); // January 1, 2025 as UTC date
+
+    // Calculate the difference in days
+    const timeDiff = postUTC.getTime() - challengeStartUTC.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 because day 1 is the start date
+
     return Math.max(1, Math.min(90, daysDiff)); // Ensure it's between 1-90
   };
 
