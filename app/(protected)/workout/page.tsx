@@ -119,7 +119,12 @@ export default async function WorkoutPage() {
     where: {
       OR: [
         { userId: userId }, // User's own workouts
-        { userId: null },   // Admin-created system workouts (available to all users)
+        {
+          userId: null,   // Admin-created workouts
+          assignedWorkouts: {
+            none: {} // Only show admin workouts that have NO assignments (true system workouts)
+          }
+        },
       ],
     },
     orderBy: {
