@@ -53,6 +53,7 @@ export default function DeviceHealthIntegration({ onSyncComplete }: DeviceHealth
   const fetchConnections = async () => {
     try {
       const response = await fetch('/api/fitness/connections');
+
       if (response.ok) {
         const data = await response.json();
         setConnections(data.connections || []);
@@ -208,12 +209,30 @@ export default function DeviceHealthIntegration({ onSyncComplete }: DeviceHealth
         </CardHeader>
         <CardBody className="px-4 pt-2">
           <div className="space-y-3">
-            {connections.filter(connection => connection.type === 'GOOGLE_FIT').map(connection => getConnectionCard(connection))}
+            {connections.filter(connection => connection.type === 'GOOGLE_FIT' && connection.isConnected).map(connection => getConnectionCard(connection))}
+
+            {connections.filter(connection => connection.type === 'GOOGLE_FIT' && !connection.isConnected).length > 0 && (
+              <div className="text-center py-6 text-foreground-500">
+                <IconBrandGoogle size={32} className="mx-auto mb-3 opacity-50" />
+                <p className="mb-2">Google Fit not connected</p>
+                <p className="text-xs mb-4">Connect Google Fit to automatically sync your step data</p>
+                <Button
+                  size="sm"
+                  color="success"
+                  variant="flat"
+                  startContent={<IconBrandGoogle size={16} />}
+                  onPress={() => handleReconnect('GOOGLE_FIT')}
+                  isLoading={reconnecting === 'GOOGLE_FIT'}
+                >
+                  {reconnecting === 'GOOGLE_FIT' ? "Connecting..." : "Connect Google Fit"}
+                </Button>
+              </div>
+            )}
 
             {connections.filter(connection => connection.type === 'GOOGLE_FIT').length === 0 && (
               <div className="text-center py-6 text-foreground-500">
                 <IconBrandGoogle size={32} className="mx-auto mb-3 opacity-50" />
-                <p className="mb-2">Google Fit not connected</p>
+                <p className="mb-2">Google Fit not available</p>
                 <p className="text-xs mb-4">Connect Google Fit to automatically sync your step data</p>
                 <Button
                   size="sm"
