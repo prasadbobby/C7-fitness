@@ -78,17 +78,22 @@ export async function PUT(
 
       for (const file of photoFiles) {
         if (file && file.size > 0) {
+          // Truncate filename if too long for error messages
+          const truncatedName = file.name.length > 50
+            ? file.name.substring(0, 47) + '...'
+            : file.name;
+
           // Validate file size (5MB limit)
           if (file.size > 5 * 1024 * 1024) {
             return NextResponse.json({
-              error: `File "${file.name}" is too large. Maximum size is 5MB.`
+              error: `File "${truncatedName}" is too large. Maximum size is 5MB.`
             }, { status: 400 });
           }
 
           // Validate file type
           if (!file.type.startsWith('image/')) {
             return NextResponse.json({
-              error: `File "${file.name}" is not a valid image format.`
+              error: `File "${truncatedName}" is not a valid image format.`
             }, { status: 400 });
           }
 
@@ -101,7 +106,7 @@ export async function PUT(
             // Check if base64 string is reasonable size (rough check for corrupted data)
             if (base64.length > 7 * 1024 * 1024) { // Roughly 5MB * 1.4 (base64 overhead)
               return NextResponse.json({
-                error: `File "${file.name}" produced invalid data during processing.`
+                error: `File "${truncatedName}" produced invalid data during processing.`
               }, { status: 400 });
             }
 
@@ -110,7 +115,7 @@ export async function PUT(
           } catch (fileError) {
             console.error(`Error processing file ${file.name}:`, fileError);
             return NextResponse.json({
-              error: `Failed to process file "${file.name}". Please try a different image.`
+              error: `Failed to process file "${truncatedName}". Please try a different image.`
             }, { status: 400 });
           }
         }
