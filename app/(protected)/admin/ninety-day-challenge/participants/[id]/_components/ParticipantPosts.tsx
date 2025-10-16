@@ -103,6 +103,28 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
     }
   };
 
+  const getDayNumber = (postDate: string, challengeStartDate: string) => {
+    // Parse dates in a timezone-consistent way by using UTC dates
+    // This ensures consistent calculation regardless of server timezone
+    const parseUTCDate = (dateStr: string) => {
+      // If the date string is in YYYY-MM-DD format, parse it as UTC date
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, day)); // month is 0-indexed, use UTC
+      }
+      return new Date(dateStr);
+    };
+
+    const postUTC = parseUTCDate(postDate);
+    const challengeStartUTC = parseUTCDate(challengeStartDate);
+
+    // Calculate the difference in days
+    const timeDiff = postUTC.getTime() - challengeStartUTC.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 because day 1 is the start date
+
+    return Math.max(1, Math.min(90, daysDiff)); // Ensure it's between 1-90
+  };
+
   if (loading) {
     return (
       <Card>
@@ -147,7 +169,7 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold">
-                      Day {Math.ceil((new Date(post.date).getTime() - new Date(challengeStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1}
+                      Day {getDayNumber(post.date, challengeStartDate)}
                     </h4>
                     <span className="text-sm text-zinc-500">
                       {new Date(post.date).toLocaleDateString()}
@@ -225,7 +247,10 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
                 {/* Day Description */}
                 {post.dayDescription && (
                   <div>
-                    <p className="text-zinc-700 dark:text-zinc-300">{post.dayDescription}</p>
+                    <h5 className="font-medium text-zinc-800 dark:text-zinc-200 mb-2">
+                      📝 Daily Update
+                    </h5>
+                    <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">{post.dayDescription}</p>
                   </div>
                 )}
 
@@ -235,7 +260,7 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
                     <h5 className="font-medium text-green-600 dark:text-green-400 mb-1">
                       🏆 Achievements
                     </h5>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.achievements}</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">{post.achievements}</p>
                   </div>
                 )}
 
@@ -245,7 +270,7 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
                     <h5 className="font-medium text-orange-600 dark:text-orange-400 mb-1">
                       💪 Challenges
                     </h5>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.challenges}</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">{post.challenges}</p>
                   </div>
                 )}
 
@@ -255,7 +280,7 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
                     <h5 className="font-medium text-blue-600 dark:text-blue-400 mb-1">
                       🍽️ Meals
                     </h5>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.mealTracking}</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">{post.mealTracking}</p>
                   </div>
                 )}
 
