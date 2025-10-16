@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs";
 import prisma from "@/prisma/prisma";
+import { validateImageForProcessing, estimateBase64Size } from "@/utils/imageCompression";
 
 export const dynamic = 'force-dynamic';
 
@@ -83,39 +84,71 @@ export async function PUT(
             ? file.name.substring(0, 47) + '...'
             : file.name;
 
-          // Validate file size (5MB limit)
-          if (file.size > 5 * 1024 * 1024) {
+          // Enhanced validation using utility functions
+          const validation = validateImageForProcessing(file);
+          if (!validation.isValid) {
             return NextResponse.json({
-              error: `File "${truncatedName}" is too large. Maximum size is 5MB.`
+              error: `File "${truncatedName}": ${validation.reason}`
             }, { status: 400 });
           }
 
-          // Validate file type
-          if (!file.type.startsWith('image/')) {
+          // Additional check for estimated base64 size (more lenient since we compress on client)
+          const estimatedBase64Size = estimateBase64Size(file.size);
+          console.log(`File ${file.name}: ${file.size} bytes → estimated ${estimatedBase64Size} base64 chars`);
+
+          if (estimatedBase64Size > 8 * 1024 * 1024) { // 8MB base64 limit (increased from 6MB)
             return NextResponse.json({
-              error: `File "${truncatedName}" is not a valid image format.`
+              error: `File "${truncatedName}" is still too large after compression. This shouldn't happen - please contact support.`
             }, { status: 400 });
           }
 
           try {
+            // Add more detailed logging for debugging
+            console.log(`Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+
             // Convert file to base64 data URL for simple storage
             const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-            const base64 = buffer.toString('base64');
+            console.log(`ArrayBuffer created, size: ${bytes.byteLength} bytes`);
 
-            // Check if base64 string is reasonable size (rough check for corrupted data)
-            if (base64.length > 7 * 1024 * 1024) { // Roughly 5MB * 1.4 (base64 overhead)
+            const buffer = Buffer.from(bytes);
+            console.log(`Buffer created, length: ${buffer.length} bytes`);
+
+            const base64 = buffer.toString('base64');
+            console.log(`Base64 created, length: ${base64.length} chars`);
+
+            // Check if base64 string is reasonable size (roughly 5MB * 1.4 base64 overhead)
+            if (base64.length > 7 * 1024 * 1024) {
+              console.warn(`Base64 too large: ${base64.length} chars for file ${file.name}`);
               return NextResponse.json({
-                error: `File "${truncatedName}" produced invalid data during processing.`
+                error: `File "${truncatedName}" is too large after processing. Please use a smaller image (under 3MB).`
               }, { status: 400 });
             }
 
             const dataUrl = `data:${file.type};base64,${base64}`;
+            console.log(`DataURL created, total length: ${dataUrl.length} chars`);
             newPhotos.push(dataUrl);
+
+            console.log(`Successfully processed file: ${file.name}`);
           } catch (fileError) {
             console.error(`Error processing file ${file.name}:`, fileError);
+
+            // More specific error handling
+            if (fileError instanceof Error) {
+              if (fileError.message.includes('out of memory') || fileError.message.includes('heap out of memory')) {
+                return NextResponse.json({
+                  error: `Image "${truncatedName}" is too large to process. Please use a smaller image (under 2MB).`
+                }, { status: 400 });
+              }
+
+              if (fileError.message.includes('Invalid image') || fileError.message.includes('corrupt')) {
+                return NextResponse.json({
+                  error: `Image "${truncatedName}" appears to be corrupted. Please try a different image.`
+                }, { status: 400 });
+              }
+            }
+
             return NextResponse.json({
-              error: `Failed to process file "${truncatedName}". Please try a different image.`
+              error: `Failed to process image "${truncatedName}". Please try a smaller image or different format.`
             }, { status: 400 });
           }
         }
@@ -139,11 +172,18 @@ export async function PUT(
       };
     }
 
+    // Add logging before database operation
+    console.log(`Updating post ${params.id} with data:`, {
+      ...updateData,
+      photos: updateData.photos ? `${updateData.photos.length} photos, total size: ${JSON.stringify(updateData.photos).length} chars` : 'no photos'
+    });
+
     const post = await prisma.ninetyDayChallengePost.update({
       where: { id: params.id },
       data: updateData,
     });
 
+    console.log(`Successfully updated post ${params.id}`);
     return NextResponse.json({ post });
   } catch (error) {
     console.error("Error updating post:", error);
@@ -171,6 +211,21 @@ export async function PUT(
       // Network/timeout errors
       if (error.message.includes('timeout') || error.message.includes('ECONNRESET')) {
         return NextResponse.json({ error: "Request timed out. Please try again with smaller images." }, { status: 408 });
+      }
+
+      // Database size/limit errors
+      if (error.message.includes('value too long') || error.message.includes('string too long') || error.message.includes('row size exceeds')) {
+        return NextResponse.json({ error: "Images are too large for storage. Please use smaller images (under 2MB each)." }, { status: 400 });
+      }
+
+      // Prisma/Database connection errors
+      if (error.message.includes('Connection terminated') || error.message.includes('database connection')) {
+        return NextResponse.json({ error: "Database connection issue. Please try again in a moment." }, { status: 503 });
+      }
+
+      // JSON parsing errors (which might be causing the original issue)
+      if (error.message.includes('JSON') || error.message.includes('parse') || error.message.includes('syntax')) {
+        return NextResponse.json({ error: "Data format error. Please try uploading the image again." }, { status: 400 });
       }
     }
 

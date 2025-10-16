@@ -31,6 +31,7 @@ import { ImageModal } from "@/components/UI/ImageModal";
 import { DeleteConfirmationModal } from "@/components/UI/ConfirmationModal";
 import BottomSheet from "@/components/UI/BottomSheet";
 import { processUploadedFiles } from "@/utils/imageUtils";
+import { processImagesForUpload } from "@/utils/imageCompression";
 import { toast } from "sonner";
 
 interface PostReaction {
@@ -181,12 +182,20 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     if (e.target.files) {
       const files = Array.from(e.target.files);
       try {
-        // Process files to convert HEIC to JPEG if necessary
-        const processedFiles = await processUploadedFiles(files);
+        toast.info('Processing images...', { duration: 2000 });
+
+        // First convert HEIC to JPEG if necessary
+        const convertedFiles = await processUploadedFiles(files);
+
+        // Then compress all images to ensure they upload successfully
+        const compressedFiles = await processImagesForUpload(convertedFiles);
+
         setEditFormData(prev => ({
           ...prev,
-          newPhotos: [...prev.newPhotos, ...processedFiles]
+          newPhotos: [...prev.newPhotos, ...compressedFiles]
         }));
+
+        toast.success(`${compressedFiles.length} image(s) processed successfully!`);
       } catch (error) {
         console.error('Error processing uploaded files:', error);
         toast.error('Some images could not be processed. Please try again.');
@@ -983,7 +992,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                               />
                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
-                                  <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                   </svg>
                                 </div>
@@ -1415,6 +1424,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                     file:bg-primary-50 file:text-primary-700
                     hover:file:bg-primary-100
                     dark:file:bg-primary-900/50 dark:file:text-primary-300"
+                  aria-label="Upload new photos for post"
                 />
               </div>
             </>
@@ -1435,6 +1445,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                     value={editFormData.sleepHours}
                     onChange={(value) => setEditFormData(prev => ({ ...prev, sleepHours: value as number }))}
                     className="w-full"
+                    aria-label={`Sleep hours: ${editFormData.sleepHours} hours`}
                   />
                 </div>
 
@@ -1611,6 +1622,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                     file:bg-primary-50 file:text-primary-700
                     hover:file:bg-primary-100
                     dark:file:bg-primary-900/50 dark:file:text-primary-300"
+                  aria-label="Upload new photos for post"
                 />
               </div>
             </div>

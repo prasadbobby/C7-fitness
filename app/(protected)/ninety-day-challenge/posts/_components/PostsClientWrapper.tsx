@@ -9,6 +9,8 @@ import { Textarea } from "@nextui-org/input";
 import { IconCamera, IconX } from "@tabler/icons-react";
 import DatePicker from "@/components/UI/DatePicker";
 import { processUploadedFiles } from "@/utils/imageUtils";
+import { processImagesForUpload } from "@/utils/imageCompression";
+import { toast } from "sonner";
 
 interface PostsClientWrapperProps {
   challengeId: string | null;
@@ -36,12 +38,19 @@ export function PostsClientWrapper({
     if (e.target.files) {
       const files = Array.from(e.target.files);
       try {
-        // Process files to convert HEIC to JPEG if necessary
-        const processedFiles = await processUploadedFiles(files);
-        setFormData(prev => ({ ...prev, photos: [...prev.photos, ...processedFiles] }));
+        toast.info('Processing images for upload...', { duration: 3000 });
+
+        // First convert HEIC to JPEG if necessary
+        const convertedFiles = await processUploadedFiles(files);
+
+        // Then compress all images to ensure they upload successfully
+        const compressedFiles = await processImagesForUpload(convertedFiles);
+
+        setFormData(prev => ({ ...prev, photos: [...prev.photos, ...compressedFiles] }));
+        toast.success(`${compressedFiles.length} image(s) processed successfully!`);
       } catch (error) {
         console.error('Error processing uploaded files:', error);
-        alert('Some images could not be processed. Please try again.');
+        toast.error('Some images could not be processed. Please try again.');
       }
     }
   };
@@ -214,6 +223,7 @@ export function PostsClientWrapper({
                 file:bg-primary-50 file:text-primary-700
                 hover:file:bg-primary-100
                 dark:file:bg-primary-900/50 dark:file:text-primary-300"
+              aria-label="Upload photos for post"
             />
 
             {/* Photo Preview */}

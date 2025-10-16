@@ -10,6 +10,8 @@ import { Chip } from "@nextui-org/chip";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
 import { ImageModal } from "@/components/UI/ImageModal";
 import { processUploadedFiles } from "@/utils/imageUtils";
+import { processImagesForUpload } from "@/utils/imageCompression";
+import { toast } from "sonner";
 
 interface TodaysPost {
   id: string;
@@ -180,18 +182,24 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     setUploadingPhoto(true);
 
     try {
-      // Process files to convert HEIC to JPEG if necessary
       const filesArray = Array.from(files);
       console.log('Starting photo upload:', {
         fileCount: filesArray.length,
         files: filesArray.map(f => ({ name: f.name, size: f.size, type: f.type }))
       });
 
-      const processedFiles = await processUploadedFiles(filesArray);
+      toast.info('Processing images for upload...', { duration: 3000 });
+
+      // First convert HEIC to JPEG if necessary
+      const convertedFiles = await processUploadedFiles(filesArray);
+
+      // Then compress all images to ensure they upload successfully
+      const compressedFiles = await processImagesForUpload(convertedFiles);
+
       const uploadedUrls: string[] = [];
 
-      // Upload each processed file
-      for (const file of processedFiles) {
+      // Upload each processed and compressed file
+      for (const file of compressedFiles) {
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
 
@@ -207,7 +215,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
           uploadedUrls.push(data.url);
         } else {
           console.error('Upload failed for', file.name, ':', data);
-          alert(`Failed to upload ${file.name}: ${data.error || 'Unknown error'}`);
+          toast.error(`Failed to upload ${file.name}: ${data.error || 'Unknown error'}`);
         }
       }
 
@@ -216,11 +224,12 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
           ...prev,
           photos: [...prev.photos, ...uploadedUrls],
         }));
+        toast.success(`${uploadedUrls.length} photo(s) uploaded successfully!`);
         console.log(`${uploadedUrls.length} photos added to form data successfully`);
       }
     } catch (error) {
       console.error('Error processing/uploading files:', error);
-      alert('Error processing photos. Please try again.');
+      toast.error('Error processing photos. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -362,7 +371,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
-                          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                           </svg>
                         </div>
@@ -390,6 +399,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                   value={formData.sleepHours}
                   onChange={(value) => setFormData({ ...formData, sleepHours: value as number })}
                   className="w-full"
+                  aria-label={`Sleep hours: ${formData.sleepHours} hours`}
                 />
               </div>
 
@@ -500,6 +510,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                   className="hidden"
                   id="photo-upload"
                   disabled={uploadingPhoto}
+                  aria-label="Upload progress photos"
                 />
                 <label
                   htmlFor="photo-upload"
@@ -537,7 +548,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-full p-2">
-                            <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                             </svg>
                           </div>
