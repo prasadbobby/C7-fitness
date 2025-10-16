@@ -106,13 +106,18 @@ export function ParticipantPosts({ participantId, userId, challengeId, challenge
   const getDayNumber = (postDate: string, challengeStartDate: string) => {
     // Parse dates in a timezone-consistent way by using UTC dates
     // This ensures consistent calculation regardless of server timezone
-    const parseUTCDate = (dateStr: string) => {
+    const parseUTCDate = (dateInput: string | Date) => {
+      // Convert to string if it's a Date object
+      const dateStr = dateInput instanceof Date ? dateInput.toISOString().split('T')[0] : dateInput;
+
       // If the date string is in YYYY-MM-DD format, parse it as UTC date
-      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = dateStr.split('-').map(Number);
         return new Date(Date.UTC(year, month - 1, day)); // month is 0-indexed, use UTC
       }
-      return new Date(dateStr);
+
+      // Fallback for other date formats
+      return new Date(dateInput);
     };
 
     const postUTC = parseUTCDate(postDate);
