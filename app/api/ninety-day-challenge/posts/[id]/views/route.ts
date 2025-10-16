@@ -61,7 +61,7 @@ export async function POST(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Record the view (upsert to avoid duplicates)
+    // Record the view only if it doesn't exist (preserve first view time)
     await prisma.ninetyDayChallengePostView.upsert({
       where: {
         userId_postId: {
@@ -74,7 +74,7 @@ export async function POST(
         postId: postId,
       },
       update: {
-        viewedAt: new Date(),
+        // Don't update anything - preserve the original viewedAt timestamp
       },
     });
 
