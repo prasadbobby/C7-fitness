@@ -792,9 +792,9 @@ export function LeaderboardModal({
                   {/* Weekly Scoring Explanation */}
                   <Card className="mt-6">
                     <CardBody className="p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Weekly Scoring (IST Timezone)</h3>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Weekly Scoring</h3>
                       <div className="text-xs text-foreground-500 space-y-1">
-                        <p>• <strong>Week Period</strong>: Monday 12:00 AM - Sunday 11:59 PM (Indian Time)</p>
+                        <p>• <strong>Week Period</strong>: Monday 12:00 AM - Sunday 11:59 PM</p>
                         <p>• <strong>Consistency (30%)</strong>: Daily posting frequency within the week</p>
                         <p>• <strong>Sleep Hours (20%)</strong>: Average sleep duration for the week</p>
                         <p>• <strong>Sleep Quality (15%)</strong>: Average sleep quality ratings</p>
