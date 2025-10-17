@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ChallengeDetails } from "./_components/ChallengeDetails";
 import { ParticipantLeaderboard } from "./_components/ParticipantLeaderboard";
 import { WeeklyLeaderboard } from "./_components/WeeklyLeaderboard";
@@ -11,7 +11,6 @@ import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
 import {
-  IconArrowLeft,
   IconTrophy,
   IconChartBar,
   IconUsers,
@@ -63,7 +62,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
         console.log('Challenge data received:', {
           challengeId: data.challenge.id,
           participantCount: data.challenge.participants.length,
-          participants: data.challenge.participants.map(p => ({
+          participants: data.challenge.participants.map((p: any) => ({
             id: p.id,
             userId: p.userId,
             isEnabled: p.isEnabled,
