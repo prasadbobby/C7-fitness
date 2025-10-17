@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody } from "@nextui-org/modal";
 import { Button } from "@nextui-org/button";
 import { Card, CardBody } from "@nextui-org/card";
 import { Avatar } from "@nextui-org/avatar";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
-import { Tabs, Tab } from "@nextui-org/tabs";
 import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy, IconCalendarWeek, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import BottomSheet from "@/components/UI/BottomSheet";
 import {
   getChallengeWeeks,
   getCurrentWeek,
@@ -18,6 +17,11 @@ import {
   formatWeekDisplay,
   type WeekInfo
 } from "@/utils/weeklyScoring";
+import {
+  calculateParticipantMetrics,
+  calculateChallengeScore,
+  type ChallengeMetrics
+} from "@/utils/challengeScoring";
 
 interface Post {
   date: string;
@@ -83,6 +87,7 @@ export function LeaderboardModal({
   const [currentUserWeeklyRank, setCurrentUserWeeklyRank] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<WeekInfo | null>(null);
   const [challengeWeeks, setChallengeWeeks] = useState<WeekInfo[]>([]);
+  const [activeTab, setActiveTab] = useState("overall");
 
   useEffect(() => {
     if (isOpen && challengeId) {
@@ -193,75 +198,29 @@ export function LeaderboardModal({
 
   const processParticipants = async (participants: Participant[]): Promise<LeaderboardEntry[]> => {
     const enhanced = participants.map((participant) => {
-      // Calculate metrics
-      const posts = participant.posts;
-      const totalPosts = posts.length;
+      // Use unified scoring system from challengeScoring.ts
+      const metrics = calculateParticipantMetrics(participant.posts, participant.joinedAt);
 
-      // Sleep metrics with validation
-      const sleepHours = posts
-        .filter(p => p.sleepHours !== null && typeof p.sleepHours === 'number' && !isNaN(p.sleepHours) && p.sleepHours >= 0 && p.sleepHours <= 24)
-        .map(p => p.sleepHours!);
-      const avgSleepHours = sleepHours.length > 0
-        ? sleepHours.reduce((sum, hours) => sum + hours, 0) / sleepHours.length
-        : 0;
-
-      // Sleep quality (convert to number) with validation
-      const sleepQuality = posts
-        .filter(p => p.sleepQuality !== null && typeof p.sleepQuality === 'string')
-        .map(p => getSleepQualityScore(p.sleepQuality!))
-        .filter(score => !isNaN(score) && score >= 0);
-      const avgSleepQuality = sleepQuality.length > 0
-        ? sleepQuality.reduce((sum, score) => sum + score, 0) / sleepQuality.length
-        : 0;
-
-      // Mood metrics with validation
-      const moods = posts
-        .filter(p => p.mood !== null && typeof p.mood === 'string')
-        .map(p => getMoodScore(p.mood!))
-        .filter(score => !isNaN(score) && score >= 0);
-      const avgMood = moods.length > 0
-        ? moods.reduce((sum, score) => sum + score, 0) / moods.length
-        : 0;
-
-      // Energy metrics with validation
-      const energies = posts
-        .filter(p => p.energy !== null && typeof p.energy === 'string')
-        .map(p => getEnergyScore(p.energy!))
-        .filter(score => !isNaN(score) && score >= 0);
-      const avgEnergy = energies.length > 0
-        ? energies.reduce((sum, score) => sum + score, 0) / energies.length
-        : 0;
-
-      // Consistency (posting frequency) - use UTC dates for consistency
+      // Calculate days elapsed for unified scoring
       const now = new Date();
       const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
       const joinedAtUTC = new Date(new Date(participant.joinedAt).getUTCFullYear(), new Date(participant.joinedAt).getUTCMonth(), new Date(participant.joinedAt).getUTCDate());
-
       const daysElapsed = Math.max(1, Math.ceil((nowUTC.getTime() - joinedAtUTC.getTime()) / (1000 * 60 * 60 * 24)));
-      // Calculate expected posts based on days elapsed
-      const consistency = Math.min(100, (totalPosts / daysElapsed) * 100);
 
-      // Calculate overall score
-      const score = calculateOverallScore({
-        totalPosts,
-        avgSleepHours,
-        avgSleepQuality,
-        avgMood,
-        avgEnergy,
-        consistency
-      }, daysElapsed);
+      // Calculate overall score using unified algorithm
+      const score = calculateChallengeScore(metrics, daysElapsed);
 
       return {
         ...participant,
-        score,
+        score: Math.round(score),
         rank: 0, // Will be set after sorting
         metrics: {
-          totalPosts,
-          avgSleepHours,
-          avgSleepQuality,
-          avgMood,
-          avgEnergy,
-          consistency
+          totalPosts: metrics.totalPosts,
+          avgSleepHours: metrics.avgSleepHours,
+          avgSleepQuality: metrics.avgSleepQuality,
+          avgMood: metrics.avgMood,
+          avgEnergy: metrics.avgEnergy,
+          consistency: metrics.consistency
         }
       };
     });
@@ -289,63 +248,6 @@ export function LeaderboardModal({
     }
   };
 
-  const getSleepQualityScore = (quality: string): number => {
-    const scores: Record<string, number> = {
-      'EXCELLENT': 5,
-      'VERY_GOOD': 4,
-      'GOOD': 3,
-      'FAIR': 2,
-      'POOR': 1
-    };
-    return scores[quality] || 0;
-  };
-
-  const getMoodScore = (mood: string): number => {
-    const scores: Record<string, number> = {
-      'EXCELLENT': 5,
-      'VERY_GOOD': 4,
-      'GOOD': 3,
-      'NEUTRAL': 2,
-      'LOW': 1,
-      'VERY_LOW': 0
-    };
-    return scores[mood] || 0;
-  };
-
-  const getEnergyScore = (energy: string): number => {
-    const scores: Record<string, number> = {
-      'VERY_HIGH': 5,
-      'HIGH': 4,
-      'MODERATE': 3,
-      'LOW': 2,
-      'VERY_LOW': 1
-    };
-    return scores[energy] || 0;
-  };
-
-  const calculateOverallScore = (metrics: any, daysElapsed: number): number => {
-    const weights = {
-      consistency: 0.3,     // 30% - Most important
-      avgSleepHours: 0.2,   // 20% - Sleep is crucial
-      avgSleepQuality: 0.15, // 15%
-      avgMood: 0.15,        // 15%
-      avgEnergy: 0.15,      // 15%
-      totalPosts: 0.05      // 5% - Bonus for engagement
-    };
-
-    const normalizedMetrics = {
-      consistency: Math.min(100, metrics.consistency) / 100,
-      avgSleepHours: Math.min(12, Math.max(0, metrics.avgSleepHours)) / 12,
-      avgSleepQuality: metrics.avgSleepQuality / 5,
-      avgMood: metrics.avgMood / 5,
-      avgEnergy: metrics.avgEnergy / 5,
-      totalPosts: Math.min(daysElapsed, metrics.totalPosts) / daysElapsed
-    };
-
-    return Object.entries(weights).reduce((score, [key, weight]) => {
-      return score + (normalizedMetrics[key as keyof typeof normalizedMetrics] * weight * 100);
-    }, 0);
-  };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -370,41 +272,59 @@ export function LeaderboardModal({
   };
 
   return (
-    <Modal
+    <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
+      title="Challenge Leaderboards"
       size="4xl"
       scrollBehavior="inside"
-      classNames={{
-        wrapper: "items-start justify-center pt-8",
-        base: "max-h-[90vh]",
-      }}
     >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-warning/20 to-warning/10 rounded-xl">
-              <IconTrophy className="w-6 h-6 text-warning" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Challenge Leaderboards</h2>
-              <p className="text-sm text-foreground-500">{challengeTitle}</p>
-            </div>
+        {/* Header Info */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-gradient-to-br from-warning/20 to-warning/10 rounded-xl">
+            <IconTrophy className="w-6 h-6 text-warning" aria-hidden="true" />
           </div>
-        </ModalHeader>
-        <ModalBody className="px-6 pb-6">
-          <Tabs aria-label="Leaderboard Options" size="sm" color="primary" className="mb-4">
-            <Tab
-              key="overall"
-              title={
-                <div className="flex items-center gap-2">
-                  <IconTrophy size={16} />
-                  <span>Overall</span>
-                </div>
-              }
+          <div>
+            <p className="text-sm text-foreground-500">{challengeTitle}</p>
+          </div>
+        </div>
+
+        {/* Custom Tab Implementation */}
+        <div className="w-full mb-4">
+          {/* Tab Headers */}
+          <div className="flex border-b border-divider">
+            <button
+              onClick={() => setActiveTab("overall")}
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                activeTab === "overall"
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-foreground-500 hover:text-foreground"
+              }`}
+              aria-label="View overall leaderboard"
             >
-              {/* User Rank for Overall */}
-              {currentUserRank && (
+              <IconTrophy size={16} aria-hidden="true" />
+              <span className="font-medium">Overall</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("weekly")}
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                activeTab === "weekly"
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-foreground-500 hover:text-foreground"
+              }`}
+              aria-label="View weekly leaderboard"
+            >
+              <IconCalendarWeek size={16} aria-hidden="true" />
+              <span className="font-medium">Weekly</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "overall" && (
+          <div>
+            {/* User Rank for Overall */}
+            {currentUserRank && (
                 <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
                   <p className="text-sm font-medium text-primary">
                     🎯 You are currently ranked #{currentUserRank} out of {leaderboard.length} participants
@@ -601,19 +521,13 @@ export function LeaderboardModal({
               </Card>
             </div>
               )}
-            </Tab>
+          </div>
+        )}
 
-            <Tab
-              key="weekly"
-              title={
-                <div className="flex items-center gap-2">
-                  <IconCalendarWeek size={16} />
-                  <span>Weekly</span>
-                </div>
-              }
-            >
-              {/* Week Navigation */}
-              <div className="mb-4 flex items-center justify-between gap-4">
+        {activeTab === "weekly" && (
+          <div>
+            {/* Week Navigation */}
+            <div className="mb-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <Button
                     isIconOnly
@@ -621,8 +535,9 @@ export function LeaderboardModal({
                     variant="flat"
                     onPress={() => navigateWeek('prev')}
                     isDisabled={!selectedWeek || challengeWeeks.findIndex(w => w.weekNumber === selectedWeek.weekNumber) === 0}
+                    aria-label="Previous week"
                   >
-                    <IconChevronLeft size={16} />
+                    <IconChevronLeft size={16} aria-hidden="true" />
                   </Button>
 
                   <div className="flex flex-col items-center min-w-0">
@@ -648,8 +563,9 @@ export function LeaderboardModal({
                     variant="flat"
                     onPress={() => navigateWeek('next')}
                     isDisabled={!selectedWeek || challengeWeeks.findIndex(w => w.weekNumber === selectedWeek.weekNumber) === challengeWeeks.length - 1}
+                    aria-label="Next week"
                   >
-                    <IconChevronRight size={16} />
+                    <IconChevronRight size={16} aria-hidden="true" />
                   </Button>
                 </div>
 
@@ -663,6 +579,7 @@ export function LeaderboardModal({
                       color={week.isCurrentWeek ? "primary" : week.isCompleted ? "success" : "default"}
                       onPress={() => setSelectedWeek(week)}
                       className="min-w-unit-8 px-2"
+                      aria-label={`Go to week ${week.weekNumber}`}
                     >
                       {week.weekNumber}
                     </Button>
@@ -878,8 +795,12 @@ export function LeaderboardModal({
                       <h3 className="text-sm font-semibold text-foreground mb-2">Weekly Scoring (IST Timezone)</h3>
                       <div className="text-xs text-foreground-500 space-y-1">
                         <p>• <strong>Week Period</strong>: Monday 12:00 AM - Sunday 11:59 PM (Indian Time)</p>
-                        <p>• <strong>Consistency (40%)</strong>: Daily posting within the week</p>
-                        <p>• <strong>Sleep, Mood, Energy (60%)</strong>: Average quality metrics for the week</p>
+                        <p>• <strong>Consistency (30%)</strong>: Daily posting frequency within the week</p>
+                        <p>• <strong>Sleep Hours (20%)</strong>: Average sleep duration for the week</p>
+                        <p>• <strong>Sleep Quality (15%)</strong>: Average sleep quality ratings</p>
+                        <p>• <strong>Mood (15%)</strong>: Average mood levels for the week</p>
+                        <p>• <strong>Energy (15%)</strong>: Average energy levels for the week</p>
+                        <p>• <strong>Engagement (5%)</strong>: Total posts bonus for the week</p>
                         <p>• <strong>Reset</strong>: Leaderboard resets every Monday morning</p>
                         <p>• <strong>Navigation</strong>: Use ← → arrows or week numbers to view any week's results</p>
                       </div>
@@ -887,10 +808,8 @@ export function LeaderboardModal({
                   </Card>
                 </div>
               )}
-            </Tab>
-          </Tabs>
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+          </div>
+        )}
+    </BottomSheet>
   );
 }

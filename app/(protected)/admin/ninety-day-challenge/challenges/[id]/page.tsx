@@ -10,7 +10,6 @@ import { AddParticipantModal } from "./_components/AddParticipantModal";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
-import { Tabs, Tab } from "@nextui-org/tabs";
 import {
   IconArrowLeft,
   IconTrophy,
@@ -45,6 +44,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [activeLeaderboardTab, setActiveLeaderboardTab] = useState<"overall" | "weekly">("overall");
   const router = useRouter();
 
   useEffect(() => {
@@ -276,35 +276,51 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
                 </p>
               </div>
             </CardHeader>
-            <CardBody className="pt-0">
-              <Tabs aria-label="Leaderboard Options" size="sm" color="primary" className="mb-4">
-                <Tab
-                  key="overall"
-                  title={
-                    <div className="flex items-center gap-2">
-                      <IconTrophy size={16} />
-                      <span>Overall</span>
-                    </div>
-                  }
-                >
-                  <ParticipantLeaderboard participants={challenge.participants} />
-                </Tab>
-                <Tab
-                  key="weekly"
-                  title={
-                    <div className="flex items-center gap-2">
-                      <IconCalendarWeek size={16} />
-                      <span>Weekly</span>
-                    </div>
-                  }
-                >
-                  <WeeklyLeaderboard
-                    participants={challenge.participants}
-                    challengeStartDate={challenge.startDate}
-                    challengeEndDate={challenge.endDate}
-                  />
-                </Tab>
-              </Tabs>
+            <CardBody className="p-0">
+              {/* Custom Tab Implementation */}
+              <div className="w-full">
+                {/* Tab Headers */}
+                <div className="flex border-b border-divider px-6 bg-content1">
+                  <button
+                    onClick={() => setActiveLeaderboardTab("overall")}
+                    className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                      activeLeaderboardTab === "overall"
+                        ? "border-primary text-primary bg-primary/5"
+                        : "border-transparent text-foreground-500 hover:text-foreground"
+                    }`}
+                    aria-label="View overall leaderboard"
+                  >
+                    <IconTrophy size={16} aria-hidden="true" />
+                    <span className="font-medium">Overall</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveLeaderboardTab("weekly")}
+                    className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                      activeLeaderboardTab === "weekly"
+                        ? "border-primary text-primary bg-primary/5"
+                        : "border-transparent text-foreground-500 hover:text-foreground"
+                    }`}
+                    aria-label="View weekly leaderboard"
+                  >
+                    <IconCalendarWeek size={16} aria-hidden="true" />
+                    <span className="font-medium">Weekly</span>
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="p-6">
+                  {activeLeaderboardTab === "overall" && (
+                    <ParticipantLeaderboard participants={challenge.participants} />
+                  )}
+                  {activeLeaderboardTab === "weekly" && (
+                    <WeeklyLeaderboard
+                      participants={challenge.participants}
+                      challengeStartDate={challenge.startDate}
+                      challengeEndDate={challenge.endDate}
+                    />
+                  )}
+                </div>
+              </div>
             </CardBody>
           </Card>
         </div>
