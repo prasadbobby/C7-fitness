@@ -1,11 +1,31 @@
-"use client";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardHeader } from "@nextui-org/card";
+import { currentUser } from "@clerk/nextjs";
+import prisma from "@/prisma/prisma";
 
-export default function DashboardLinks() {
-  const links = [
+export default async function DashboardLinks() {
+  // Check if user has challenges enabled
+  const user = await currentUser();
+  let isChallengesEnabled = false;
+
+  if (user) {
+    try {
+      const challengeParticipant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: user.id,
+          isEnabled: true,
+        },
+      });
+      isChallengesEnabled = !!challengeParticipant;
+    } catch (error) {
+      console.error("Error checking challenge access:", error);
+      isChallengesEnabled = false;
+    }
+  }
+
+  const baseLinks = [
     {
       title: "Exercises",
       description: "Browse Exercises",
@@ -32,8 +52,26 @@ export default function DashboardLinks() {
     },
   ];
 
+  // Only add Challenges link if user has challenges enabled
+  const links = isChallengesEnabled
+    ? [
+        ...baseLinks,
+        {
+          title: "Challenges",
+          description: "Join Challenges",
+          image: "21.webp",
+          href: "/ninety-day-challenge",
+          titleColour: "text-white",
+          descriptionColour: "text-primary",
+        },
+      ]
+    : baseLinks;
+
+  // Dynamic grid layout based on number of links
+  const gridCols = links.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3";
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+    <div className={`grid grid-cols-2 ${gridCols} gap-3 mb-3`}>
       {links.map((link, index) => (
         <Link key={index} href={link.href}>
           <Card

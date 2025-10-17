@@ -4,6 +4,7 @@ import DashboardCardAverageWorkoutDuration from "./DashboardCardAverageWorkoutDu
 import DashboardCardDailyStreak from "./DashboardCardDailyStreak";
 import DashboardCardWeeklyPbs from "./DashboardCardWeeklyPbs";
 import DashboardCardWeeklyWorkouts from "./DashboardCardWeeklyWorkouts";
+import DashboardCardChallenges from "./DashboardCardChallenges";
 import { Spinner } from "@nextui-org/spinner";
 import {
   IconCalendarWeek,
@@ -15,7 +16,7 @@ import {
 
 export default function DashboardCards() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-3">
       <Suspense
         fallback={
           <DashboardCardTemplate
@@ -63,6 +64,18 @@ export default function DashboardCards() {
         }
       >
         <DashboardCardWeeklyPbs />
+      </Suspense>
+      <Suspense
+        fallback={
+          <DashboardCardTemplate
+            title="Active Challenges"
+            icon={<IconTarget className="text-primary" />}
+          >
+            <Spinner color="primary" />
+          </DashboardCardTemplate>
+        }
+      >
+        <DashboardCardChallenges />
       </Suspense>
 
       {/* <DashboardCardTemplate title="Goal One" icon={<IconTarget className="text-primary" />}>
