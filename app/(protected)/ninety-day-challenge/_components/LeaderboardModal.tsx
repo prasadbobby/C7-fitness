@@ -7,7 +7,17 @@ import { Card, CardBody } from "@nextui-org/card";
 import { Avatar } from "@nextui-org/avatar";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
-import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy } from "@tabler/icons-react";
+import { Tabs, Tab } from "@nextui-org/tabs";
+import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy, IconCalendarWeek, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import {
+  getChallengeWeeks,
+  getCurrentWeek,
+  getLastCompletedWeek,
+  calculateWeeklyMetrics,
+  calculateWeeklyScore,
+  formatWeekDisplay,
+  type WeekInfo
+} from "@/utils/weeklyScoring";
 
 interface Post {
   date: string;
@@ -52,6 +62,8 @@ interface LeaderboardModalProps {
   challengeId: string;
   challengeTitle: string;
   currentUserId: string;
+  challengeStartDate?: string;
+  challengeEndDate?: string;
 }
 
 export function LeaderboardModal({
@@ -59,17 +71,33 @@ export function LeaderboardModal({
   onClose,
   challengeId,
   challengeTitle,
-  currentUserId
+  currentUserId,
+  challengeStartDate,
+  challengeEndDate
 }: LeaderboardModalProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
+  const [currentUserWeeklyRank, setCurrentUserWeeklyRank] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<WeekInfo | null>(null);
+  const [challengeWeeks, setChallengeWeeks] = useState<WeekInfo[]>([]);
 
   useEffect(() => {
     if (isOpen && challengeId) {
       fetchLeaderboard();
+      if (challengeStartDate) {
+        initializeWeeklyData();
+      }
     }
-  }, [isOpen, challengeId]);
+  }, [isOpen, challengeId, challengeStartDate]);
+
+  useEffect(() => {
+    if (selectedWeek && challengeId) {
+      fetchWeeklyLeaderboard();
+    }
+  }, [selectedWeek, challengeId]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -89,6 +117,78 @@ export function LeaderboardModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  const initializeWeeklyData = () => {
+    if (!challengeStartDate) return;
+
+    const weeks = getChallengeWeeks(challengeStartDate, challengeEndDate);
+    setChallengeWeeks(weeks);
+
+    // Set default selected week to current week or last completed week
+    const currentWeek = getCurrentWeek(challengeStartDate);
+    const lastCompletedWeek = getLastCompletedWeek(challengeStartDate);
+
+    // Show last completed week if available, otherwise current week
+    const defaultWeek = lastCompletedWeek || currentWeek || weeks[0];
+    setSelectedWeek(defaultWeek);
+  };
+
+  const fetchWeeklyLeaderboard = async () => {
+    if (!selectedWeek) return;
+
+    setWeeklyLoading(true);
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/leaderboard?challengeId=${challengeId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const weeklyProcessed = await processWeeklyParticipants(data.participants);
+        setWeeklyLeaderboard(weeklyProcessed);
+
+        // Find current user's weekly rank
+        const userWeeklyRank = weeklyProcessed.find(entry => entry.userId === currentUserId)?.rank || null;
+        setCurrentUserWeeklyRank(userWeeklyRank);
+      }
+    } catch (error) {
+      console.error('Error fetching weekly leaderboard:', error);
+    } finally {
+      setWeeklyLoading(false);
+    }
+  };
+
+  const processWeeklyParticipants = async (participants: Participant[]): Promise<LeaderboardEntry[]> => {
+    if (!selectedWeek) return [];
+
+    const enhanced = participants.map((participant) => {
+      const weeklyMetrics = calculateWeeklyMetrics(
+        participant.posts,
+        selectedWeek,
+        participant.joinedAt
+      );
+      const weeklyScore = calculateWeeklyScore(weeklyMetrics);
+
+      return {
+        ...participant,
+        score: weeklyScore,
+        rank: 0, // Will be set after sorting
+        metrics: {
+          totalPosts: weeklyMetrics.totalPosts,
+          avgSleepHours: weeklyMetrics.avgSleepHours,
+          avgSleepQuality: weeklyMetrics.avgSleepQuality,
+          avgMood: weeklyMetrics.avgMood,
+          avgEnergy: weeklyMetrics.avgEnergy,
+          consistency: weeklyMetrics.consistency
+        }
+      };
+    });
+
+    // Sort by score and assign ranks
+    enhanced.sort((a, b) => b.score - a.score);
+    enhanced.forEach((entry, index) => {
+      entry.rank = index + 1;
+    });
+
+    return enhanced;
   };
 
   const processParticipants = async (participants: Participant[]): Promise<LeaderboardEntry[]> => {
@@ -173,6 +273,20 @@ export function LeaderboardModal({
     });
 
     return enhanced;
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (!selectedWeek) return;
+
+    const currentIndex = challengeWeeks.findIndex(week =>
+      week.weekNumber === selectedWeek.weekNumber
+    );
+
+    if (direction === 'prev' && currentIndex > 0) {
+      setSelectedWeek(challengeWeeks[currentIndex - 1]);
+    } else if (direction === 'next' && currentIndex < challengeWeeks.length - 1) {
+      setSelectedWeek(challengeWeeks[currentIndex + 1]);
+    }
   };
 
   const getSleepQualityScore = (quality: string): number => {
@@ -273,42 +387,54 @@ export function LeaderboardModal({
               <IconTrophy className="w-6 h-6 text-warning" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Challenge Leaderboard</h2>
+              <h2 className="text-xl font-bold text-foreground">Challenge Leaderboards</h2>
               <p className="text-sm text-foreground-500">{challengeTitle}</p>
             </div>
           </div>
-          {currentUserRank && (
-            <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-              <p className="text-sm font-medium text-primary">
-                🎯 You are currently ranked #{currentUserRank} out of {leaderboard.length} participants
-              </p>
-            </div>
-          )}
         </ModalHeader>
         <ModalBody className="px-6 pb-6">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Card key={i} shadow="sm">
-                  <CardBody className="p-4">
-                    <div className="animate-pulse flex items-center gap-3">
-                      <div className="w-10 h-10 bg-default-200 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-default-200 rounded w-1/3"></div>
-                        <div className="h-3 bg-default-200 rounded w-1/2"></div>
-                      </div>
-                      <div className="w-16 h-8 bg-default-200 rounded"></div>
-                    </div>
-                  </CardBody>
-                </Card>
-              ))}
-            </div>
-          ) : leaderboard.length === 0 ? (
-            <div className="text-center py-8">
-              <IconTrophy className="w-12 h-12 text-default-300 mx-auto mb-4" />
-              <p className="text-foreground-500">No participants to rank yet.</p>
-            </div>
-          ) : (
+          <Tabs aria-label="Leaderboard Options" size="sm" color="primary" className="mb-4">
+            <Tab
+              key="overall"
+              title={
+                <div className="flex items-center gap-2">
+                  <IconTrophy size={16} />
+                  <span>Overall</span>
+                </div>
+              }
+            >
+              {/* User Rank for Overall */}
+              {currentUserRank && (
+                <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-sm font-medium text-primary">
+                    🎯 You are currently ranked #{currentUserRank} out of {leaderboard.length} participants
+                  </p>
+                </div>
+              )}
+
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Card key={i} shadow="sm">
+                      <CardBody className="p-4">
+                        <div className="animate-pulse flex items-center gap-3">
+                          <div className="w-10 h-10 bg-default-200 rounded-full"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-default-200 rounded w-1/3"></div>
+                            <div className="h-3 bg-default-200 rounded w-1/2"></div>
+                          </div>
+                          <div className="w-16 h-8 bg-default-200 rounded"></div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </div>
+              ) : leaderboard.length === 0 ? (
+                <div className="text-center py-8">
+                  <IconTrophy className="w-12 h-12 text-default-300 mx-auto mb-4" />
+                  <p className="text-foreground-500">No participants to rank yet.</p>
+                </div>
+              ) : (
             <div className="space-y-3">
               {/* Top 3 Podium (if we have at least 3 participants) */}
               {leaderboard.length >= 3 && (
@@ -474,7 +600,295 @@ export function LeaderboardModal({
                 </CardBody>
               </Card>
             </div>
-          )}
+              )}
+            </Tab>
+
+            <Tab
+              key="weekly"
+              title={
+                <div className="flex items-center gap-2">
+                  <IconCalendarWeek size={16} />
+                  <span>Weekly</span>
+                </div>
+              }
+            >
+              {/* Week Navigation */}
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    onPress={() => navigateWeek('prev')}
+                    isDisabled={!selectedWeek || challengeWeeks.findIndex(w => w.weekNumber === selectedWeek.weekNumber) === 0}
+                  >
+                    <IconChevronLeft size={16} />
+                  </Button>
+
+                  <div className="flex flex-col items-center min-w-0">
+                    <h3 className="font-semibold text-sm text-foreground">
+                      {selectedWeek ? formatWeekDisplay(selectedWeek) : 'Loading...'}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {selectedWeek && (
+                        <Chip
+                          color={selectedWeek.isCurrentWeek ? "primary" : selectedWeek.isCompleted ? "success" : "default"}
+                          variant="flat"
+                          size="sm"
+                        >
+                          {selectedWeek.isCurrentWeek ? "Current Week" : selectedWeek.isCompleted ? "Completed" : "Upcoming"}
+                        </Chip>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    onPress={() => navigateWeek('next')}
+                    isDisabled={!selectedWeek || challengeWeeks.findIndex(w => w.weekNumber === selectedWeek.weekNumber) === challengeWeeks.length - 1}
+                  >
+                    <IconChevronRight size={16} />
+                  </Button>
+                </div>
+
+                {/* Quick Week Selector */}
+                <div className="flex items-center gap-1">
+                  {challengeWeeks.slice(0, 5).map((week, index) => (
+                    <Button
+                      key={week.weekNumber}
+                      size="sm"
+                      variant={selectedWeek?.weekNumber === week.weekNumber ? "solid" : "light"}
+                      color={week.isCurrentWeek ? "primary" : week.isCompleted ? "success" : "default"}
+                      onPress={() => setSelectedWeek(week)}
+                      className="min-w-unit-8 px-2"
+                    >
+                      {week.weekNumber}
+                    </Button>
+                  ))}
+                  {challengeWeeks.length > 5 && (
+                    <span className="text-xs text-foreground-500 ml-1">...</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Week Status Info */}
+              {selectedWeek?.isCompleted && (
+                <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg">
+                  <p className="text-sm font-medium text-success">
+                    🏆 Week {selectedWeek.weekNumber} completed! Final results are locked.
+                  </p>
+                  <p className="text-xs text-success-600 mt-1">
+                    View other weeks using the navigation above.
+                  </p>
+                </div>
+              )}
+
+              {/* User Weekly Rank */}
+              {currentUserWeeklyRank && (
+                <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-sm font-medium text-primary">
+                    🎯 You are ranked #{currentUserWeeklyRank} this week out of {weeklyLeaderboard.length} participants
+                  </p>
+                </div>
+              )}
+
+              {weeklyLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Card key={i} shadow="sm">
+                      <CardBody className="p-4">
+                        <div className="animate-pulse flex items-center gap-3">
+                          <div className="w-10 h-10 bg-default-200 rounded-full"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-default-200 rounded w-1/3"></div>
+                            <div className="h-3 bg-default-200 rounded w-1/2"></div>
+                          </div>
+                          <div className="w-16 h-8 bg-default-200 rounded"></div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </div>
+              ) : !selectedWeek ? (
+                <div className="text-center py-8">
+                  <IconCalendarWeek className="w-12 h-12 text-default-300 mx-auto mb-4" />
+                  <p className="text-foreground-500">Week data not available.</p>
+                </div>
+              ) : weeklyLeaderboard.length === 0 ? (
+                <div className="text-center py-8">
+                  <IconCalendarWeek className="w-12 h-12 text-default-300 mx-auto mb-4" />
+                  <p className="text-foreground-500">No participants for this week.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Weekly Top 3 Podium (for completed weeks) */}
+                  {selectedWeek.isCompleted && weeklyLeaderboard.length >= 3 && (
+                    <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <div className="text-center">
+                        <div className="relative">
+                          <Avatar
+                            src={weeklyLeaderboard[1].user.imageUrl}
+                            name={`${weeklyLeaderboard[1].user.firstName} ${weeklyLeaderboard[1].user.lastName}`}
+                            size="md"
+                            className="mx-auto mb-2"
+                          />
+                          <div className="absolute -top-2 -right-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-full">
+                            <IconMedal className="w-4 h-4 text-gray-400" />
+                          </div>
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {weeklyLeaderboard[1].user.firstName}
+                        </p>
+                        <p className="text-xs text-foreground-500">
+                          {weeklyLeaderboard[1].score} pts
+                        </p>
+                      </div>
+
+                      <div className="text-center -mt-4">
+                        <div className="relative">
+                          <Avatar
+                            src={weeklyLeaderboard[0].user.imageUrl}
+                            name={`${weeklyLeaderboard[0].user.firstName} ${weeklyLeaderboard[0].user.lastName}`}
+                            size="lg"
+                            className="mx-auto mb-2 ring-4 ring-yellow-200"
+                          />
+                          <div className="absolute -top-3 -right-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+                            <IconTrophy className="w-5 h-5 text-yellow-500" />
+                          </div>
+                        </div>
+                        <p className="text-sm font-bold text-foreground truncate">
+                          🏆 {weeklyLeaderboard[0].user.firstName}
+                        </p>
+                        <p className="text-sm text-yellow-600 font-medium">
+                          {weeklyLeaderboard[0].score} pts
+                        </p>
+                        <Chip size="sm" color="warning" variant="flat" className="mt-1">
+                          Week Champion
+                        </Chip>
+                      </div>
+
+                      <div className="text-center">
+                        <div className="relative">
+                          <Avatar
+                            src={weeklyLeaderboard[2].user.imageUrl}
+                            name={`${weeklyLeaderboard[2].user.firstName} ${weeklyLeaderboard[2].user.lastName}`}
+                            size="md"
+                            className="mx-auto mb-2"
+                          />
+                          <div className="absolute -top-2 -right-2 p-1 bg-amber-100 dark:bg-amber-900 rounded-full">
+                            <IconAward className="w-4 h-4 text-amber-600" />
+                          </div>
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {weeklyLeaderboard[2].user.firstName}
+                        </p>
+                        <p className="text-xs text-foreground-500">
+                          {weeklyLeaderboard[2].score} pts
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Weekly Rankings List */}
+                  <div className="space-y-2">
+                    {weeklyLeaderboard.map((participant) => (
+                      <Card
+                        key={participant.id}
+                        shadow="sm"
+                        className={`transition-all duration-200 ${
+                          participant.userId === currentUserId
+                            ? 'ring-2 ring-primary bg-primary/5 hover:shadow-lg scale-[1.02]'
+                            : 'hover:shadow-md'
+                        }`}
+                      >
+                        <CardBody className="p-4">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {getRankIcon(participant.rank)}
+                              <Avatar
+                                src={participant.user.imageUrl}
+                                name={`${participant.user.firstName} ${participant.user.lastName}`}
+                                size="sm"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className={`font-medium text-sm truncate ${
+                                    participant.userId === currentUserId ? 'text-primary font-bold' : 'text-foreground'
+                                  }`}>
+                                    {participant.user.firstName} {participant.user.lastName}
+                                    {participant.userId === currentUserId && (
+                                      <span className="text-xs bg-primary text-white px-2 py-1 rounded-full ml-2">
+                                        You
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Chip size="sm" variant="flat" color={getRankColor(participant.rank)}>
+                                    {participant.score} pts
+                                  </Chip>
+                                  <span className="text-xs text-foreground-500">
+                                    {participant.metrics.totalPosts} posts this week
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="mt-3">
+                            <Progress
+                              value={participant.score}
+                              maxValue={100}
+                              size="sm"
+                              color={participant.userId === currentUserId ? "primary" : getRankColor(participant.rank)}
+                              className="w-full"
+                            />
+                          </div>
+
+                          {/* Weekly Metrics */}
+                          <div className="flex items-center justify-between mt-3 text-xs">
+                            <div className="flex items-center gap-1 text-foreground-500">
+                              <IconMoon size={12} />
+                              <span>{participant.metrics.avgSleepHours.toFixed(1)}h</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-foreground-500">
+                              <IconMoodHappy size={12} />
+                              <span>{participant.metrics.avgMood.toFixed(1)}/5</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-foreground-500">
+                              <IconBolt size={12} />
+                              <span>{participant.metrics.avgEnergy.toFixed(1)}/5</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-foreground-500">
+                              <IconBrain size={12} />
+                              <span>{Math.round(participant.metrics.consistency)}%</span>
+                            </div>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Weekly Scoring Explanation */}
+                  <Card className="mt-6">
+                    <CardBody className="p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Weekly Scoring (IST Timezone)</h3>
+                      <div className="text-xs text-foreground-500 space-y-1">
+                        <p>• <strong>Week Period</strong>: Monday 12:00 AM - Sunday 11:59 PM (Indian Time)</p>
+                        <p>• <strong>Consistency (40%)</strong>: Daily posting within the week</p>
+                        <p>• <strong>Sleep, Mood, Energy (60%)</strong>: Average quality metrics for the week</p>
+                        <p>• <strong>Reset</strong>: Leaderboard resets every Monday morning</p>
+                        <p>• <strong>Navigation</strong>: Use ← → arrows or week numbers to view any week's results</p>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
+              )}
+            </Tab>
+          </Tabs>
         </ModalBody>
       </ModalContent>
     </Modal>

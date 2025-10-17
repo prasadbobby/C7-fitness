@@ -9,12 +9,10 @@ export default authMiddleware({
     "/privacy-policy",
     "/terms"
   ],
+  ignoredRoutes: [
+    "/api/auth/google-fitness/callback"
+  ],
   beforeAuth: (req) => {
-    // Skip Clerk middleware for OAuth-related routes that handle auth internally
-    if (req.nextUrl.pathname === "/api/auth/google-fitness/callback") {
-      return NextResponse.next();
-    }
-
     // Block direct access to sign-up unless it's via invitation
     if (req.nextUrl.pathname === "/sign-up") {
       const searchParams = req.nextUrl.searchParams;

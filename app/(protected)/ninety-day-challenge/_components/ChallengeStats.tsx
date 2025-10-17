@@ -194,6 +194,8 @@ export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
           challengeId={challengeId}
           challengeTitle={stats.challengeTitle}
           currentUserId={user.id}
+          challengeStartDate={stats.startDate}
+          challengeEndDate={stats.endDate}
         />
       )}
     </Card>

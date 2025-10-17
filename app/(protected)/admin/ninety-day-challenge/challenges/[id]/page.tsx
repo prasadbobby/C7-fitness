@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { redirect, useRouter } from "next/navigation";
 import { ChallengeDetails } from "./_components/ChallengeDetails";
 import { ParticipantLeaderboard } from "./_components/ParticipantLeaderboard";
+import { WeeklyLeaderboard } from "./_components/WeeklyLeaderboard";
 import { ChallengeAnalytics } from "./_components/ChallengeAnalytics";
 import { AddParticipantModal } from "./_components/AddParticipantModal";
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
+import { Tabs, Tab } from "@nextui-org/tabs";
 import {
   IconArrowLeft,
   IconTrophy,
@@ -18,6 +20,7 @@ import {
   IconUserPlus,
   IconMessageCircle,
   IconChevronRight,
+  IconCalendarWeek,
 } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -266,15 +269,42 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-foreground">
-                  Leaderboard
+                  Leaderboards
                 </h2>
                 <p className="text-sm text-foreground-500">
-                  Top performers this challenge
+                  Overall & weekly rankings
                 </p>
               </div>
             </CardHeader>
             <CardBody className="pt-0">
-              <ParticipantLeaderboard participants={challenge.participants} />
+              <Tabs aria-label="Leaderboard Options" size="sm" color="primary" className="mb-4">
+                <Tab
+                  key="overall"
+                  title={
+                    <div className="flex items-center gap-2">
+                      <IconTrophy size={16} />
+                      <span>Overall</span>
+                    </div>
+                  }
+                >
+                  <ParticipantLeaderboard participants={challenge.participants} />
+                </Tab>
+                <Tab
+                  key="weekly"
+                  title={
+                    <div className="flex items-center gap-2">
+                      <IconCalendarWeek size={16} />
+                      <span>Weekly</span>
+                    </div>
+                  }
+                >
+                  <WeeklyLeaderboard
+                    participants={challenge.participants}
+                    challengeStartDate={challenge.startDate}
+                    challengeEndDate={challenge.endDate}
+                  />
+                </Tab>
+              </Tabs>
             </CardBody>
           </Card>
         </div>
