@@ -9,6 +9,7 @@ export async function handleUpdateUserDetails(data: {
   username: string;
   firstName: string;
   lastName: string;
+  dateOfBirth?: Date | null;
 }) {
   const { userId }: { userId: string | null } = auth();
 
@@ -17,11 +18,26 @@ export async function handleUpdateUserDetails(data: {
   }
 
   try {
+    // Update Clerk user info
     await clerkClient.users.updateUser(userId, {
       username: data.username,
       firstName: data.firstName,
       lastName: data.lastName,
     });
+
+    // Update database user info if dateOfBirth is provided
+    if (data.dateOfBirth !== undefined) {
+      await prisma.userInfo.upsert({
+        where: { userId: userId },
+        update: {
+          dateOfBirth: data.dateOfBirth,
+        },
+        create: {
+          userId: userId,
+          dateOfBirth: data.dateOfBirth,
+        },
+      });
+    }
 
     revalidatePath("/profile");
     return { success: true, message: "User info updated" };

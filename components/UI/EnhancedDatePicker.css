@@ -1,0 +1,88 @@
+/* Enhanced DatePicker Styling - Keeps same UI as current DatePicker but adds dropdowns */
+
+/* Basic day picker styling - same as original */
+.rdp-caption {
+  @apply text-primary;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  @apply bg-primary text-black;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  @apply bg-primary text-black;
+}
+
+.rdp-day_selected {
+  @apply bg-primary text-black;
+}
+
+/* Enhanced dropdown styling for year/month selectors */
+.rdp-dropdown {
+  @apply bg-background border border-divider rounded-md px-2 py-1 text-sm min-w-[80px];
+}
+
+.rdp-dropdown:focus {
+  @apply outline-none ring-2 ring-primary ring-opacity-50;
+}
+
+/* Navigation buttons */
+.rdp-nav_button {
+  @apply h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 border border-divider rounded-md flex items-center justify-center;
+}
+
+.rdp-nav_button:hover {
+  @apply bg-content2;
+}
+
+.rdp-nav_button_previous {
+  @apply absolute left-1;
+}
+
+.rdp-nav_button_next {
+  @apply absolute right-1;
+}
+
+/* Caption with dropdowns layout */
+.rdp-caption_dropdowns {
+  @apply flex justify-center gap-2;
+}
+
+.rdp-caption_label {
+  @apply text-sm font-medium;
+}
+
+/* Table and cell styling - same as original */
+.rdp-table {
+  @apply w-full;
+}
+
+.rdp-head_cell {
+  @apply text-default-500 rounded-md w-9 font-normal text-xs;
+}
+
+.rdp-row {
+  @apply flex w-full mt-1;
+}
+
+.rdp-cell {
+  @apply text-center text-sm p-0 relative;
+}
+
+.rdp-day {
+  @apply h-9 w-9 p-0 font-normal hover:bg-content2 hover:text-foreground rounded-md transition-colors;
+}
+
+.rdp-day_today {
+  @apply bg-content2 text-foreground font-semibold;
+}
+
+.rdp-day_outside {
+  @apply text-default-400 opacity-50;
+}
+
+.rdp-day_disabled {
+  @apply text-default-400 opacity-50 cursor-not-allowed;
+}

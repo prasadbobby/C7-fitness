@@ -14,6 +14,7 @@ model UserInfo {
   age      Int?
   height   Float?
   weight   Float?
+  dateOfBirth DateTime? // Date of birth
   role     UserRole @default(USER)
 
   // Membership validity fields
@@ -869,4 +870,69 @@ enum StepDataSource {
   MANUAL        // Manually entered by user
   GOOGLE_FIT    // Automatically synced from Google Fit
   HEALTH_CONNECT // Future: synced from Health Connect
+}
+
+// Body Measurements Tracking Models
+model BodyMeasurement {
+  id              String            @id @default(uuid())
+  userId          String
+  measurementType MeasurementType
+  value           Float             // Value in the specified unit
+  unit            String            // cm, kg, %, inches, etc.
+  recordedDate    DateTime          // When the measurement was taken
+  notes           String?           // Optional notes about the measurement
+  dataSource      StepDataSource    @default(MANUAL) // Manual or from connected devices
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([userId, measurementType, recordedDate])
+  @@index([userId, measurementType])
+  @@index([userId, recordedDate])
+}
+
+model MeasurementGoal {
+  id              String            @id @default(uuid())
+  userId          String
+  measurementType MeasurementType
+  targetValue     Float             // Target value to achieve
+  currentValue    Float?            // Current value (latest measurement)
+  targetDate      DateTime?         // Optional target date
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([userId, measurementType])
+  @@index([userId, isActive])
+}
+
+enum MeasurementType {
+  // Basic measurements
+  METABOLIC_AGE
+  HEIGHT
+  WEIGHT
+
+  // Body composition
+  BODY_FAT_PERCENTAGE
+  VISCERAL_FAT
+  SKELETAL_MUSCLE_MASS
+  FAT_MASS
+
+  // Upper body measurements
+  NECK
+  SHOULDERS
+  CHEST
+  UPPER_ARM_RIGHT
+  UPPER_ARM_LEFT
+  FOREARM_RIGHT
+  FOREARM_LEFT
+  WRIST
+
+  // Core & lower body measurements
+  WAIST
+  ABDOMEN
+  HIPS
+  THIGH_RIGHT
+  THIGH_LEFT
+  CALF_RIGHT
+  CALF_LEFT
 }

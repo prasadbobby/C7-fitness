@@ -182,7 +182,7 @@ export default function NinetyDayChallengePage() {
               <div className="flex justify-end sm:ml-auto">
                 <Button
                   color="primary"
-                  variant="shadow"
+                  variant="solid"
                   size="lg"
                   startContent={<IconCalendarEvent className="w-4 h-4" />}
                   className="px-6 py-2 font-semibold w-full sm:w-auto"

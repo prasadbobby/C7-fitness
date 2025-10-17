@@ -29,7 +29,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId }: Challenge
         as={Link}
         href={`/ninety-day-challenge/posts?challengeId=${selectedChallengeId}`}
         color="primary"
-        variant="shadow"
+        variant="solid"
         startContent={<IconMessageCircle size={18} />}
         className="w-full sm:w-auto font-medium"
       >

@@ -32,6 +32,7 @@ import {
   IconChartPie,
   IconClipboardList,
   IconHistory,
+  IconRulerMeasure,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import BottomSheet from "@/components/UI/BottomSheet";
@@ -40,6 +41,7 @@ import { Input, Table, TableHeader, TableBody, TableColumn, TableRow, TableCell,
 import { toast } from "sonner";
 import TrainingCategoryManager from "./_components/TrainingCategoryManager";
 import MembershipManager from "./_components/MembershipManager";
+import AdminMeasurementsManager from "./_components/AdminMeasurementsManager";
 
 interface UserProgress {
   user: {
@@ -446,7 +448,7 @@ export default function UserProgressDashboard() {
               as={Link}
               href={`/admin/users/${id}/assigned-workouts`}
               color="primary"
-              variant="shadow"
+              variant="solid"
               startContent={<IconJumpRope size={18} />}
               className="font-semibold w-full sm:w-auto"
               size="sm"
@@ -576,6 +578,21 @@ export default function UserProgressDashboard() {
                   <span className="hidden sm:inline">Workout History </span>
                   <span className="sm:hidden">History </span>
                   ({workoutLogs?.length || 0})
+                </span>
+              </button>
+
+              <button
+                onClick={() => setCurrentTab("measurements")}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary whitespace-nowrap min-w-fit flex-shrink-0 ${
+                  currentTab === "measurements"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconRulerMeasure size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="font-medium text-sm sm:text-base">
+                  <span className="hidden sm:inline">Measurements</span>
+                  <span className="sm:hidden">Measure.</span>
                 </span>
               </button>
             </div>
@@ -1014,6 +1031,19 @@ export default function UserProgressDashboard() {
                       </div>
                     </CardBody>
                   </Card>
+                </div>
+              )}
+
+              {currentTab === "measurements" && (
+                <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+                  <AdminMeasurementsManager
+                    userId={user.userId}
+                    userInfo={{
+                      username: user.username,
+                      firstName: user.firstName,
+                      email: user.email
+                    }}
+                  />
                 </div>
               )}
             </div>

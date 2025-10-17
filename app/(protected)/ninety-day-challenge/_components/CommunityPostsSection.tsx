@@ -34,7 +34,7 @@ export function CommunityPostsSection({ challengeId }: CommunityPostsSectionProp
           as={Link}
           href="/ninety-day-challenge/posts"
           color="primary"
-          variant="shadow"
+          variant="solid"
           startContent={<IconMessageCircle size={18} />}
           className="font-medium"
         >

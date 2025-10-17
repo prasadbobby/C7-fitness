@@ -151,7 +151,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
               as={Link}
               href={`/ninety-day-challenge/posts?challengeId=${challenge.id}`}
               color="primary"
-              variant="shadow"
+              variant="solid"
               size="lg"
               startContent={<IconMessageCircle size={18} />}
               className="w-full sm:w-auto min-h-12 px-4"

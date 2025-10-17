@@ -116,6 +116,27 @@ export async function GET(
       ? Math.round(workoutLogs.reduce((sum, log) => sum + log.duration, 0) / totalWorkouts)
       : 0;
 
+    // Fetch latest measurements from BodyMeasurement table
+    const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+      where: {
+        userId: userInfo.userId,
+        measurementType: 'HEIGHT',
+      },
+      orderBy: {
+        recordedDate: 'desc',
+      },
+    });
+
+    const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+      where: {
+        userId: userInfo.userId,
+        measurementType: 'WEIGHT',
+      },
+      orderBy: {
+        recordedDate: 'desc',
+      },
+    });
+
     // Calculate streak (consecutive days with workouts)
     let streakDays = 0;
     try {
@@ -157,8 +178,9 @@ export async function GET(
       email: clerkUser?.emailAddresses?.[0]?.emailAddress,
       imageUrl: clerkUser?.imageUrl,
       age: userInfo.age,
-      height: userInfo.height,
-      weight: userInfo.weight,
+      // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
+      height: latestHeightMeasurement?.value || userInfo.height,
+      weight: latestWeightMeasurement?.value || userInfo.weight,
       role: userInfo.role,
     };
 

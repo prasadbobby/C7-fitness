@@ -15,14 +15,14 @@ import {
   IconSettings,
   IconTarget,
   IconClock,
+  IconRulerMeasure,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { formatDuration } from "@/utils/time";
 
 import ProfileDetails from "./_components/ProfileDetails";
-import ProfileMeasurements from "./_components/ProfileMeasurements";
 import ProfileActions from "./_components/ProfileActions";
 import ProfileMembership from "./_components/ProfileMembership";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher/ThemeSwitcher";
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +48,7 @@ export default async function ProfilePage() {
       age: true,
       height: true,
       weight: true,
+      dateOfBirth: true,
       role: true,
     },
   });
@@ -104,16 +105,77 @@ export default async function ProfilePage() {
   const totalAssignments = assignmentStats._count.id || 0;
   const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
 
-  // Calculate BMI
+  // Calculate age from date of birth
+  const calculateAge = () => {
+    if (userMeasurements?.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(userMeasurements.dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
+    return userMeasurements?.age || null; // Fallback to stored age if no DOB
+  };
+
+  // Get latest measurements for height, weight, etc.
+  const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+    where: {
+      userId: userId,
+      measurementType: 'HEIGHT',
+    },
+    orderBy: {
+      recordedDate: 'desc',
+    },
+  });
+
+  const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+    where: {
+      userId: userId,
+      measurementType: 'WEIGHT',
+    },
+    orderBy: {
+      recordedDate: 'desc',
+    },
+  });
+
+  // Calculate BMI from latest measurements
   const calculateBMI = () => {
-    if (userMeasurements?.height && userMeasurements?.weight) {
-      const heightInM = userMeasurements.height / 100;
-      return (userMeasurements.weight / (heightInM * heightInM)).toFixed(1);
+    const height = latestHeightMeasurement?.value || userMeasurements?.height;
+    const weight = latestWeightMeasurement?.value || userMeasurements?.weight;
+
+    if (height && weight) {
+      // Convert height to meters (assuming measurements are in cm, userInfo might be in cm too)
+      const heightInM = height / 100;
+      return (weight / (heightInM * heightInM)).toFixed(1);
     }
     return null;
   };
 
+  const age = calculateAge();
+  const currentHeight = latestHeightMeasurement?.value || userMeasurements?.height;
+  const currentWeight = latestWeightMeasurement?.value || userMeasurements?.weight;
   const bmi = calculateBMI();
+
+  // Get measurement summary
+  const measurementCount = await prisma.bodyMeasurement.count({
+    where: {
+      userId: userId,
+    },
+  });
+
+  const latestMeasurements = await prisma.bodyMeasurement.findMany({
+    where: {
+      userId: userId,
+    },
+    orderBy: {
+      recordedDate: 'desc',
+    },
+    take: 3,
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4">
@@ -147,20 +209,20 @@ export default async function ProfilePage() {
                     </span>
                   </div>
                 )}
-                {userMeasurements?.age && (
+                {age && (
                   <div className="flex items-center gap-2 px-3 py-1 bg-content2 rounded-full">
                     <IconCalendar size={14} className="text-primary" />
-                    <span className="text-sm">{userMeasurements.age} years</span>
+                    <span className="text-sm">{age} years</span>
                   </div>
                 )}
-                {userMeasurements?.height && (
+                {currentHeight && (
                   <div className="flex items-center gap-2 px-3 py-1 bg-content2 rounded-full">
-                    <span className="text-sm">📏 {userMeasurements.height} cm</span>
+                    <span className="text-sm">📏 {currentHeight} cm</span>
                   </div>
                 )}
-                {userMeasurements?.weight && (
+                {currentWeight && (
                   <div className="flex items-center gap-2 px-3 py-1 bg-content2 rounded-full">
-                    <span className="text-sm">⚖️ {userMeasurements.weight} kg</span>
+                    <span className="text-sm">⚖️ {currentWeight} {latestWeightMeasurement?.unit || 'kg'}</span>
                   </div>
                 )}
                 {bmi && (
@@ -176,13 +238,12 @@ export default async function ProfilePage() {
               as={Link}
               href="/profile/advanced"
               color="primary"
-              variant="shadow"
+              variant="solid"
               startContent={<IconSettings size={18} />}
               className="font-semibold"
             >
               Advanced Settings
             </Button>
-            <ThemeSwitcher />
           </div>
         </div>
       </div>
@@ -258,8 +319,68 @@ export default async function ProfilePage() {
             username={username}
             firstName={firstName}
             lastName={lastName}
+            dateOfBirth={userMeasurements?.dateOfBirth}
           />
-          <ProfileMeasurements userMeasurements={userMeasurements} />
+          {/* Body Measurements Summary */}
+          <Card shadow="none" className="shadow-md">
+            <CardHeader className="text-xl font-semibold px-5 pb-4 gap-x-3 items-center justify-between">
+              <div className="flex items-center gap-3">
+                <IconRulerMeasure className="text-primary" />
+                <div>
+                  <h3 className="text-lg font-semibold">Body Measurements</h3>
+                  <p className="text-sm text-foreground-500">Track your fitness progress</p>
+                </div>
+              </div>
+              <Button
+                as={Link}
+                href="/profile/measurements"
+                color="primary"
+                variant="flat"
+                endContent={<IconChevronRight size={16} />}
+                size="sm"
+              >
+                View All
+              </Button>
+            </CardHeader>
+            <CardBody className="px-5">
+              {measurementCount > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                      <p className="text-sm font-medium text-primary">Total Measurements</p>
+                      <p className="text-2xl font-bold text-primary">{measurementCount}</p>
+                    </div>
+                    <div className="p-3 bg-success/10 rounded-lg">
+                      <p className="text-sm font-medium text-success">Latest Updates</p>
+                      <p className="text-2xl font-bold text-success">{latestMeasurements.length}</p>
+                      <p className="text-xs text-success-600">Recent entries</p>
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <IconRulerMeasure size={48} className="text-foreground-300 mx-auto mb-3" />
+                  <p className="text-foreground-500 mb-4">No measurements recorded yet</p>
+                  <Button
+                    as={Link}
+                    href="/profile/measurements"
+                    color="primary"
+                    variant="flat"
+                    startContent={<IconRulerMeasure size={16} />}
+                  >
+                    Start Tracking
+                  </Button>
+                </div>
+              )}
+
+              <div className="pt-4 mt-4 border-t border-divider">
+                <p className="text-xs text-foreground-400 text-center">
+                  Visit the measurements page to track all body metrics and view detailed progress charts.
+                </p>
+              </div>
+            </CardBody>
+          </Card>
         </div>
         <div className="space-y-6">
           <Card>
