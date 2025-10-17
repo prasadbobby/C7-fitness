@@ -158,31 +158,34 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
 }
 
 /**
- * Calculate weekly score using the same weights as overall scoring
+ * Calculate weekly score using unified scoring system (same as overall leaderboard)
  */
 export function calculateWeeklyScore(metrics: ReturnType<typeof calculateWeeklyMetrics>) {
+  // Use the same weights as overall scoring for consistency
   const weights = {
-    consistency: 0.4,        // Higher weight for weekly consistency
-    avgSleepHours: 0.15,     // Sleep quantity
-    avgSleepQuality: 0.15,   // Sleep quality
-    avgMood: 0.15,           // Mental wellness
-    avgEnergy: 0.15,         // Physical wellness
+    consistency: 0.3,        // Same as overall (30%)
+    avgSleepHours: 0.2,      // Same as overall (20%)
+    avgSleepQuality: 0.15,   // Same as overall (15%)
+    avgMood: 0.15,           // Same as overall (15%)
+    avgEnergy: 0.15,         // Same as overall (15%)
+    totalPosts: 0.05         // Add the totalPosts bonus (5%)
   };
 
-  // Normalize sleep hours (assuming 8 hours is optimal)
-  const normalizedSleepHours = Math.min(100, (metrics.avgSleepHours / 8) * 100);
-
-  // Normalize other metrics (1-5 scale to 0-100)
-  const normalizedSleepQuality = (metrics.avgSleepQuality / 5) * 100;
-  const normalizedMood = (metrics.avgMood / 5) * 100;
-  const normalizedEnergy = (metrics.avgEnergy / 5) * 100;
+  // Normalize metrics using the same approach as overall scoring
+  const normalizedConsistency = Math.min(100, metrics.consistency) / 100;
+  const normalizedSleepHours = Math.min(12, Math.max(0, metrics.avgSleepHours)) / 12; // Same as overall
+  const normalizedSleepQuality = metrics.avgSleepQuality / 5;
+  const normalizedMood = metrics.avgMood / 5;
+  const normalizedEnergy = metrics.avgEnergy / 5;
+  const normalizedTotalPosts = Math.min(metrics.totalEligibleDays, metrics.totalPosts) / metrics.totalEligibleDays;
 
   const score =
-    (metrics.consistency * weights.consistency) +
-    (normalizedSleepHours * weights.avgSleepHours) +
-    (normalizedSleepQuality * weights.avgSleepQuality) +
-    (normalizedMood * weights.avgMood) +
-    (normalizedEnergy * weights.avgEnergy);
+    (normalizedConsistency * weights.consistency * 100) +
+    (normalizedSleepHours * weights.avgSleepHours * 100) +
+    (normalizedSleepQuality * weights.avgSleepQuality * 100) +
+    (normalizedMood * weights.avgMood * 100) +
+    (normalizedEnergy * weights.avgEnergy * 100) +
+    (normalizedTotalPosts * weights.totalPosts * 100);
 
   return Math.round(score);
 }
