@@ -76,6 +76,14 @@ export async function GET(
     // Get user names from Clerk for each recordedBy user ID
     const membershipLogsWithNames = await Promise.all(
       membershipLogs.map(async (log) => {
+        // Check if recordedBy is a valid user ID
+        if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '') {
+          return {
+            ...log,
+            recordedByName: 'System',
+          };
+        }
+
         try {
           const user = await clerkClient.users.getUser(log.recordedBy);
           const recordedByName = user.firstName || user.username || user.emailAddresses[0]?.emailAddress || 'Unknown';

@@ -88,6 +88,9 @@ const membershipStatusOptions = [
   { value: "INACTIVE", label: "Inactive", color: "default" },
   { value: "EXPIRED", label: "Expired", color: "danger" },
   { value: "SUSPENDED", label: "Suspended", color: "warning" },
+  { value: "PAUSED", label: "Paused", color: "secondary" },
+  { value: "UPCOMING", label: "Upcoming", color: "primary" },
+  { value: "CANCELLED", label: "Cancelled", color: "danger" },
 ];
 
 const durationPresets = [
@@ -119,6 +122,10 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
   const [extensionValue, setExtensionValue] = useState<string>("");
   const [extensionReason, setExtensionReason] = useState<string>("");
   const [extending, setExtending] = useState(false);
+
+  // Pause/Resume state
+  const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
     fetchMembershipInfo();
@@ -299,12 +306,89 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
     }
   };
 
+  const handlePauseMembership = async () => {
+    if (!membershipInfo?.id) {
+      toast.error("Membership information not available");
+      return;
+    }
+
+    setPausing(true);
+    try {
+      const response = await fetch(`/api/admin/users/${membershipInfo.id}/membership/pause`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "PAUSE",
+          reason: "Paused from admin panel",
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMembershipInfo(data.membership);
+        toast.success("Membership paused successfully");
+        await fetchMembershipInfo(); // Refresh data
+        await fetchMembershipHistory(); // Refresh history
+      } else {
+        const errorData = await response.text();
+        toast.error(`Failed to pause membership: ${errorData}`);
+      }
+    } catch (error) {
+      console.error("Error pausing membership:", error);
+      toast.error("An error occurred while pausing membership");
+    } finally {
+      setPausing(false);
+    }
+  };
+
+  const handleResumeMembership = async () => {
+    if (!membershipInfo?.id) {
+      toast.error("Membership information not available");
+      return;
+    }
+
+    setResuming(true);
+    try {
+      const response = await fetch(`/api/admin/users/${membershipInfo.id}/membership/pause`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "RESUME",
+          adjustEndDate: true, // Extend end date by paused days
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMembershipInfo(data.membership);
+        toast.success("Membership resumed successfully");
+        await fetchMembershipInfo(); // Refresh data
+        await fetchMembershipHistory(); // Refresh history
+      } else {
+        const errorData = await response.text();
+        toast.error(`Failed to resume membership: ${errorData}`);
+      }
+    } catch (error) {
+      console.error("Error resuming membership:", error);
+      toast.error("An error occurred while resuming membership");
+    } finally {
+      setResuming(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACTIVE": return "success";
       case "INACTIVE": return "default";
       case "EXPIRED": return "danger";
       case "SUSPENDED": return "warning";
+      case "PAUSED": return "secondary";
+      case "UPCOMING": return "primary";
+      case "CANCELLED": return "danger";
       default: return "default";
     }
   };
@@ -312,8 +396,12 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "ACTIVE": return <IconUserCheck size={20} className="text-success" />;
+      case "INACTIVE": return <IconShield size={20} className="text-default-500" />;
       case "EXPIRED": return <IconUserX size={20} className="text-danger" />;
       case "SUSPENDED": return <IconAlertTriangle size={20} className="text-warning" />;
+      case "PAUSED": return <IconPlayerPause size={20} className="text-secondary" />;
+      case "UPCOMING": return <IconClock size={20} className="text-primary" />;
+      case "CANCELLED": return <IconUserX size={20} className="text-danger" />;
       default: return <IconShield size={20} className="text-default-500" />;
     }
   };
@@ -367,6 +455,32 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 className="text-success hover:text-success-700"
               >
                 Extend
+              </Button>
+            )}
+            {hasValidMembership && membershipInfo?.canPause && (
+              <Button
+                color="secondary"
+                variant="flat"
+                size="sm"
+                startContent={<IconPlayerPause size={16} />}
+                onPress={handlePauseMembership}
+                isLoading={pausing}
+                className="text-secondary hover:text-secondary-700"
+              >
+                Pause
+              </Button>
+            )}
+            {hasValidMembership && membershipInfo?.canResume && (
+              <Button
+                color="primary"
+                variant="flat"
+                size="sm"
+                startContent={<IconPlayerPlay size={16} />}
+                onPress={handleResumeMembership}
+                isLoading={resuming}
+                className="text-primary hover:text-primary-700"
+              >
+                Resume
               </Button>
             )}
             <Button
@@ -458,6 +572,67 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                     Extended by {Math.ceil((new Date(membershipInfo.membershipEndDate).getTime() - new Date(membershipInfo.originalEndDate).getTime()) / (1000 * 60 * 60 * 24))} days
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Paused Status Information */}
+            {membershipInfo.membershipStatus === 'PAUSED' && membershipInfo.statusDetails && (
+              <div className="mt-4 p-3 bg-secondary/10 border border-secondary/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <IconPlayerPause size={16} className="text-secondary" />
+                  <span className="text-sm font-medium text-secondary">Membership Paused</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-foreground-500">Paused Since</p>
+                    <p className="font-medium">{membershipInfo.statusDetails.pausedSince ? new Date(membershipInfo.statusDetails.pausedSince).toLocaleDateString() : 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-foreground-500">Days Paused</p>
+                    <p className="font-medium text-secondary">{membershipInfo.statusDetails.pausedDays || 0} days</p>
+                  </div>
+                </div>
+                {membershipInfo.statusDetails.resumeDate && (
+                  <div className="mt-2">
+                    <p className="text-xs text-foreground-500">
+                      Auto-resume on: {new Date(membershipInfo.statusDetails.resumeDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                {membershipInfo.statusDetails.pauseReason && (
+                  <div className="mt-2">
+                    <p className="text-xs text-foreground-500">
+                      Reason: {membershipInfo.statusDetails.pauseReason}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Upcoming Status Information */}
+            {membershipInfo.membershipStatus === 'UPCOMING' && membershipInfo.statusDetails && (
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <IconClock size={16} className="text-primary" />
+                  <span className="text-sm font-medium text-primary">Upcoming Membership</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-foreground-500">Starts In</p>
+                    <p className="font-medium text-primary">{membershipInfo.statusDetails.daysToStart || 0} days</p>
+                  </div>
+                  <div>
+                    <p className="text-foreground-500">Start Date</p>
+                    <p className="font-medium">{membershipInfo.membershipStartDate ? new Date(membershipInfo.membershipStartDate).toLocaleDateString() : 'Not set'}</p>
+                  </div>
+                </div>
+                {membershipInfo.statusDetails.message && (
+                  <div className="mt-2">
+                    <p className="text-xs text-foreground-500">
+                      {membershipInfo.statusDetails.message}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
