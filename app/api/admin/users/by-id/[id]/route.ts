@@ -15,6 +15,20 @@ export async function PATCH(
     const body = await request.json();
     const { role, age, height, weight } = body;
 
+    // First get the user to get the userId
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { id: params.id },
+      select: { userId: true }
+    });
+
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update UserInfo table
     const updatedUser = await prisma.userInfo.update({
       where: { id: params.id },
       data: {
@@ -31,6 +45,59 @@ export async function PATCH(
         },
       },
     });
+
+    // Also update/create measurements in BodyMeasurement table for height and weight
+    const currentDate = new Date();
+
+    if (height !== undefined && height !== null) {
+      await prisma.bodyMeasurement.upsert({
+        where: {
+          userId_measurementType_recordedDate: {
+            userId: userInfo.userId,
+            measurementType: 'HEIGHT',
+            recordedDate: currentDate
+          }
+        },
+        update: {
+          value: parseFloat(height),
+          unit: 'cm',
+          notes: 'Updated by admin'
+        },
+        create: {
+          userId: userInfo.userId,
+          measurementType: 'HEIGHT',
+          value: parseFloat(height),
+          unit: 'cm',
+          recordedDate: currentDate,
+          notes: 'Updated by admin'
+        }
+      });
+    }
+
+    if (weight !== undefined && weight !== null) {
+      await prisma.bodyMeasurement.upsert({
+        where: {
+          userId_measurementType_recordedDate: {
+            userId: userInfo.userId,
+            measurementType: 'WEIGHT',
+            recordedDate: currentDate
+          }
+        },
+        update: {
+          value: parseFloat(weight),
+          unit: 'kg',
+          notes: 'Updated by admin'
+        },
+        create: {
+          userId: userInfo.userId,
+          measurementType: 'WEIGHT',
+          value: parseFloat(weight),
+          unit: 'kg',
+          recordedDate: currentDate,
+          notes: 'Updated by admin'
+        }
+      });
+    }
 
     return NextResponse.json(updatedUser);
   } catch (error) {

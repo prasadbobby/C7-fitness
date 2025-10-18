@@ -73,33 +73,58 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Filter users to only include those that exist in Clerk
-    const validUsers = userInfos
-      .filter(userInfo => clerkUserMap.has(userInfo.userId))
-      .map(userInfo => {
-        const clerkUser = clerkUserMap.get(userInfo.userId)!;
+    // Filter users to only include those that exist in Clerk and fetch latest measurements
+    const validUsers = await Promise.all(
+      userInfos
+        .filter(userInfo => clerkUserMap.has(userInfo.userId))
+        .map(async userInfo => {
+          const clerkUser = clerkUserMap.get(userInfo.userId)!;
 
-        return {
-          id: userInfo.id,
-          userId: userInfo.userId,
-          role: userInfo.role,
-          age: userInfo.age,
-          height: userInfo.height,
-          weight: userInfo.weight,
-          createdAt: userInfo.createdAt.toISOString(),
-          updatedAt: userInfo.updatedAt.toISOString(),
-          _count: userInfo._count,
-          // Full Clerk data
-          email: clerkUser.emailAddresses?.[0]?.emailAddress || "No email",
-          firstName: clerkUser.firstName || "",
-          lastName: clerkUser.lastName || "",
-          username: clerkUser.username || "",
-          imageUrl: clerkUser.imageUrl || "",
-          name: clerkUser.firstName && clerkUser.lastName
-            ? `${clerkUser.firstName} ${clerkUser.lastName}`
-            : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown User",
-        };
-      });
+          // Fetch latest height measurement
+          const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: userInfo.userId,
+              measurementType: 'HEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
+          // Fetch latest weight measurement
+          const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: userInfo.userId,
+              measurementType: 'WEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
+          return {
+            id: userInfo.id,
+            userId: userInfo.userId,
+            role: userInfo.role,
+            age: userInfo.age,
+            // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
+            height: latestHeightMeasurement?.value || userInfo.height,
+            weight: latestWeightMeasurement?.value || userInfo.weight,
+            createdAt: userInfo.createdAt.toISOString(),
+            updatedAt: userInfo.updatedAt.toISOString(),
+            _count: userInfo._count,
+            // Full Clerk data
+            email: clerkUser.emailAddresses?.[0]?.emailAddress || "No email",
+            firstName: clerkUser.firstName || "",
+            lastName: clerkUser.lastName || "",
+            username: clerkUser.username || "",
+            imageUrl: clerkUser.imageUrl || "",
+            name: clerkUser.firstName && clerkUser.lastName
+              ? `${clerkUser.firstName} ${clerkUser.lastName}`
+              : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown User",
+          };
+        })
+    );
 
     // Apply pagination to the valid users
     const totalValidUsers = validUsers.length;

@@ -50,11 +50,34 @@ export async function GET(request: NextRequest) {
       prisma.userInfo.count({ where }),
     ]);
 
-    // Fetch Clerk user data for usernames and emails
+    // Fetch Clerk user data and latest measurements for each user
     const usersWithClerkData = await Promise.all(
       users.map(async (user) => {
         try {
           const clerkUser = await clerkClient.users.getUser(user.userId);
+
+          // Fetch latest height measurement
+          const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: user.userId,
+              measurementType: 'HEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
+          // Fetch latest weight measurement
+          const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: user.userId,
+              measurementType: 'WEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
           return {
             ...user,
             username: clerkUser.username || clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress || user.userId,
@@ -62,9 +85,32 @@ export async function GET(request: NextRequest) {
             firstName: clerkUser.firstName,
             lastName: clerkUser.lastName,
             imageUrl: clerkUser.imageUrl,
+            // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
+            height: latestHeightMeasurement?.value || user.height,
+            weight: latestWeightMeasurement?.value || user.weight,
           };
         } catch (error) {
-          // If Clerk user not found, return with just userId
+          // If Clerk user not found, still fetch latest measurements
+          const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: user.userId,
+              measurementType: 'HEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
+          const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+            where: {
+              userId: user.userId,
+              measurementType: 'WEIGHT',
+            },
+            orderBy: {
+              recordedDate: 'desc',
+            },
+          });
+
           return {
             ...user,
             username: user.userId,
@@ -72,6 +118,9 @@ export async function GET(request: NextRequest) {
             firstName: null,
             lastName: null,
             imageUrl: null,
+            // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
+            height: latestHeightMeasurement?.value || user.height,
+            weight: latestWeightMeasurement?.value || user.weight,
           };
         }
       })
