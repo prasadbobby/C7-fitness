@@ -134,15 +134,13 @@ export function PostsClientWrapper({
       )}
 
       {/* Community Feed */}
-      <CommunityFeed challengeId={challengeId} showTodayByDefault={showTodayByDefault} isAdmin={isAdmin} />
+      <CommunityFeed challengeId={challengeId || undefined} showTodayByDefault={showTodayByDefault} isAdmin={isAdmin} />
 
       {/* Admin Post Modal */}
       <BottomSheet
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Create New Post"
-        subtitle={`Share an update with ${challengeTitle} participants`}
-        size="2xl"
         footer={
           <>
             <Button

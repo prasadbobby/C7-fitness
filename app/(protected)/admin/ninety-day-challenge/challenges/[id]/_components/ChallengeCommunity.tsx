@@ -153,8 +153,6 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
         isOpen={isOpen}
         onClose={onClose}
         title="Create New Post"
-        subtitle={`Share an update with ${challengeTitle} participants`}
-        size="2xl"
         footer={
           <>
             <Button

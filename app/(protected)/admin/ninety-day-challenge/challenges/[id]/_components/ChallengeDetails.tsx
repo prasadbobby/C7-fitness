@@ -70,6 +70,7 @@ interface EnhancedParticipant extends Participant {
     lastName: string;
     imageUrl: string;
     email: string;
+    username: string;
   };
   metrics: {
     totalPosts: number;

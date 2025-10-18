@@ -100,7 +100,6 @@ export function CommunityHeader({ isAdmin, challengeId }: CommunityHeaderProps) 
       <div className="flex items-center justify-between">
         <PageHeading
           title="Community Discussion"
-          subtitle="Connect with fellow participants, share your journey, and motivate each other"
         />
         {isAdmin ? (
           <Button
@@ -128,8 +127,6 @@ export function CommunityHeader({ isAdmin, challengeId }: CommunityHeaderProps) 
         isOpen={isOpen}
         onClose={onClose}
         title="Create New Post"
-        subtitle="Share an update with the community"
-        size="2xl"
         footer={
           <>
             <Button

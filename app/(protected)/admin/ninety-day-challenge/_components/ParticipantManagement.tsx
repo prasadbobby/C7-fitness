@@ -211,7 +211,7 @@ export const ParticipantManagement = forwardRef<{ triggerAddParticipant: () => v
                 setSelectedChallenge(selected || "");
               }}
             >
-              <SelectItem key="">All Challenges</SelectItem>
+              <SelectItem key="" value="">All Challenges</SelectItem>
               {challenges.map((challenge) => (
                 <SelectItem key={challenge.id} value={challenge.id}>
                   {challenge.title}

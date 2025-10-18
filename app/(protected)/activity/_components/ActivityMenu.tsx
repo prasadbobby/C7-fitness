@@ -169,6 +169,7 @@ export default function ActivityMenu({ activity }: { activity: Activity }) {
         onConfirm={confirmDelete}
         itemName={activity.WorkoutPlan.name}
         itemType="activity"
+        message=""
       />
     </div>
   );

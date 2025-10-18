@@ -192,7 +192,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
               <Avatar
                 src={enhancedParticipants[0].user.imageUrl}
                 name={`${enhancedParticipants[0].user.firstName} ${enhancedParticipants[0].user.lastName}`}
-                size="xl"
+                size="lg"
                 className="mx-auto mb-2 ring-4 ring-yellow-200"
               />
               <div className="absolute -top-3 -right-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-full">

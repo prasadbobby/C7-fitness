@@ -10,7 +10,7 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
-    const { id: currentUserId } = await requireAdmin();
+    const { userId: currentUserId } = await requireAdmin();
 
     // Prevent users from removing themselves
     if (currentUserId === params.userId) {

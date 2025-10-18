@@ -33,6 +33,7 @@ export default function DeleteDashboardGoal({ id }: { id: string }) {
         itemName="this goal"
         itemType="goal"
         isLoading={isPending}
+        message=""
       />
     </>
   );

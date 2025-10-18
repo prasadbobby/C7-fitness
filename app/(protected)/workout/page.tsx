@@ -76,7 +76,7 @@ export default async function WorkoutPage() {
   });
 
   // Fetch admin info for assigned workouts
-  const adminIds = [...new Set(assignedWorkouts.map(aw => aw.assignedBy))];
+  const adminIds = Array.from(new Set(assignedWorkouts.map(aw => aw.assignedBy)));
   let adminMap = new Map();
 
   if (adminIds.length > 0) {

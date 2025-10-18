@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         comment.replies?.flatMap(reply => reply.reactions.map(reaction => reaction.userId)) || []
       )
     );
-    const userIds = [...new Set([...postUserIds, ...commentUserIds, ...replyUserIds, ...reactionUserIds, ...commentReactionUserIds, ...replyReactionUserIds])];
+    const userIds = Array.from(new Set([...postUserIds, ...commentUserIds, ...replyUserIds, ...reactionUserIds, ...commentReactionUserIds, ...replyReactionUserIds]));
 
     // Get user roles from database
     const userRoles = await prisma.userInfo.findMany({

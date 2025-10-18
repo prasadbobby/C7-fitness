@@ -60,6 +60,8 @@ async function getParticipantDetails(participantId: string) {
     return {
       ...participant,
       user: userInfo,
+      joinedAt: participant.joinedAt.toISOString(),
+      lastActiveDate: participant.lastActiveDate ? participant.lastActiveDate.toISOString() : null,
     };
   } catch (error) {
     console.error("Error fetching participant details:", error);
@@ -84,7 +86,6 @@ export default async function ParticipantDetailsPage({ params }: PageProps) {
     <div className="space-y-6">
       <PageHeading
         title={`${participant.user.firstName} ${participant.user.lastName}`}
-        subtitle={`Participant in ${participant.challenge.title}`}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -100,7 +101,7 @@ export default async function ParticipantDetailsPage({ params }: PageProps) {
             participantId={participant.id}
             userId={participant.userId}
             challengeId={participant.challengeId}
-            challengeStartDate={participant.challenge.startDate}
+            challengeStartDate={participant.challenge.startDate.toISOString()}
           />
         </div>
       </div>

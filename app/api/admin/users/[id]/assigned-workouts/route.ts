@@ -92,7 +92,7 @@ export async function GET(
         displayName: clerkUser
           ? (clerkUser.username ||
              `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
-             clerkUser.primaryEmailAddress?.emailAddress ||
+             clerkUser.emailAddresses?.[0]?.emailAddress ||
              user.userId)
           : user.userId,
         imageUrl: clerkUser?.imageUrl || null,

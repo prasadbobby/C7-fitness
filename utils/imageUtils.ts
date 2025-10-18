@@ -1,3 +1,4 @@
+// @ts-ignore
 import convert from 'heic-convert';
 
 /**

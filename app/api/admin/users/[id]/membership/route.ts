@@ -68,7 +68,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching user membership:", error);
     return NextResponse.json(
-      { error: "Failed to fetch user membership", details: error.message },
+      { error: "Failed to fetch user membership", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
@@ -165,7 +165,7 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating user membership:", error);
     return NextResponse.json(
-      { error: "Failed to update user membership", details: error.message },
+      { error: "Failed to update user membership", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
