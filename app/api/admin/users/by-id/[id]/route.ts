@@ -13,29 +13,13 @@ export async function PATCH(
     await requireAdmin();
 
     const body = await request.json();
-    const { role, age, height, weight } = body;
+    const { role } = body;
 
-    // First get the user to get the userId
-    const userInfo = await prisma.userInfo.findUnique({
-      where: { id: params.id },
-      select: { userId: true }
-    });
-
-    if (!userInfo) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Update UserInfo table
+    // Update UserInfo table (only role field)
     const updatedUser = await prisma.userInfo.update({
       where: { id: params.id },
       data: {
         ...(role && { role: role as UserRole }),
-        ...(age !== undefined && { age: age ? parseInt(age) : null }),
-        ...(height !== undefined && { height: height ? parseFloat(height) : null }),
-        ...(weight !== undefined && { weight: weight ? parseFloat(weight) : null }),
       },
       include: {
         _count: {
@@ -45,59 +29,6 @@ export async function PATCH(
         },
       },
     });
-
-    // Also update/create measurements in BodyMeasurement table for height and weight
-    const currentDate = new Date();
-
-    if (height !== undefined && height !== null) {
-      await prisma.bodyMeasurement.upsert({
-        where: {
-          userId_measurementType_recordedDate: {
-            userId: userInfo.userId,
-            measurementType: 'HEIGHT',
-            recordedDate: currentDate
-          }
-        },
-        update: {
-          value: parseFloat(height),
-          unit: 'cm',
-          notes: 'Updated by admin'
-        },
-        create: {
-          userId: userInfo.userId,
-          measurementType: 'HEIGHT',
-          value: parseFloat(height),
-          unit: 'cm',
-          recordedDate: currentDate,
-          notes: 'Updated by admin'
-        }
-      });
-    }
-
-    if (weight !== undefined && weight !== null) {
-      await prisma.bodyMeasurement.upsert({
-        where: {
-          userId_measurementType_recordedDate: {
-            userId: userInfo.userId,
-            measurementType: 'WEIGHT',
-            recordedDate: currentDate
-          }
-        },
-        update: {
-          value: parseFloat(weight),
-          unit: 'kg',
-          notes: 'Updated by admin'
-        },
-        create: {
-          userId: userInfo.userId,
-          measurementType: 'WEIGHT',
-          value: parseFloat(weight),
-          unit: 'kg',
-          recordedDate: currentDate,
-          notes: 'Updated by admin'
-        }
-      });
-    }
 
     return NextResponse.json(updatedUser);
   } catch (error) {

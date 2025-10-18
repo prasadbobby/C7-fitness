@@ -701,7 +701,7 @@ export default function UserManagement() {
       <BottomSheet
         isOpen={isEditOpen}
         onClose={onEditClose}
-        title="Edit User"
+        title="Edit User Role"
         size="md"
       >
         {selectedUser && (
@@ -778,22 +778,22 @@ function EditUserForm({
 }) {
   const [formData, setFormData] = useState({
     role: user.role,
-    age: user.age?.toString() || "",
-    height: user.height?.toString() || "",
-    weight: user.weight?.toString() || "",
   });
 
   const handleSubmit = () => {
     onSave({
       role: formData.role as any,
-      age: formData.age ? parseInt(formData.age) : undefined,
-      height: formData.height ? parseFloat(formData.height) : undefined,
-      weight: formData.weight ? parseFloat(formData.weight) : undefined,
     });
   };
 
   return (
     <div className="space-y-4">
+      <div className="mb-4">
+        <p className="text-sm text-foreground-500 mb-2">
+          Update user role permissions. Physical measurements are managed separately through the user's progress page.
+        </p>
+      </div>
+
       <Select
         label="Role"
         selectedKeys={[formData.role]}
@@ -805,27 +805,6 @@ function EditUserForm({
         <SelectItem key="ADMIN">Admin</SelectItem>
         <SelectItem key="SUPER_ADMIN">Super Admin</SelectItem>
       </Select>
-
-      <Input
-        type="number"
-        label="Age"
-        value={formData.age}
-        onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-      />
-
-      <Input
-        type="number"
-        label="Height (cm)"
-        value={formData.height}
-        onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-      />
-
-      <Input
-        type="number"
-        label="Weight (kg)"
-        value={formData.weight}
-        onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-      />
 
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onPress={onCancel}>
