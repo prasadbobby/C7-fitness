@@ -23,6 +23,7 @@ import { formatDuration } from "@/utils/time";
 import ProfileDetails from "./_components/ProfileDetails";
 import ProfileActions from "./_components/ProfileActions";
 import ProfileMembership from "./_components/ProfileMembership";
+import PaymentInfo from "./_components/PaymentInfo";
 
 export const dynamic = 'force-dynamic';
 
@@ -311,6 +312,9 @@ export default async function ProfilePage() {
 
       {/* Membership Section */}
       <ProfileMembership />
+
+      {/* Payment Information */}
+      <PaymentInfo />
 
       {/* Profile Management */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -87,6 +87,16 @@ export async function requireAdmin(): Promise<{ userId: string; role: UserRole }
   return { userId, role };
 }
 
+export async function requireSuperAdmin(): Promise<{ userId: string; role: UserRole }> {
+  const { isAdmin, userId, role } = await checkAdminAuth();
+
+  if (!isAdmin || !userId || !role || role !== UserRole.SUPER_ADMIN) {
+    throw new Error("Super admin access required");
+  }
+
+  return { userId, role };
+}
+
 export async function makeUserAdmin(targetUserId: string): Promise<boolean> {
   try {
     const { isAdmin } = await checkAdminAuth();

@@ -1,12 +1,8 @@
 import { auth } from "@clerk/nextjs";
 import prisma from "@/prisma/prisma";
 import { Prisma } from "@prisma/client";
-import Link from "next/link";
-import { Button } from "@nextui-org/button";
-import { IconPlus } from "@tabler/icons-react";
 import PageHeading from "@/components/PageHeading/PageHeading";
-import RoutineCards from "./_components/RoutineCards";
-import YourRoutinesSection from "./_components/YourRoutinesSection";
+import WorkoutPageClient from "./_components/WorkoutPageClient";
 import { WorkoutPlan } from "@prisma/client";
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +37,7 @@ export default async function WorkoutPage() {
   });
 
   const isAdmin = userInfo?.role === "ADMIN" || userInfo?.role === "SUPER_ADMIN";
+
 
   // Fetch assigned workouts
   const assignedWorkouts = await prisma.assignedWorkout.findMany({
@@ -114,36 +111,46 @@ export default async function WorkoutPage() {
     }
   }
 
-  // Get all workouts (user-created and admin-created system workouts)
-  const routines: ExtendedWorkoutPlan[] = await prisma.workoutPlan.findMany({
-    where: {
-      OR: [
-        { userId: userId }, // User's own workouts
-        {
-          userId: null,   // Admin-created workouts
-          assignedWorkouts: {
-            none: {} // Only show admin workouts that have NO assignments (true system workouts)
-          }
-        },
-      ],
-    },
+  // Get workouts based on user role
+  let routineQuery: Prisma.WorkoutPlanFindManyArgs;
+
+  if (isAdmin) {
+    // Get all super admin user IDs to include their workouts in the library
+    const superAdminUsers = await prisma.userInfo.findMany({
+      where: { role: "SUPER_ADMIN" },
+      select: { userId: true },
+    });
+    const superAdminUserIds = superAdminUsers.map(user => user.userId);
+
+    // Admins and Super Admins can see all admin-created workouts AND all super admin created workouts
+    routineQuery = {
+      where: {
+        OR: [
+          { userId: null }, // System workouts (created from admin panel)
+          { userId: { in: superAdminUserIds } }, // Workouts created by any super admin
+        ],
+      },
+    };
+
+    // Note: Removed "My Custom Workouts" section since all super admin workouts are now shown in the library
+    // This eliminates duplicate workout displays
+  } else {
+    // Regular users only see their assigned workouts (handled separately above)
+    // They don't see any workouts in the library section
+    routineQuery = {
+      where: {
+        id: "no-workouts-for-users", // This will return empty results
+      },
+    };
+  }
+
+  const workoutSelectOptions = {
     orderBy: {
-      createdAt: "desc",
+      createdAt: "desc" as const,
     },
-    select: {
-      id: true,
-      name: true,
-      userId: true,
-      createdAt: true,
-      updatedAt: true,
-      notes: true,
-      trainingType: true,
+    include: {
       WorkoutPlanExercise: {
-        select: {
-          sets: true,
-          reps: true,
-          exerciseDuration: true,
-          order: true,
+        include: {
           Exercise: {
             select: {
               id: true,
@@ -152,66 +159,37 @@ export default async function WorkoutPage() {
             },
           },
         },
+        orderBy: {
+          order: "asc" as const,
+        },
       },
     },
+  };
+
+  const routines: ExtendedWorkoutPlan[] = await prisma.workoutPlan.findMany({
+    ...routineQuery,
+    ...workoutSelectOptions,
   });
 
-  const userRoutines = routines.filter((routine) => routine.userId === userId);
-  const systemRoutines = routines.filter((routine) => routine.userId === null); // Admin-created workouts available to all
+  // Note: No longer fetching user routines separately since they're included in the main library
+
+  const systemRoutines = routines; // All fetched routines are system routines (admin-created)
 
   return (
     <>
       <PageHeading title="Start Workout" />
-
-      {assignedWorkouts.length > 0 && (
-        <>
-          <h2 className="font-semibold text-xl md:text-2xl mb-3">Assigned Workouts</h2>
-          <RoutineCards
-            routines={assignedWorkouts.map(aw => ({
-              ...aw.workoutPlan,
-              _assignmentId: aw.id,
-              _assignmentStatus: aw.status,
-              _assignedBy: aw.assignedBy,
-              _assignedByAdmin: adminMap.get(aw.assignedBy),
-            }))}
-            isSystem={false}
-            isAssigned={true}
-            isAdmin={isAdmin}
-          />
-        </>
-      )}
-
-      {systemRoutines.length > 0 && (
-        <>
-          <h2 className="font-semibold text-xl md:text-2xl mb-3">Workout Library</h2>
-          <RoutineCards
-            routines={systemRoutines}
-            isSystem={true}
-            isAssigned={false}
-            isAdmin={isAdmin}
-          />
-        </>
-      )}
-
-      <YourRoutinesSection userRoutines={userRoutines} isAdmin={isAdmin} />
-
-
-      {/* Message for users with no workouts available */}
-      {!isAdmin && assignedWorkouts.length === 0 && systemRoutines.length === 0 && userRoutines.length === 0 && (
-        <div className="text-center py-12">
-          <div className="space-y-4">
-            <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-              <IconPlus className="w-8 h-8 text-zinc-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg text-foreground mb-2">No Workouts Available</h3>
-              <p className="text-zinc-500 text-sm max-w-md mx-auto">
-                You don't have any workouts available yet. Contact your trainer or administrator to get started with your fitness journey.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkoutPageClient
+        assignedWorkouts={assignedWorkouts.map(aw => ({
+          ...aw.workoutPlan,
+          _assignmentId: aw.id,
+          _assignmentStatus: aw.status,
+          _assignedBy: aw.assignedBy,
+          _assignedByAdmin: adminMap.get(aw.assignedBy),
+        }))}
+        systemRoutines={systemRoutines}
+        isAdmin={isAdmin}
+        userRole={userInfo?.role}
+      />
     </>
   );
 }

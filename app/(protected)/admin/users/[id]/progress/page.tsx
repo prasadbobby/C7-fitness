@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import TrainingCategoryManager from "./_components/TrainingCategoryManager";
 import MembershipManager from "./_components/MembershipManager";
 import AdminMeasurementsManager from "./_components/AdminMeasurementsManager";
+import PaymentManager from "./_components/PaymentManager";
 
 interface UserProgress {
   user: {
@@ -124,6 +125,7 @@ export default function UserProgressDashboard() {
   const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentTab, setCurrentTab] = useState("management");
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Edit workout states
   const [editingWorkout, setEditingWorkout] = useState<any>(null);
@@ -166,6 +168,7 @@ export default function UserProgressDashboard() {
 
   useEffect(() => {
     fetchUserProgress();
+    fetchCurrentUserRole();
   }, [id]);
 
   // Regenerate attendance data when month changes
@@ -189,6 +192,18 @@ export default function UserProgressDashboard() {
       setProgressData(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const response = await fetch('/api/auth/role');
+      if (response.ok) {
+        const data = await response.json();
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
     }
   };
 
@@ -601,6 +616,18 @@ export default function UserProgressDashboard() {
             <div className="min-h-96 w-full max-w-full overflow-hidden">
               {currentTab === "management" && (
                 <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+                  {/* Payment Manager - Only for Super Admins */}
+                  {userRole === "SUPER_ADMIN" && (
+                    <PaymentManager
+                      userId={user.id}
+                      userInfo={{
+                        username: user.username,
+                        firstName: user.firstName,
+                        email: user.email
+                      }}
+                    />
+                  )}
+
                   {/* Membership Manager */}
                   <MembershipManager
                     userId={user.id}

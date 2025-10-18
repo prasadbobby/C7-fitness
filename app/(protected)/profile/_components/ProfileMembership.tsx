@@ -7,13 +7,19 @@ import {
   CardHeader,
   Chip,
   Progress,
+  Button,
 } from "@nextui-org/react";
 import {
   IconCalendar,
   IconClock,
   IconShield,
   IconCalendarDue,
+  IconHistory,
+  IconUser,
+  IconNotes,
 } from "@tabler/icons-react";
+import { format } from "date-fns";
+import BottomSheet from "@/components/UI/BottomSheet";
 
 interface MembershipInfo {
   startDate?: string;
@@ -26,9 +32,29 @@ interface MembershipInfo {
   hasValidMembership: boolean;
 }
 
+interface MembershipLog {
+  id: string;
+  changeType: string;
+  previousStatus?: string;
+  newStatus?: string;
+  previousStartDate?: string;
+  newStartDate?: string;
+  previousEndDate?: string;
+  newEndDate?: string;
+  previousDuration?: number;
+  newDuration?: number;
+  changeDate: string;
+  notes?: string;
+  recordedByName: string;
+  createdAt: string;
+}
+
 export default function ProfileMembership() {
   const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [membershipHistory, setMembershipHistory] = useState<MembershipLog[]>([]);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     fetchMembershipInfo();
@@ -47,6 +73,60 @@ export default function ProfileMembership() {
       console.error("Error fetching membership info:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMembershipHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await fetch('/api/membership-history');
+      if (response.ok) {
+        const data = await response.json();
+        setMembershipHistory(data.membershipLogs || []);
+      } else {
+        console.error("Failed to fetch membership history");
+      }
+    } catch (error) {
+      console.error("Error fetching membership history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openHistoryModal = () => {
+    setIsHistoryModalOpen(true);
+    fetchMembershipHistory();
+  };
+
+  const getChangeTypeDisplay = (changeType: string) => {
+    switch (changeType) {
+      case 'STATUS_CHANGE': return 'Status Changed';
+      case 'DATE_CHANGE': return 'Dates Updated';
+      case 'DURATION_CHANGE': return 'Duration Changed';
+      case 'FULL_UPDATE': return 'Membership Updated';
+      case 'INITIAL_SETUP': return 'Initial Setup';
+      case 'EXTENSION': return 'Extended';
+      case 'RENEWAL': return 'Renewed';
+      case 'CANCELLATION': return 'Cancelled';
+      case 'SUSPENSION': return 'Suspended';
+      case 'REACTIVATION': return 'Reactivated';
+      default: return changeType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    }
+  };
+
+  const getChangeTypeColor = (changeType: string) => {
+    switch (changeType) {
+      case 'INITIAL_SETUP': return 'success';
+      case 'EXTENSION': return 'success';
+      case 'RENEWAL': return 'success';
+      case 'REACTIVATION': return 'success';
+      case 'CANCELLATION': return 'danger';
+      case 'SUSPENSION': return 'warning';
+      case 'STATUS_CHANGE': return 'primary';
+      case 'DATE_CHANGE': return 'secondary';
+      case 'DURATION_CHANGE': return 'secondary';
+      case 'FULL_UPDATE': return 'primary';
+      default: return 'default';
     }
   };
 
@@ -137,6 +217,15 @@ export default function ProfileMembership() {
             </Chip>
           </div>
         </div>
+        <Button
+          variant="light"
+          size="sm"
+          startContent={<IconHistory size={16} />}
+          onPress={openHistoryModal}
+          className="text-foreground-500 hover:text-foreground-700"
+        >
+          View History
+        </Button>
       </CardHeader>
 
       <CardBody className="pt-0 space-y-4">
@@ -241,6 +330,121 @@ export default function ProfileMembership() {
           </p>
         </div>
       </CardBody>
+
+      {/* Membership History Modal */}
+      <BottomSheet
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title="Membership History"
+        size="3xl"
+      >
+        <div className="space-y-4">
+          {historyLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-sm text-foreground-500">Loading membership history...</div>
+            </div>
+          ) : membershipHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <IconHistory size={48} className="text-foreground-300 mx-auto mb-3" />
+              <p className="text-foreground-500 mb-2">No membership history found</p>
+              <p className="text-sm text-foreground-400">
+                Membership changes will appear here when made by administrators.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {membershipHistory.map((log, index) => (
+                <Card key={log.id} className="bg-content1 border border-divider">
+                  <CardBody className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0">
+                          <Chip
+                            color={getChangeTypeColor(log.changeType)}
+                            variant="flat"
+                            size="sm"
+                            className="font-medium"
+                          >
+                            {getChangeTypeDisplay(log.changeType)}
+                          </Chip>
+                        </div>
+                        <div className="text-xs text-foreground-500">
+                          {format(new Date(log.changeDate), 'MMM dd, yyyy HH:mm')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Changes Made */}
+                    <div className="space-y-2 mb-3">
+                      {log.previousStatus !== log.newStatus && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-foreground-600">Status:</span>
+                          <span className="text-foreground-400">{log.previousStatus || 'None'}</span>
+                          <span className="text-foreground-400">→</span>
+                          <Chip size="sm" color={getStatusColor(log.newStatus || '')} variant="flat">
+                            {log.newStatus}
+                          </Chip>
+                        </div>
+                      )}
+
+                      {log.previousStartDate !== log.newStartDate && log.newStartDate && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-foreground-600">Start Date:</span>
+                          <span className="text-foreground-400">
+                            {log.previousStartDate ? format(new Date(log.previousStartDate), 'MMM dd, yyyy') : 'None'}
+                          </span>
+                          <span className="text-foreground-400">→</span>
+                          <span className="text-foreground-700">
+                            {format(new Date(log.newStartDate), 'MMM dd, yyyy')}
+                          </span>
+                        </div>
+                      )}
+
+                      {log.previousEndDate !== log.newEndDate && log.newEndDate && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-foreground-600">End Date:</span>
+                          <span className="text-foreground-400">
+                            {log.previousEndDate ? format(new Date(log.previousEndDate), 'MMM dd, yyyy') : 'None'}
+                          </span>
+                          <span className="text-foreground-400">→</span>
+                          <span className="text-foreground-700">
+                            {format(new Date(log.newEndDate), 'MMM dd, yyyy')}
+                          </span>
+                        </div>
+                      )}
+
+                      {log.previousDuration !== log.newDuration && log.newDuration && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-foreground-600">Duration:</span>
+                          <span className="text-foreground-400">{log.previousDuration || 0} days</span>
+                          <span className="text-foreground-400">→</span>
+                          <span className="text-foreground-700">{log.newDuration} days</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notes */}
+                    {log.notes && (
+                      <div className="flex items-start gap-2 mb-3">
+                        <IconNotes size={16} className="text-foreground-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-foreground-600">{log.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Admin Info */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-divider">
+                      <IconUser size={14} className="text-foreground-400" />
+                      <span className="text-xs text-foreground-500">
+                        Changed by {log.recordedByName}
+                      </span>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </BottomSheet>
     </Card>
   );
 }

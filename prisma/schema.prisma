@@ -25,10 +25,83 @@ model UserInfo {
   membershipSetBy     String?   // Admin user ID who set the membership
   membershipNotes     String?   // Optional notes about the membership
 
+  // Pause/Freeze fields
+  pausedFrom          DateTime? // When membership was paused
+  pausedUntil         DateTime? // When to resume (optional - can be indefinite)
+  totalPausedDays     Int?      @default(0) // Total days paused (for calculation)
+  pauseReason         String?   // Reason for pause (vacation, illness, etc.)
+
+  // Original end date before any extensions/changes
+  originalEndDate     DateTime? // Track original membership end date
+
+  // Payment tracking fields
+  packagePrice        Float?    // Original package price (e.g., 45000)
+  discountedPrice     Float?    // Actual price offered (e.g., 40000)
+  totalAmountPaid     Float?    @default(0) // Total amount paid so far
+  remainingAmount     Float?    // Calculated: discountedPrice - totalAmountPaid
+  nextPaymentDue      DateTime? // When next payment is expected
+  paymentNotes        String?   // Notes about payment arrangements
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   assignedWorkouts AssignedWorkout[]
   trainingProgression UserTrainingProgression[]
+  paymentLogs PaymentLog[]
+  membershipLogs MembershipLog[]
+}
+
+model PaymentLog {
+  id              String            @id @default(uuid())
+  userInfoId      String
+  amount          Float             // Amount paid in this transaction
+  paymentDate     DateTime          // When payment was made
+  paymentMethod   PaymentMethod     @default(CASH)
+  transactionId   String?           // Reference number for online payments
+  notes           String?           // Notes about this payment
+  recordedBy      String            // Admin user ID who recorded this payment
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  userInfo        UserInfo          @relation(fields: [userInfoId], references: [id], onDelete: Cascade)
+
+  @@index([userInfoId, paymentDate])
+  @@index([paymentDate])
+}
+
+model MembershipLog {
+  id                    String            @id @default(uuid())
+  userInfoId            String
+  changeType            MembershipChangeType // Type of change made
+  previousStatus        MembershipStatus? // Previous membership status
+  newStatus             MembershipStatus? // New membership status
+  previousStartDate     DateTime?         // Previous start date
+  newStartDate          DateTime?         // New start date
+  previousEndDate       DateTime?         // Previous end date
+  newEndDate            DateTime?         // New end date
+  previousDuration      Int?              // Previous duration in days
+  newDuration           Int?              // New duration in days
+  changeDate            DateTime          // When the change was made
+  notes                 String?           // Notes about this change
+  recordedBy            String            // Admin user ID who made this change
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relations
+  userInfo              UserInfo          @relation(fields: [userInfoId], references: [id], onDelete: Cascade)
+
+  @@index([userInfoId, changeDate])
+  @@index([changeDate])
+  @@index([changeType])
+}
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+  CARD
+  UPI
+  BANK_TRANSFER
+  CHEQUE
 }
 
 model PendingInvitation {
@@ -292,10 +365,29 @@ enum UserRole {
 }
 
 enum MembershipStatus {
-  ACTIVE
-  INACTIVE
-  EXPIRED
-  SUSPENDED
+  ACTIVE      // Full gym access
+  INACTIVE    // No membership set
+  EXPIRED     // Membership ended
+  SUSPENDED   // Temporarily blocked by admin
+  PAUSED      // User-requested freeze/pause
+  UPCOMING    // Future membership (not yet started)
+  CANCELLED   // Cancelled before expiry
+}
+
+enum MembershipChangeType {
+  STATUS_CHANGE        // Status changed (ACTIVE, INACTIVE, etc.)
+  DATE_CHANGE          // Start/end dates changed
+  DURATION_CHANGE      // Duration changed
+  FULL_UPDATE          // Complete membership update
+  INITIAL_SETUP        // Initial membership setup
+  EXTENSION            // Membership extended (30→60 days)
+  RENEWAL              // Membership renewed
+  CANCELLATION         // Membership cancelled
+  PAUSE                // Membership paused/frozen
+  RESUME               // Membership resumed from pause
+  EARLY_CANCELLATION   // Cancelled before expiry
+  REACTIVATION         // Reactivated expired/cancelled membership
+  SUSPENSION           // Membership suspended
 }
 
 enum AssignmentStatus {

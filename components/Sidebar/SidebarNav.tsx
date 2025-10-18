@@ -41,6 +41,7 @@ export default function SidebarNav() {
   const pathname = usePathname();
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isChallengeEnabled, setIsChallengeEnabled] = useState(false);
 
   useEffect(() => {
@@ -52,6 +53,15 @@ export default function SidebarNav() {
           const adminData = await adminResponse.json();
           setIsAdmin(adminData.isAdmin);
 
+          // Get user's specific role
+          if (adminData.isAdmin) {
+            const roleResponse = await fetch('/api/admin/users/current-role');
+            if (roleResponse.ok) {
+              const roleData = await roleResponse.json();
+              setUserRole(roleData.role);
+            }
+          }
+
           // Check if user is enabled for challenge access
           const challengeResponse = await fetch('/api/ninety-day-challenge/check-access');
           if (challengeResponse.ok) {
@@ -61,6 +71,7 @@ export default function SidebarNav() {
         } catch (error) {
           console.error('Error checking user status:', error);
           setIsAdmin(false);
+          setUserRole(null);
           setIsChallengeEnabled(false);
         }
       }
@@ -130,12 +141,14 @@ export default function SidebarNav() {
               active={pathname.startsWith("/workout")}
             />
 
-            <NavItem
-              icon={<IconClipboardList size={22} className="shrink-0" />}
-              label="Routine Creator"
-              href="/edit-routine/step-1"
-              active={pathname.startsWith("/edit-routine/")}
-            />
+            {userRole === "SUPER_ADMIN" && (
+              <NavItem
+                icon={<IconClipboardList size={22} className="shrink-0" />}
+                label="Routine Creator"
+                href="/edit-routine/step-1"
+                active={pathname.startsWith("/edit-routine/")}
+              />
+            )}
 
             <NavItem
               icon={<IconBook size={22} className="shrink-0" />}

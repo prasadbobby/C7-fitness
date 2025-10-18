@@ -6,6 +6,8 @@ import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
+import { Input } from "@nextui-org/input";
+import { Textarea } from "@nextui-org/input";
 import {
   IconRulerMeasure,
   IconWeight,
@@ -16,10 +18,13 @@ import {
   IconScale,
   IconActivity,
   IconHeart,
-  IconUser
+  IconUser,
+  IconCheck,
+  IconX,
+  IconEdit
 } from "@tabler/icons-react";
 import BottomSheet from "@/components/UI/BottomSheet";
-import AddMeasurementForm from "./AddMeasurementForm";
+import DatePicker from "@/components/UI/DatePicker";
 import MeasurementHistoryModal from "./MeasurementHistoryModal";
 
 interface UserMeasurements {
@@ -55,9 +60,14 @@ export default function EnhancedProfileMeasurements({
 }) {
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedMeasurementType, setSelectedMeasurementType] = useState<string | null>(null);
+  const [selectedMeasurementUnit, setSelectedMeasurementUnit] = useState<string>("");
+  const [selectedMeasurementIcon, setSelectedMeasurementIcon] = useState<JSX.Element | null>(null);
+  const [addFormValue, setAddFormValue] = useState("");
+  const [addFormNotes, setAddFormNotes] = useState("");
+  const [addFormDate, setAddFormDate] = useState<Date>(new Date());
 
   useEffect(() => {
     fetchMeasurements();
@@ -77,17 +87,72 @@ export default function EnhancedProfileMeasurements({
     }
   };
 
-  const handleMeasurementAdded = () => {
-    fetchMeasurements();
-    setIsAddModalOpen(false);
-    toast.success('Measurement added successfully!');
-  };
 
   const viewHistory = async (measurementType: string) => {
     setSelectedMeasurementType(measurementType);
     // Refresh measurements to ensure we have the latest data BEFORE opening modal
     await fetchMeasurements();
     setIsHistoryModalOpen(true);
+  };
+
+  const startAddingMeasurement = (measurementType: string, unit: string, icon: JSX.Element) => {
+    setSelectedMeasurementType(measurementType);
+    setSelectedMeasurementUnit(unit);
+    setSelectedMeasurementIcon(icon);
+    setAddFormValue("");
+    setAddFormNotes("");
+    setAddFormDate(new Date());
+    setIsQuickAddModalOpen(true);
+  };
+
+  const cancelAddingMeasurement = () => {
+    setIsQuickAddModalOpen(false);
+    setSelectedMeasurementType(null);
+    setSelectedMeasurementUnit("");
+    setSelectedMeasurementIcon(null);
+    setAddFormValue("");
+    setAddFormNotes("");
+    setAddFormDate(new Date());
+  };
+
+  const saveQuickMeasurement = async () => {
+    if (!addFormValue.trim()) {
+      toast.error('Please enter a value');
+      return;
+    }
+
+    if (!selectedMeasurementType) {
+      toast.error('No measurement type selected');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/measurements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          measurementType: selectedMeasurementType,
+          value: parseFloat(addFormValue),
+          unit: selectedMeasurementUnit,
+          recordedDate: addFormDate.toISOString(),
+          notes: addFormNotes.trim() || undefined,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Measurement added successfully!');
+        cancelAddingMeasurement();
+        fetchMeasurements();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to add measurement');
+      }
+    } catch (error) {
+      console.error('Error adding measurement:', error);
+      toast.error('Failed to add measurement');
+    }
   };
 
   // Calculate summary data for all measurement types
@@ -184,20 +249,11 @@ export default function EnhancedProfileMeasurements({
   return (
     <>
       <Card shadow="none" className="shadow-md">
-        <CardHeader className="text-xl font-semibold px-5 pb-4 gap-x-3 items-center justify-between">
+        <CardHeader className="text-xl font-semibold px-5 pb-4 gap-x-3 items-center">
           <div className="flex items-center gap-3">
             <IconRulerMeasure className="text-primary" />
             Body Measurements
           </div>
-          <Button
-            color="primary"
-            size="sm"
-            variant="flat"
-            startContent={<IconPlus size={16} />}
-            onPress={() => setIsAddModalOpen(true)}
-          >
-            Add
-          </Button>
         </CardHeader>
 
         <CardBody className="px-5 space-y-6">
@@ -221,8 +277,7 @@ export default function EnhancedProfileMeasurements({
             {measurementSummary.map((item) => (
               <div
                 key={item.type}
-                className="p-3 bg-content2 rounded-lg border border-divider hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => viewHistory(item.type)}
+                className="p-3 bg-content2 rounded-lg border border-divider hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -231,19 +286,30 @@ export default function EnhancedProfileMeasurements({
                       {item.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
                     </span>
                   </div>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="flex-shrink-0 ml-1"
-                    onPress={() => viewHistory(item.type)}
-                  >
-                    <IconEye size={12} />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="flex-shrink-0"
+                      onPress={() => startAddingMeasurement(item.type, item.unit, item.icon)}
+                    >
+                      <IconPlus size={12} />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="flex-shrink-0"
+                      onPress={() => viewHistory(item.type)}
+                    >
+                      <IconEye size={12} />
+                    </Button>
+                  </div>
                 </div>
 
                 {item.current ? (
-                  <div>
+                  <div className="cursor-pointer" onClick={() => viewHistory(item.type)}>
                     <p className="text-lg font-bold">
                       {item.current} {item.unit}
                     </p>
@@ -260,8 +326,8 @@ export default function EnhancedProfileMeasurements({
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-foreground-400">
-                    No data recorded
+                  <div className="text-xs text-foreground-400 cursor-pointer" onClick={() => startAddingMeasurement(item.type, item.unit, item.icon)}>
+                    No data recorded - Click + to add
                   </div>
                 )}
               </div>
@@ -291,14 +357,9 @@ export default function EnhancedProfileMeasurements({
             <div className="text-center py-8">
               <IconRulerMeasure size={48} className="text-foreground-300 mx-auto mb-3" />
               <p className="text-foreground-500 mb-4">No measurements recorded yet</p>
-              <Button
-                color="primary"
-                variant="flat"
-                startContent={<IconPlus size={16} />}
-                onPress={() => setIsAddModalOpen(true)}
-              >
-                Add Your First Measurement
-              </Button>
+              <p className="text-sm text-foreground-400">
+                Use the "+" buttons on the measurement cards above to start tracking your progress
+              </p>
             </div>
           )}
 
@@ -309,18 +370,6 @@ export default function EnhancedProfileMeasurements({
         </CardBody>
       </Card>
 
-      {/* Add Measurement Modal */}
-      <BottomSheet
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Add Body Measurement"
-        size="2xl"
-      >
-        <AddMeasurementForm
-          onSuccess={handleMeasurementAdded}
-          onCancel={() => setIsAddModalOpen(false)}
-        />
-      </BottomSheet>
 
       {/* Measurement History Modal */}
       <BottomSheet
@@ -339,6 +388,82 @@ export default function EnhancedProfileMeasurements({
             onClose={() => setIsHistoryModalOpen(false)}
           />
         )}
+      </BottomSheet>
+
+      {/* Quick Add Measurement Modal */}
+      <BottomSheet
+        isOpen={isQuickAddModalOpen}
+        onClose={cancelAddingMeasurement}
+        title={selectedMeasurementType ?
+          `Add ${selectedMeasurementType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}`
+          : 'Add Measurement'
+        }
+        size="lg"
+        footer={
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="light"
+              onPress={cancelAddingMeasurement}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={saveQuickMeasurement}
+              className="flex-1"
+              startContent={<IconCheck size={16} />}
+            >
+              Save Measurement
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Measurement Type Header */}
+          <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
+            {selectedMeasurementIcon}
+            <div>
+              <h4 className="font-medium text-foreground">
+                {selectedMeasurementType?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+              </h4>
+              <p className="text-sm text-foreground-500">
+                Enter your measurement in {selectedMeasurementUnit}
+              </p>
+            </div>
+          </div>
+
+          {/* Value Input */}
+          <Input
+            label="Measurement Value"
+            type="number"
+            placeholder="Enter value"
+            value={addFormValue}
+            onChange={(e) => setAddFormValue(e.target.value)}
+            endContent={<span className="text-sm text-foreground-500">{selectedMeasurementUnit}</span>}
+            size="lg"
+            isRequired
+          />
+
+          {/* Date Picker */}
+          <DatePicker
+            label="Measurement Date"
+            value={addFormDate}
+            onChange={(date) => setAddFormDate(date || new Date())}
+            size="lg"
+            placeholder="Select date"
+          />
+
+          {/* Notes */}
+          <Textarea
+            label="Notes (Optional)"
+            placeholder="Add any notes about this measurement..."
+            value={addFormNotes}
+            onChange={(e) => setAddFormNotes(e.target.value)}
+            rows={3}
+            size="lg"
+          />
+        </div>
       </BottomSheet>
     </>
   );

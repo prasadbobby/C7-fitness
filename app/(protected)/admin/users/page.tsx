@@ -98,6 +98,7 @@ export default function UserManagement() {
   const [currentTab, setCurrentTab] = useState("all");
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -113,7 +114,20 @@ export default function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
+    fetchCurrentUserRole();
   }, [page, searchTerm, selectedRole]);
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const response = await fetch('/api/admin/users/current-role');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentUserRole(data.role);
+      }
+    } catch (error) {
+      console.error("Error fetching current user role:", error);
+    }
+  };
 
   const updateURLParams = (updates: Record<string, string | number>) => {
     const params = new URLSearchParams(searchParams);
@@ -319,14 +333,16 @@ export default function UserManagement() {
             Manage user accounts, roles, permissions, and send invitations.
           </p>
         </div>
-        <Button
-          color="primary"
-          startContent={<IconUserPlus size={18} />}
-          className="font-medium"
-          onPress={onInviteOpen}
-        >
-          Invite User
-        </Button>
+        {currentUserRole === "SUPER_ADMIN" && (
+          <Button
+            color="primary"
+            startContent={<IconUserPlus size={18} />}
+            className="font-medium"
+            onPress={onInviteOpen}
+          >
+            Invite User
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -494,7 +510,7 @@ export default function UserManagement() {
                               <Chip color={getRoleColor(user.role)} variant="flat" size="sm">
                                 {user.role}
                               </Chip>
-                              {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                              {currentUserRole === "SUPER_ADMIN" && (user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
                                 <Button
                                   isIconOnly
                                   size="sm"
@@ -544,25 +560,29 @@ export default function UserManagement() {
                               >
                                 <IconChartLine size={16} />
                               </Button>
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="ghost"
-                                onPress={() => handleEditUser(user)}
-                                title="Edit User"
-                              >
-                                <IconEdit size={16} />
-                              </Button>
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="ghost"
-                                color="danger"
-                                onPress={() => handleDeleteUser(user)}
-                                title="Delete User"
-                              >
-                                <IconTrash size={16} />
-                              </Button>
+                              {currentUserRole === "SUPER_ADMIN" && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="ghost"
+                                  onPress={() => handleEditUser(user)}
+                                  title="Edit User"
+                                >
+                                  <IconEdit size={16} />
+                                </Button>
+                              )}
+                              {currentUserRole === "SUPER_ADMIN" && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="ghost"
+                                  color="danger"
+                                  onPress={() => handleDeleteUser(user)}
+                                  title="Delete User"
+                                >
+                                  <IconTrash size={16} />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -614,7 +634,7 @@ export default function UserManagement() {
                               <Chip size="sm" color={getRoleColor(admin.role)} variant="flat" className="font-medium">
                                 {admin.role.replace('_', ' ')}
                               </Chip>
-                              {(admin.role === "ADMIN" || admin.role === "SUPER_ADMIN") && (
+                              {currentUserRole === "SUPER_ADMIN" && (admin.role === "ADMIN" || admin.role === "SUPER_ADMIN") && (
                                 <Button
                                   isIconOnly
                                   size="sm"
@@ -698,58 +718,62 @@ export default function UserManagement() {
       />
 
       {/* Edit User Modal */}
-      <BottomSheet
-        isOpen={isEditOpen}
-        onClose={onEditClose}
-        title="Edit User Role"
-        size="md"
-      >
-        {selectedUser && (
-          <EditUserForm
-            user={selectedUser}
-            onSave={updateUser}
-            onCancel={onEditClose}
-          />
-        )}
-      </BottomSheet>
+      {currentUserRole === "SUPER_ADMIN" && (
+        <BottomSheet
+          isOpen={isEditOpen}
+          onClose={onEditClose}
+          title="Edit User Role"
+          size="md"
+        >
+          {selectedUser && (
+            <EditUserForm
+              user={selectedUser}
+              onSave={updateUser}
+              onCancel={onEditClose}
+            />
+          )}
+        </BottomSheet>
+      )}
 
       {/* Delete User Modal */}
-      <BottomSheet
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
-        title="Delete User"
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onPress={onDeleteClose}>
-              Cancel
-            </Button>
-            <Button color="danger" onPress={deleteUser}>
-              Delete
-            </Button>
-          </>
-        }
-      >
-        {selectedUser && (
-          <div>
-            <p className="mb-4">Are you sure you want to permanently delete this user?</p>
-            <div className="p-4 bg-danger/10 rounded-lg border-l-4 border-danger">
-              <h4 className="font-semibold text-danger mb-2">⚠️ Warning: This action cannot be undone!</h4>
-              <p className="text-sm text-foreground-600">
-                This will permanently delete:
-              </p>
-              <ul className="text-sm text-foreground-600 mt-2 ml-4 list-disc">
-                <li>User account and profile</li>
-                <li>All workout logs and progress</li>
-                <li>Personal bests and achievements</li>
-                <li>Challenge participation and posts</li>
-                <li>Equipment preferences and goals</li>
-                <li>All related data from both database and Clerk</li>
-              </ul>
+      {currentUserRole === "SUPER_ADMIN" && (
+        <BottomSheet
+          isOpen={isDeleteOpen}
+          onClose={onDeleteClose}
+          title="Delete User"
+          size="md"
+          footer={
+            <>
+              <Button variant="ghost" onPress={onDeleteClose}>
+                Cancel
+              </Button>
+              <Button color="danger" onPress={deleteUser}>
+                Delete
+              </Button>
+            </>
+          }
+        >
+          {selectedUser && (
+            <div>
+              <p className="mb-4">Are you sure you want to permanently delete this user?</p>
+              <div className="p-4 bg-danger/10 rounded-lg border-l-4 border-danger">
+                <h4 className="font-semibold text-danger mb-2">⚠️ Warning: This action cannot be undone!</h4>
+                <p className="text-sm text-foreground-600">
+                  This will permanently delete:
+                </p>
+                <ul className="text-sm text-foreground-600 mt-2 ml-4 list-disc">
+                  <li>User account and profile</li>
+                  <li>All workout logs and progress</li>
+                  <li>Personal bests and achievements</li>
+                  <li>Challenge participation and posts</li>
+                  <li>Equipment preferences and goals</li>
+                  <li>All related data from both database and Clerk</li>
+                </ul>
+              </div>
             </div>
-          </div>
-        )}
-      </BottomSheet>
+          )}
+        </BottomSheet>
+      )}
 
       {/* Invite User Modal */}
       <BottomSheet

@@ -11,6 +11,18 @@ export async function handleDeleteRoutine(routineId: string) {
       throw new Error("You must be signed in to view this page.");
     }
 
+    // Check if user is super admin
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can delete routines");
+    }
+
     // First, check if the user owns this routine (security check)
     const routine = await prisma.workoutPlan.findUnique({
       where: { id: routineId },
@@ -65,10 +77,24 @@ export async function handleCreateRoutine(data: any) {
 
     const { routineName, exercisesWithOrder, notes, trainingType } = data;
 
+    // Check if user is super admin to determine userId value
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can create routines");
+    }
+
+    const workoutUserId = userId; // Super admins create user-specific workouts
+
     await prisma.workoutPlan.create({
       data: {
         name: routineName,
-        userId: userId,
+        userId: workoutUserId,
         notes: notes,
         trainingType: trainingType,
         WorkoutPlanExercise: {
@@ -102,12 +128,26 @@ export async function handleEditRoutine(data: any) {
 
     const { routineName, routineId, exercisesWithOrder, notes, trainingType } = data;
 
+    // Check if user is super admin to determine userId value
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can edit routines");
+    }
+
+    const workoutUserId = userId; // Super admins create user-specific workouts
+
     // First, update the workout plan details
     await prisma.workoutPlan.update({
       where: { id: routineId },
       data: {
         name: routineName,
-        userId: userId,
+        userId: workoutUserId,
         notes: notes,
         trainingType: trainingType,
       },
@@ -156,6 +196,20 @@ export async function handleCreateRoutineStepOne(
     const routineNotes = data.get("routineNotes") as string | null;
     const trainingType = data.get("trainingType") as string | null;
 
+    // Check if user is super admin to determine userId value
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can create routines");
+    }
+
+    const workoutUserId = userId; // Super admins create user-specific workouts
+
     let routine;
     if (routineId) {
       routine = await prisma.workoutPlan.update({
@@ -170,7 +224,7 @@ export async function handleCreateRoutineStepOne(
       routine = await prisma.workoutPlan.create({
         data: {
           name: routineName,
-          userId: userId,
+          userId: workoutUserId,
           notes: routineNotes,
           trainingType: trainingType as any,
         },
@@ -201,6 +255,18 @@ export async function handleAddExerciseToRoutine({
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
+    }
+
+    // Check if user is super admin
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can modify routines");
     }
 
     await prisma.workoutPlan.update({
@@ -241,6 +307,18 @@ export async function handleRemoveExerciseFromRoutine({
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
+    }
+
+    // Check if user is super admin
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    const isSuperAdmin = userInfo?.role === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      throw new Error("Only Super Administrators can modify routines");
     }
 
     await prisma.workoutPlanExercise.deleteMany({

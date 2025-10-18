@@ -123,6 +123,7 @@ export default function WorkoutAssignment() {
   const [editNotes, setEditNotes] = useState("");
   const [editAssignmentDate, setEditAssignmentDate] = useState("");
   const [totalWorkouts, setTotalWorkouts] = useState(0);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   // Get values from URL parameters
   const page = Number(searchParams.get("page")) || 1;
@@ -185,6 +186,22 @@ export default function WorkoutAssignment() {
     fetchData();
     fetchExercises();
   }, [page, searchTerm]);
+
+  useEffect(() => {
+    fetchCurrentUserRole();
+  }, []);
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const response = await fetch('/api/admin/users/current-role');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentUserRole(data.role);
+      }
+    } catch (error) {
+      console.error("Error fetching current user role:", error);
+    }
+  };
 
   // Clear selected workout when user changes to ensure compatibility
   useEffect(() => {
@@ -557,6 +574,17 @@ export default function WorkoutAssignment() {
         setCustomWorkoutTrainingType("");
         setActiveTab("assignments");
         toast.success("Custom workout created and assigned successfully!");
+
+        // Revalidate the workout page to show the new workout immediately
+        try {
+          await fetch('/api/revalidate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/workout' })
+          });
+        } catch (revalidateError) {
+          console.log('Revalidation request sent, but may have failed:', revalidateError);
+        }
       } else {
         const errorData = await assignmentResponse.json();
         toast.error(errorData.message || "Failed to assign custom workout");
@@ -780,27 +808,29 @@ export default function WorkoutAssignment() {
             Manage workout plans, assign workouts to users, and track progress.
           </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button
-            color="primary"
-            startContent={<IconPlus size={20} />}
-            onPress={onAssignOpen}
-            className="min-h-12 px-4 flex-1 sm:flex-initial"
-            size="lg"
-          >
-            Assign Pre-made Workout
-          </Button>
-          <Button
-            color="secondary"
-            variant="flat"
-            startContent={<IconBarbell size={20} />}
-            onPress={() => setActiveTab("custom-builder")}
-            className="min-h-12 px-4 flex-1 sm:flex-initial"
-            size="lg"
-          >
-            Build Custom Workout
-          </Button>
-        </div>
+        {currentUserRole === "SUPER_ADMIN" && (
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              color="primary"
+              startContent={<IconPlus size={20} />}
+              onPress={onAssignOpen}
+              className="min-h-12 px-4 flex-1 sm:flex-initial"
+              size="lg"
+            >
+              Assign Pre-made Workout
+            </Button>
+            <Button
+              color="secondary"
+              variant="flat"
+              startContent={<IconBarbell size={20} />}
+              onPress={() => setActiveTab("custom-builder")}
+              className="min-h-12 px-4 flex-1 sm:flex-initial"
+              size="lg"
+            >
+              Build Custom Workout
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -921,17 +951,19 @@ export default function WorkoutAssignment() {
                 <span className="font-medium">Assignment History ({filteredAssignments.length})</span>
               </button>
 
-              <button
-                onClick={() => setActiveTab("custom-builder")}
-                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
-                  activeTab === "custom-builder"
-                    ? "border-primary text-primary bg-primary/5"
-                    : "border-transparent text-foreground-500 hover:text-foreground"
-                }`}
-              >
-                <IconBarbell size={18} />
-                <span className="font-medium">Custom Workout Builder</span>
-              </button>
+              {currentUserRole === "SUPER_ADMIN" && (
+                <button
+                  onClick={() => setActiveTab("custom-builder")}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                    activeTab === "custom-builder"
+                      ? "border-primary text-primary bg-primary/5"
+                      : "border-transparent text-foreground-500 hover:text-foreground"
+                  }`}
+                >
+                  <IconBarbell size={18} />
+                  <span className="font-medium">Custom Workout Builder</span>
+                </button>
+              )}
             </div>
           </div>
         </CardBody>
@@ -1603,7 +1635,7 @@ export default function WorkoutAssignment() {
       )}
 
       {/* Custom Workout Builder Tab Content */}
-      {activeTab === "custom-builder" && (
+      {activeTab === "custom-builder" && currentUserRole === "SUPER_ADMIN" && (
         <div className="space-y-6">
           {/* Custom Workout Builder Header */}
           <Card>

@@ -27,11 +27,13 @@ type ExtendedWorkoutPlan = WorkoutPlan & {
 type YourRoutinesSectionProps = {
   userRoutines: ExtendedWorkoutPlan[];
   isAdmin: boolean;
+  userRole?: string;
 };
 
 export default function YourRoutinesSection({
   userRoutines,
   isAdmin,
+  userRole,
 }: YourRoutinesSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState("");
 
@@ -40,14 +42,19 @@ export default function YourRoutinesSection({
     ? userRoutines.filter(routine => routine.trainingType === selectedCategory)
     : userRoutines;
 
-  if (!isAdmin) {
+  if (!isAdmin || userRole !== "SUPER_ADMIN") {
     return null;
   }
 
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
-        <h2 className="font-semibold text-xl md:text-2xl mb-3 md:mb-0">My Custom Workouts</h2>
+        <h2 className="font-semibold text-xl md:text-2xl mb-3 md:mb-0">
+          My Custom Workouts
+          <span className="text-sm font-normal text-zinc-500 ml-2">
+            (Personal routines created via routine builder)
+          </span>
+        </h2>
         <Button
           as={Link}
           href="/edit-routine/step-1"

@@ -99,12 +99,13 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   return (
     <div className={`
-      fixed min-w-[160px] bg-content1 shadow-large rounded-large border border-divider backdrop-blur-md backdrop-saturate-150 z-[999999] py-1
+      fixed min-w-[160px] bg-content1 shadow-large rounded-large border border-divider backdrop-blur-md backdrop-saturate-150 py-1
       ${className}
     `}
     style={{
       top: `${position.top}px`,
-      left: `${position.left}px`
+      left: `${position.left}px`,
+      zIndex: 999999
     }}>
       {topContent && (
         <div className="px-2 py-2 border-b border-divider">
@@ -196,7 +197,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ children, className = "" }) 
   });
 
   return (
-    <div className={`relative inline-block ${className}`} ref={dropdownRef}>
+    <div className={`relative inline-block ${className}`} ref={dropdownRef} style={{ zIndex: 999998 }}>
       {trigger}
       {isOpen && menu}
     </div>
