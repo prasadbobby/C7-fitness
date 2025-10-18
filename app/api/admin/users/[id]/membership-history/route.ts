@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 // GET membership history for a user
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -75,7 +75,7 @@ export async function GET(
 
     // Get user names from Clerk for each recordedBy user ID
     const membershipLogsWithNames = await Promise.all(
-      membershipLogs.map(async (log) => {
+      membershipLogs.map(async (log: any) => {
         // Check if recordedBy is a valid user ID
         if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '') {
           return {
