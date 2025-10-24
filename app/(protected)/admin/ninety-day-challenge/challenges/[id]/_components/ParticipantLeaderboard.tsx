@@ -12,7 +12,8 @@ import {
   IconMoon,
   IconBrain,
   IconBolt,
-  IconMoodHappy
+  IconMoodHappy,
+  IconPhoto
 } from "@tabler/icons-react";
 import {
   calculateParticipantMetrics,
@@ -25,6 +26,7 @@ interface Post {
   sleepQuality: string | null;
   mood: string | null;
   energy: string | null;
+  photos: string[] | null;
   createdAt: string;
 }
 
@@ -102,6 +104,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
               avgSleepQuality: metrics.avgSleepQuality,
               avgMood: metrics.avgMood,
               avgEnergy: metrics.avgEnergy,
+              photoScore: metrics.photoScore,
               consistency: metrics.consistency
             }
           };
@@ -283,6 +286,10 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
                 <div className="flex items-center gap-1 text-foreground-500">
                   <IconBolt size={12} />
                   <span>{(participant.metrics.avgEnergy).toFixed(1)}/5</span>
+                </div>
+                <div className="flex items-center gap-1 text-foreground-500">
+                  <IconPhoto size={12} />
+                  <span>{participant.metrics.photoScore.toFixed(1)}/3</span>
                 </div>
                 <div className="flex items-center gap-1 text-foreground-500">
                   <IconBrain size={12} />

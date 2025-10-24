@@ -95,3 +95,4 @@ test-email.js
 debug-week2-calculation.js
 test-comprehensive-missed-days.js
 test-photo-scoring-missed-days.js
+test-overall-leaderboard-fix.js
