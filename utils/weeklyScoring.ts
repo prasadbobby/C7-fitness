@@ -131,29 +131,53 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
   const totalPosts = weekPosts.length;
   const consistency = totalEligibleDays > 0 ? (totalPosts / totalEligibleDays) * 100 : 0;
 
-  // Calculate averages
-  const sleepHours = weekPosts.filter(p => p.sleepHours !== null).map(p => p.sleepHours);
-  const sleepQuality = weekPosts.filter(p => p.sleepQuality !== null).map(p => {
+  // Calculate totals accounting for missed days (missed days = 0 for all metrics)
+  const totalSleepHours = weekPosts.reduce((total, p) => {
+    const hours = (p.sleepHours !== null && typeof p.sleepHours === 'number' && !isNaN(p.sleepHours) && p.sleepHours >= 0 && p.sleepHours <= 24)
+      ? p.sleepHours
+      : 0;
+    return total + hours;
+  }, 0);
+
+  const totalSleepQuality = weekPosts.reduce((total, p) => {
     const qualityMap = { 'POOR': 1, 'FAIR': 2, 'GOOD': 3, 'VERY_GOOD': 4, 'EXCELLENT': 5 };
-    return qualityMap[p.sleepQuality as keyof typeof qualityMap] || 3;
-  });
-  const mood = weekPosts.filter(p => p.mood !== null).map(p => {
-    const moodMap = { 'VERY_LOW': 1, 'LOW': 2, 'NEUTRAL': 3, 'GOOD': 4, 'VERY_GOOD': 5, 'EXCELLENT': 5 };
-    return moodMap[p.mood as keyof typeof moodMap] || 3;
-  });
-  const energy = weekPosts.filter(p => p.energy !== null).map(p => {
+    const score = p.sleepQuality ? (qualityMap[p.sleepQuality as keyof typeof qualityMap] || 0) : 0;
+    return total + score;
+  }, 0);
+
+  const totalMood = weekPosts.reduce((total, p) => {
+    const moodMap = { 'VERY_LOW': 0, 'LOW': 1, 'NEUTRAL': 2, 'GOOD': 3, 'VERY_GOOD': 4, 'EXCELLENT': 5 };
+    const score = p.mood ? (moodMap[p.mood as keyof typeof moodMap] || 0) : 0;
+    return total + score;
+  }, 0);
+
+  const totalEnergy = weekPosts.reduce((total, p) => {
     const energyMap = { 'VERY_LOW': 1, 'LOW': 2, 'MODERATE': 3, 'HIGH': 4, 'VERY_HIGH': 5 };
-    return energyMap[p.energy as keyof typeof energyMap] || 3;
-  });
+    const score = p.energy ? (energyMap[p.energy as keyof typeof energyMap] || 1) : 1; // VERY_LOW = 1 minimum
+    return total + score;
+  }, 0);
+
+  // Calculate photo scores accounting for missed days
+  const totalPhotoPoints = weekPosts.reduce((total, post) => {
+    const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
+    // Same logic as overall scoring: 0 photos = 0, 1-3 photos = photo count, 4+ photos = 3
+    if (photoCount === 0) return total + 0;
+    if (photoCount >= 1 && photoCount <= 3) return total + photoCount;
+    return total + 3; // Cap at 3 points for 4+ photos
+  }, 0);
+
+  // Average photo score across all eligible days (including missed days as 0)
+  const photoScore = totalEligibleDays > 0 ? totalPhotoPoints / totalEligibleDays : 0;
 
   return {
     totalPosts,
     totalEligibleDays,
     consistency: Math.min(100, consistency),
-    avgSleepHours: sleepHours.length > 0 ? sleepHours.reduce((a, b) => a + b, 0) / sleepHours.length : 0,
-    avgSleepQuality: sleepQuality.length > 0 ? sleepQuality.reduce((a, b) => a + b, 0) / sleepQuality.length : 0,
-    avgMood: mood.length > 0 ? mood.reduce((a, b) => a + b, 0) / mood.length : 0,
-    avgEnergy: energy.length > 0 ? energy.reduce((a, b) => a + b, 0) / energy.length : 0,
+    avgSleepHours: totalEligibleDays > 0 ? totalSleepHours / totalEligibleDays : 0,
+    avgSleepQuality: totalEligibleDays > 0 ? totalSleepQuality / totalEligibleDays : 0,
+    avgMood: totalEligibleDays > 0 ? totalMood / totalEligibleDays : 0,
+    avgEnergy: totalEligibleDays > 0 ? totalEnergy / totalEligibleDays : 0,
+    photoScore: photoScore,
   };
 }
 
@@ -163,12 +187,13 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
 export function calculateWeeklyScore(metrics: ReturnType<typeof calculateWeeklyMetrics>) {
   // Use the same weights as overall scoring for consistency
   const weights = {
-    consistency: 0.3,        // Same as overall (30%)
-    avgSleepHours: 0.2,      // Same as overall (20%)
+    consistency: 0.25,       // Updated to match overall (25%)
+    avgSleepHours: 0.18,     // Updated to match overall (18%)
     avgSleepQuality: 0.15,   // Same as overall (15%)
-    avgMood: 0.15,           // Same as overall (15%)
-    avgEnergy: 0.15,         // Same as overall (15%)
-    totalPosts: 0.05         // Add the totalPosts bonus (5%)
+    avgMood: 0.12,           // Updated to match overall (12%)
+    avgEnergy: 0.12,         // Updated to match overall (12%)
+    photoScore: 0.10,        // NEW: Photo uploads (10%)
+    totalPosts: 0.08         // Updated to match overall (8%)
   };
 
   // Normalize metrics using the same approach as overall scoring
@@ -177,6 +202,7 @@ export function calculateWeeklyScore(metrics: ReturnType<typeof calculateWeeklyM
   const normalizedSleepQuality = metrics.avgSleepQuality / 5;
   const normalizedMood = metrics.avgMood / 5;
   const normalizedEnergy = metrics.avgEnergy / 5;
+  const normalizedPhotoScore = metrics.photoScore / 3; // Normalize to max score of 3
   const normalizedTotalPosts = Math.min(metrics.totalEligibleDays, metrics.totalPosts) / metrics.totalEligibleDays;
 
   const score =
@@ -185,6 +211,7 @@ export function calculateWeeklyScore(metrics: ReturnType<typeof calculateWeeklyM
     (normalizedSleepQuality * weights.avgSleepQuality * 100) +
     (normalizedMood * weights.avgMood * 100) +
     (normalizedEnergy * weights.avgEnergy * 100) +
+    (normalizedPhotoScore * weights.photoScore * 100) +
     (normalizedTotalPosts * weights.totalPosts * 100);
 
   return Math.round(score);

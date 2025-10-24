@@ -11,6 +11,7 @@ export interface ChallengeMetrics {
   avgSleepQuality: number;
   avgMood: number;
   avgEnergy: number;
+  photoScore: number;
   consistency: number;
 }
 
@@ -20,17 +21,19 @@ export interface ScoringWeights {
   avgSleepQuality: number;
   avgMood: number;
   avgEnergy: number;
+  photoScore: number;
   totalPosts: number;
 }
 
 // Standardized scoring weights - single source of truth
 export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
-  consistency: 0.3,      // 30% - Most important (posting regularly)
-  avgSleepHours: 0.2,    // 20% - Sleep quantity
+  consistency: 0.25,     // 25% - Most important (posting regularly)
+  avgSleepHours: 0.18,   // 18% - Sleep quantity
   avgSleepQuality: 0.15, // 15% - Sleep quality
-  avgMood: 0.15,         // 15% - Mental wellness
-  avgEnergy: 0.15,       // 15% - Physical wellness
-  totalPosts: 0.05       // 5% - Engagement bonus
+  avgMood: 0.12,         // 12% - Mental wellness
+  avgEnergy: 0.12,       // 12% - Physical wellness
+  photoScore: 0.10,      // 10% - Photo uploads (transformation tracking)
+  totalPosts: 0.08       // 8% - Engagement bonus
 };
 
 /**
@@ -77,6 +80,16 @@ export function getEnergyScore(energy: string): number {
 }
 
 /**
+ * Calculate photo score based on number of photos uploaded
+ * Optimal is 1-3 photos per post. 4-5+ photos still count as max 3 for points.
+ */
+export function getPhotoScore(photoCount: number): number {
+  if (photoCount === 0) return 0;
+  if (photoCount >= 1 && photoCount <= 3) return photoCount; // 1, 2, or 3 points
+  return 3; // Cap at 3 points for 4+ photos
+}
+
+/**
  * Calculate normalized metrics for scoring
  */
 export function normalizeMetrics(metrics: ChallengeMetrics, daysElapsed: number): Record<keyof ScoringWeights, number> {
@@ -86,6 +99,7 @@ export function normalizeMetrics(metrics: ChallengeMetrics, daysElapsed: number)
     avgSleepQuality: metrics.avgSleepQuality / 5,
     avgMood: metrics.avgMood / 5,
     avgEnergy: metrics.avgEnergy / 5,
+    photoScore: metrics.photoScore / 3, // Normalize to max score of 3
     totalPosts: Math.min(daysElapsed, metrics.totalPosts) / daysElapsed
   };
 }
@@ -115,6 +129,7 @@ export function calculateConsistency(totalPosts: number, daysElapsed: number): n
 
 /**
  * Calculate average sleep quality from posts
+ * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
 export function calculateAverageSleepQuality(posts: Array<{ sleepQuality: string | null }>): number {
   const sleepQualityScores = posts
@@ -128,7 +143,26 @@ export function calculateAverageSleepQuality(posts: Array<{ sleepQuality: string
 }
 
 /**
+ * Calculate sleep quality accounting for missed days
+ * Missed days count as 0 (worst possible sleep quality)
+ */
+export function calculateSleepQualityWithMissedDays(
+  posts: Array<{ sleepQuality: string | null }>,
+  daysElapsed: number
+): number {
+  const totalSleepQualityScore = posts.reduce((total, post) => {
+    const score = (post.sleepQuality !== null && typeof post.sleepQuality === 'string')
+      ? getSleepQualityScore(post.sleepQuality)
+      : 0;
+    return total + score;
+  }, 0);
+
+  return daysElapsed > 0 ? totalSleepQualityScore / daysElapsed : 0;
+}
+
+/**
  * Calculate average mood from posts
+ * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
 export function calculateAverageMood(posts: Array<{ mood: string | null }>): number {
   const moodScores = posts
@@ -142,7 +176,26 @@ export function calculateAverageMood(posts: Array<{ mood: string | null }>): num
 }
 
 /**
+ * Calculate mood accounting for missed days
+ * Missed days count as 0 (VERY_LOW mood)
+ */
+export function calculateMoodWithMissedDays(
+  posts: Array<{ mood: string | null }>,
+  daysElapsed: number
+): number {
+  const totalMoodScore = posts.reduce((total, post) => {
+    const score = (post.mood !== null && typeof post.mood === 'string')
+      ? getMoodScore(post.mood)
+      : 0;
+    return total + score;
+  }, 0);
+
+  return daysElapsed > 0 ? totalMoodScore / daysElapsed : 0;
+}
+
+/**
  * Calculate average energy from posts
+ * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
 export function calculateAverageEnergy(posts: Array<{ energy: string | null }>): number {
   const energyScores = posts
@@ -156,7 +209,26 @@ export function calculateAverageEnergy(posts: Array<{ energy: string | null }>):
 }
 
 /**
+ * Calculate energy accounting for missed days
+ * Missed days count as 1 (VERY_LOW energy)
+ */
+export function calculateEnergyWithMissedDays(
+  posts: Array<{ energy: string | null }>,
+  daysElapsed: number
+): number {
+  const totalEnergyScore = posts.reduce((total, post) => {
+    const score = (post.energy !== null && typeof post.energy === 'string')
+      ? getEnergyScore(post.energy)
+      : 1; // VERY_LOW energy = 1 (not 0, as 0 would be invalid)
+    return total + score;
+  }, 0);
+
+  return daysElapsed > 0 ? totalEnergyScore / daysElapsed : 0;
+}
+
+/**
  * Calculate average sleep hours from posts
+ * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
 export function calculateAverageSleepHours(posts: Array<{ sleepHours: number | null }>): number {
   const sleepHours = posts
@@ -169,6 +241,58 @@ export function calculateAverageSleepHours(posts: Array<{ sleepHours: number | n
 }
 
 /**
+ * Calculate sleep hours accounting for missed days
+ * Missed days count as 0 sleep hours, providing proper penalty
+ */
+export function calculateSleepHoursWithMissedDays(
+  posts: Array<{ sleepHours: number | null }>,
+  daysElapsed: number
+): number {
+  const totalSleepHours = posts.reduce((total, post) => {
+    const hours = (post.sleepHours !== null && typeof post.sleepHours === 'number' && !isNaN(post.sleepHours) && post.sleepHours >= 0 && post.sleepHours <= 24)
+      ? post.sleepHours
+      : 0;
+    return total + hours;
+  }, 0);
+
+  return daysElapsed > 0 ? totalSleepHours / daysElapsed : 0;
+}
+
+/**
+ * Calculate average photo score from posts
+ * Each post gets a score based on photos: 0 photos = 0, 1-3 photos = photo count, 4+ photos = 3
+ * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
+ */
+export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | null }>): number {
+  const photoScores = posts.map(p => {
+    const photoCount = (p.photos && Array.isArray(p.photos)) ? p.photos.length : 0;
+    return getPhotoScore(photoCount);
+  });
+
+  return photoScores.length > 0
+    ? photoScores.reduce((sum, score) => sum + score, 0) / photoScores.length
+    : 0;
+}
+
+/**
+ * Calculate photo score accounting for missed days
+ * This gives a more accurate representation by considering all eligible days
+ */
+export function calculatePhotoScoreWithMissedDays(
+  posts: Array<{ photos: string[] | null }>,
+  daysElapsed: number
+): number {
+  // Calculate total photo points from all posts
+  const totalPhotoPoints = posts.reduce((total, post) => {
+    const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
+    return total + getPhotoScore(photoCount);
+  }, 0);
+
+  // Average across all eligible days (including missed days as 0)
+  return daysElapsed > 0 ? totalPhotoPoints / daysElapsed : 0;
+}
+
+/**
  * Calculate all metrics for a participant from their posts
  */
 export function calculateParticipantMetrics(
@@ -177,6 +301,7 @@ export function calculateParticipantMetrics(
     sleepQuality: string | null;
     mood: string | null;
     energy: string | null;
+    photos: string[] | null;
     createdAt: string;
   }>,
   joinedAt: string
@@ -192,10 +317,11 @@ export function calculateParticipantMetrics(
 
   return {
     totalPosts,
-    avgSleepHours: calculateAverageSleepHours(posts),
-    avgSleepQuality: calculateAverageSleepQuality(posts),
-    avgMood: calculateAverageMood(posts),
-    avgEnergy: calculateAverageEnergy(posts),
+    avgSleepHours: calculateSleepHoursWithMissedDays(posts, daysElapsed),
+    avgSleepQuality: calculateSleepQualityWithMissedDays(posts, daysElapsed),
+    avgMood: calculateMoodWithMissedDays(posts, daysElapsed),
+    avgEnergy: calculateEnergyWithMissedDays(posts, daysElapsed),
+    photoScore: calculatePhotoScoreWithMissedDays(posts, daysElapsed),
     consistency: calculateConsistency(totalPosts, daysElapsed)
   };
 }

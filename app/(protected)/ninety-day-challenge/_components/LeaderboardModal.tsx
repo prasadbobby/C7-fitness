@@ -6,7 +6,7 @@ import { Card, CardBody } from "@nextui-org/card";
 import { Avatar } from "@nextui-org/avatar";
 import { Chip } from "@nextui-org/chip";
 import { Progress } from "@nextui-org/progress";
-import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy, IconCalendarWeek, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconTrophy, IconMedal, IconAward, IconMoon, IconBrain, IconBolt, IconMoodHappy, IconCalendarWeek, IconChevronLeft, IconChevronRight, IconPhoto } from "@tabler/icons-react";
 import BottomSheet from "@/components/UI/BottomSheet";
 import {
   getChallengeWeeks,
@@ -29,6 +29,7 @@ interface Post {
   sleepQuality: string | null;
   mood: string | null;
   energy: string | null;
+  photos: string[] | null;
   createdAt: string;
 }
 
@@ -55,6 +56,7 @@ interface LeaderboardEntry extends Participant {
     avgSleepQuality: number;
     avgMood: number;
     avgEnergy: number;
+    photoScore: number;
     consistency: number;
   };
   rank: number;
@@ -182,6 +184,7 @@ export function LeaderboardModal({
           avgSleepQuality: weeklyMetrics.avgSleepQuality,
           avgMood: weeklyMetrics.avgMood,
           avgEnergy: weeklyMetrics.avgEnergy,
+          photoScore: weeklyMetrics.photoScore,
           consistency: weeklyMetrics.consistency
         }
       };
@@ -220,6 +223,7 @@ export function LeaderboardModal({
           avgSleepQuality: metrics.avgSleepQuality,
           avgMood: metrics.avgMood,
           avgEnergy: metrics.avgEnergy,
+          photoScore: metrics.photoScore,
           consistency: metrics.consistency
         }
       };
@@ -496,6 +500,10 @@ export function LeaderboardModal({
                           <span>{participant.metrics.avgEnergy.toFixed(1)}/5</span>
                         </div>
                         <div className="flex items-center gap-1 text-foreground-500">
+                          <IconPhoto size={12} />
+                          <span>{participant.metrics.photoScore.toFixed(1)}/3</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-foreground-500">
                           <IconBrain size={12} />
                           <span>{Math.round(participant.metrics.consistency)}%</span>
                         </div>
@@ -510,12 +518,13 @@ export function LeaderboardModal({
                 <CardBody className="p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-2">How Scoring Works</h3>
                   <div className="text-xs text-foreground-500 space-y-1">
-                    <p>• <strong>Consistency (30%)</strong>: Daily posting frequency</p>
-                    <p>• <strong>Sleep Hours (20%)</strong>: Average sleep duration</p>
+                    <p>• <strong>Consistency (25%)</strong>: Daily posting frequency</p>
+                    <p>• <strong>Sleep Hours (18%)</strong>: Average sleep duration</p>
                     <p>• <strong>Sleep Quality (15%)</strong>: Quality of sleep reported</p>
-                    <p>• <strong>Mood (15%)</strong>: Average mood ratings</p>
-                    <p>• <strong>Energy (15%)</strong>: Average energy levels</p>
-                    <p>• <strong>Engagement (5%)</strong>: Total posts bonus</p>
+                    <p>• <strong>Mood (12%)</strong>: Average mood ratings</p>
+                    <p>• <strong>Energy (12%)</strong>: Average energy levels</p>
+                    <p>• <strong>Photos (10%)</strong>: Transformation photo uploads (1-3 optimal)</p>
+                    <p>• <strong>Engagement (8%)</strong>: Total posts bonus</p>
                   </div>
                 </CardBody>
               </Card>

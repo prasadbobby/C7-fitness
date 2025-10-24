@@ -49,6 +49,16 @@ export async function GET(request: Request) {
           where: {
             challengeId: challengeId,
           },
+          select: {
+            id: true,
+            date: true,
+            sleepHours: true,
+            sleepQuality: true,
+            mood: true,
+            energy: true,
+            photos: true,
+            createdAt: true,
+          },
           orderBy: {
             date: 'desc'
           }
