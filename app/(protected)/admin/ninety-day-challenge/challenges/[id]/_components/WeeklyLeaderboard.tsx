@@ -15,6 +15,7 @@ import {
   IconBrain,
   IconBolt,
   IconMoodHappy,
+  IconPhoto,
   IconChevronLeft,
   IconChevronRight,
   IconCalendarWeek,
@@ -36,6 +37,7 @@ interface Post {
   sleepQuality: string | null;
   mood: string | null;
   energy: string | null;
+  photos: string[] | null;
   createdAt: string;
 }
 
@@ -351,7 +353,7 @@ export function WeeklyLeaderboard({
                           {participant.weeklyScore} pts
                         </Chip>
                         <span className="text-xs text-foreground-500">
-                          {participant.weeklyMetrics.totalPosts}/{participant.weeklyMetrics.totalEligibleDays} days
+                          {participant.weeklyMetrics.weekProgress}/{participant.weeklyMetrics.totalWeekDays} days
                         </span>
                       </div>
                     </div>
@@ -382,6 +384,10 @@ export function WeeklyLeaderboard({
                   <div className="flex items-center gap-1 text-foreground-500">
                     <IconBolt size={12} />
                     <span>{participant.weeklyMetrics.avgEnergy.toFixed(1)}/5</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-foreground-500">
+                    <IconPhoto size={12} />
+                    <span>{participant.weeklyMetrics.photoScore.toFixed(1)}/3</span>
                   </div>
                   <div className="flex items-center gap-1 text-foreground-500">
                     <IconBrain size={12} />

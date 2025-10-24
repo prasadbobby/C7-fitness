@@ -136,8 +136,8 @@ export function LeaderboardModal({
     const currentWeek = getCurrentWeek(challengeStartDate);
     const lastCompletedWeek = getLastCompletedWeek(challengeStartDate);
 
-    // Show last completed week if available, otherwise current week
-    const defaultWeek = lastCompletedWeek || currentWeek || weeks[0];
+    // Show current week if available, otherwise last completed week
+    const defaultWeek = currentWeek || lastCompletedWeek || weeks[0];
     setSelectedWeek(defaultWeek);
   };
 
@@ -180,6 +180,9 @@ export function LeaderboardModal({
         rank: 0, // Will be set after sorting
         metrics: {
           totalPosts: weeklyMetrics.totalPosts,
+          totalEligibleDays: weeklyMetrics.totalEligibleDays,
+          totalWeekDays: weeklyMetrics.totalWeekDays,
+          weekProgress: weeklyMetrics.weekProgress,
           avgSleepHours: weeklyMetrics.avgSleepHours,
           avgSleepQuality: weeklyMetrics.avgSleepQuality,
           avgMood: weeklyMetrics.avgMood,
@@ -756,7 +759,7 @@ export function LeaderboardModal({
                                     {participant.score} pts
                                   </Chip>
                                   <span className="text-xs text-foreground-500">
-                                    {participant.metrics.totalPosts} posts this week
+                                    {participant.metrics.weekProgress}/{participant.metrics.totalWeekDays} days
                                   </span>
                                 </div>
                               </div>
@@ -789,6 +792,10 @@ export function LeaderboardModal({
                               <span>{participant.metrics.avgEnergy.toFixed(1)}/5</span>
                             </div>
                             <div className="flex items-center gap-1 text-foreground-500">
+                              <IconPhoto size={12} />
+                              <span>{participant.metrics.photoScore.toFixed(1)}/3</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-foreground-500">
                               <IconBrain size={12} />
                               <span>{Math.round(participant.metrics.consistency)}%</span>
                             </div>
@@ -804,12 +811,13 @@ export function LeaderboardModal({
                       <h3 className="text-sm font-semibold text-foreground mb-2">Weekly Scoring</h3>
                       <div className="text-xs text-foreground-500 space-y-1">
                         <p>• <strong>Week Period</strong>: Monday 12:00 AM - Sunday 11:59 PM</p>
-                        <p>• <strong>Consistency (30%)</strong>: Daily posting frequency within the week</p>
-                        <p>• <strong>Sleep Hours (20%)</strong>: Average sleep duration for the week</p>
+                        <p>• <strong>Consistency (25%)</strong>: Daily posting frequency within the week</p>
+                        <p>• <strong>Sleep Hours (18%)</strong>: Average sleep duration for the week</p>
                         <p>• <strong>Sleep Quality (15%)</strong>: Average sleep quality ratings</p>
-                        <p>• <strong>Mood (15%)</strong>: Average mood levels for the week</p>
-                        <p>• <strong>Energy (15%)</strong>: Average energy levels for the week</p>
-                        <p>• <strong>Engagement (5%)</strong>: Total posts bonus for the week</p>
+                        <p>• <strong>Mood (12%)</strong>: Average mood levels for the week</p>
+                        <p>• <strong>Energy (12%)</strong>: Average energy levels for the week</p>
+                        <p>• <strong>Photos (10%)</strong>: Transformation photo uploads (1-3 optimal)</p>
+                        <p>• <strong>Engagement (8%)</strong>: Total posts bonus for the week</p>
                         <p>• <strong>Reset</strong>: Leaderboard resets every Monday morning</p>
                         <p>• <strong>Navigation</strong>: Use ← → arrows or week numbers to view any week's results</p>
                       </div>

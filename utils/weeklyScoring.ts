@@ -123,10 +123,25 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
 
   // Only count days after the participant joined
   const effectiveStartDate = joinedDate > week.startDate ? joinedDate : week.startDate;
-  const effectiveEndDate = week.endDate;
+
+  // For current week, use current date. For completed weeks, use week end date.
+  const now = getCurrentIST();
+  const isCurrentWeek = now >= week.startDate && now <= week.endDate;
+  const effectiveEndDate = isCurrentWeek ? now : week.endDate;
 
   // Calculate days the participant was eligible to post this week
-  const totalEligibleDays = Math.max(1, Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  const daysDiff = Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysElapsedThisWeek = Math.max(1, daysDiff);
+
+  // Calculate current week progress (for display)
+  const weekProgress = isCurrentWeek
+    ? Math.ceil((now.getTime() - week.startDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 7; // Completed weeks show 7/7
+
+  // For display purposes, always show X/7 days (full week)
+  // But for scoring, use actual eligible days based on when they joined
+  const totalEligibleDays = daysElapsedThisWeek;
+  const totalWeekDays = 7;
 
   const totalPosts = weekPosts.length;
   const consistency = totalEligibleDays > 0 ? (totalPosts / totalEligibleDays) * 100 : 0;
@@ -172,6 +187,8 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
   return {
     totalPosts,
     totalEligibleDays,
+    totalWeekDays,
+    weekProgress,
     consistency: Math.min(100, consistency),
     avgSleepHours: totalEligibleDays > 0 ? totalSleepHours / totalEligibleDays : 0,
     avgSleepQuality: totalEligibleDays > 0 ? totalSleepQuality / totalEligibleDays : 0,
