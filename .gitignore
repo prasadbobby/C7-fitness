@@ -92,3 +92,6 @@ backup-data.sh
 C7.zip
 bottom-nav/
 test-email.js
+debug-week2-calculation.js
+test-comprehensive-missed-days.js
+test-photo-scoring-missed-days.js

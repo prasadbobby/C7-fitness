@@ -28,6 +28,7 @@ export async function GET(
                 sleepQuality: true,
                 mood: true,
                 energy: true,
+                photos: true,
                 createdAt: true,
               },
               orderBy: { date: 'asc' }
