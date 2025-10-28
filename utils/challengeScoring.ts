@@ -80,10 +80,12 @@ export function getEnergyScore(energy: string): number {
 }
 
 /**
- * Calculate photo score based on number of photos uploaded
+ * Calculate photo score based on number of photos uploaded and fasting status
  * Optimal is 1-3 photos per post. 4-5+ photos still count as max 3 for points.
+ * If fasting is true, always return 3 points regardless of photo count.
  */
-export function getPhotoScore(photoCount: number): number {
+export function getPhotoScore(photoCount: number, isFasting: boolean = false): number {
+  if (isFasting) return 3; // Full points for fasting
   if (photoCount === 0) return 0;
   if (photoCount >= 1 && photoCount <= 3) return photoCount; // 1, 2, or 3 points
   return 3; // Cap at 3 points for 4+ photos
@@ -261,12 +263,14 @@ export function calculateSleepHoursWithMissedDays(
 /**
  * Calculate average photo score from posts
  * Each post gets a score based on photos: 0 photos = 0, 1-3 photos = photo count, 4+ photos = 3
+ * If fasting is true, post gets full 3 points regardless of photo count
  * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
-export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | null }>): number {
+export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | null; isFasting?: boolean | null }>): number {
   const photoScores = posts.map(p => {
     const photoCount = (p.photos && Array.isArray(p.photos)) ? p.photos.length : 0;
-    return getPhotoScore(photoCount);
+    const isFasting = p.isFasting || false;
+    return getPhotoScore(photoCount, isFasting);
   });
 
   return photoScores.length > 0
@@ -277,15 +281,17 @@ export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | nul
 /**
  * Calculate photo score accounting for missed days
  * This gives a more accurate representation by considering all eligible days
+ * If fasting is true, post gets full 3 points regardless of photo count
  */
 export function calculatePhotoScoreWithMissedDays(
-  posts: Array<{ photos: string[] | null }>,
+  posts: Array<{ photos: string[] | null; isFasting?: boolean | null }>,
   daysElapsed: number
 ): number {
   // Calculate total photo points from all posts
   const totalPhotoPoints = posts.reduce((total, post) => {
     const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
-    return total + getPhotoScore(photoCount);
+    const isFasting = post.isFasting || false;
+    return total + getPhotoScore(photoCount, isFasting);
   }, 0);
 
   // Average across all eligible days (including missed days as 0)
@@ -302,6 +308,7 @@ export function calculateParticipantMetrics(
     mood: string | null;
     energy: string | null;
     photos: string[] | null;
+    isFasting?: boolean | null;
     createdAt: string;
   }>,
   joinedAt: string

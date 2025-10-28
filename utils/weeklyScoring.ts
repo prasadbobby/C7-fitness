@@ -175,6 +175,11 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
   // Calculate photo scores accounting for missed days
   const totalPhotoPoints = weekPosts.reduce((total, post) => {
     const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
+    const isFasting = post.isFasting || false;
+
+    // If fasting, award full 3 points regardless of photo count
+    if (isFasting) return total + 3;
+
     // Same logic as overall scoring: 0 photos = 0, 1-3 photos = photo count, 4+ photos = 3
     if (photoCount === 0) return total + 0;
     if (photoCount >= 1 && photoCount <= 3) return total + photoCount;

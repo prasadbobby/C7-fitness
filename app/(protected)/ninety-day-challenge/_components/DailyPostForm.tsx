@@ -7,6 +7,7 @@ import { Textarea } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Slider } from "@nextui-org/slider";
 import { Chip } from "@nextui-org/chip";
+import { RadioGroup, Radio } from "@nextui-org/radio";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
 import { ImageModal } from "@/components/UI/ImageModal";
 import { processUploadedFiles } from "@/utils/imageUtils";
@@ -23,6 +24,7 @@ interface TodaysPost {
   energy: string;
   achievements: string;
   challenges: string;
+  isFasting: boolean;
   photos: string[];
 }
 
@@ -50,6 +52,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     energy: "",
     achievements: "",
     challenges: "",
+    isFasting: false,
     photos: [] as string[],
   });
 
@@ -74,6 +77,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
       energy: "",
       achievements: "",
       challenges: "",
+      isFasting: false,
       photos: [],
     });
   }, [challengeId]);
@@ -111,6 +115,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             energy: data.post.energy || "",
             achievements: data.post.achievements || "",
             challenges: data.post.challenges || "",
+            isFasting: data.post.isFasting || false,
             photos: data.post.photos || [],
           });
         }
@@ -159,6 +164,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
             energy: "",
             achievements: "",
             challenges: "",
+            isFasting: false,
             photos: [],
           });
           alert('Post created successfully! You can create another post.');
@@ -316,6 +322,11 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
               <div>
                 <span className="font-medium">Energy:</span> {formData.energy}
               </div>
+              {formData.isFasting && (
+                <div className="col-span-2">
+                  <span className="font-medium text-green-600">Today Fasting:</span> Yes
+                </div>
+              )}
             </div>
 
             {formData.mealTracking && (
@@ -495,6 +506,22 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
                 onChange={(e) => setFormData({ ...formData, challenges: e.target.value })}
                 rows={2}
               />
+            </div>
+
+            {/* Fasting Option */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
+              <RadioGroup
+                value={formData.isFasting ? "yes" : "no"}
+                onValueChange={(value) => setFormData({ ...formData, isFasting: value === "yes" })}
+                orientation="horizontal"
+              >
+                <Radio value="no">No</Radio>
+                <Radio value="yes">Yes</Radio>
+              </RadioGroup>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                If you're fasting today, you'll receive full photo points regardless of uploaded photos.
+              </p>
             </div>
 
             {/* Photo Upload */}

@@ -53,6 +53,7 @@ export async function PUT(
       updateData.energy = formData.get('energy') as string || null;
       updateData.achievements = formData.get('achievements') as string || null;
       updateData.challenges = formData.get('challenges') as string || null;
+      updateData.isFasting = formData.get('isFasting') === 'true';
 
       // Handle existing photos (keep these)
       const existingPhotosJson = formData.get('existingPhotos') as string;
@@ -168,6 +169,7 @@ export async function PUT(
         energy: jsonData.energy,
         achievements: jsonData.achievements,
         challenges: jsonData.challenges,
+        isFasting: jsonData.isFasting !== undefined ? jsonData.isFasting : existingPost.isFasting,
         photos: jsonData.photos || existingPost.photos, // Keep existing photos if not specified
       };
     }

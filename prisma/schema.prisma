@@ -523,6 +523,7 @@ model NinetyDayChallengePost {
   energy          EnergyLevel?             // Energy level rating
   achievements    String?                  // Daily achievements or wins
   challenges      String?                  // Daily challenges faced
+  isFasting       Boolean?                 // Whether user is fasting today (awards full photo points)
   photos          String[]                 // Array of photo URLs for transformation tracking
   isPinned        Boolean                  @default(false) // Admin can pin posts to show at top
   pinnedAt        DateTime?                // When the post was pinned

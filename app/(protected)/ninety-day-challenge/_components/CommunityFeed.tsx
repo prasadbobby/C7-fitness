@@ -9,6 +9,7 @@ import { Pagination } from "@nextui-org/pagination";
 import { Textarea } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Slider } from "@nextui-org/slider";
+import { RadioGroup, Radio } from "@nextui-org/radio";
 import DatePicker from "@/components/UI/DatePicker";
 import { Avatar } from "@nextui-org/avatar";
 import { formatDistanceToNow, format } from "date-fns";
@@ -73,6 +74,7 @@ interface Post {
   energy: string | null;
   achievements: string | null;
   challenges: string | null;
+  isFasting: boolean | null;
   photos: string[];
   createdAt: string;
   updatedAt: string;
@@ -169,6 +171,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
     energy: '',
     achievements: '',
     challenges: '',
+    isFasting: false,
     existingPhotos: [] as string[],
     newPhotos: [] as File[]
   });
@@ -228,6 +231,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       energy: '',
       achievements: '',
       challenges: '',
+      isFasting: false,
       existingPhotos: [],
       newPhotos: []
     });
@@ -260,7 +264,8 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       current.mood !== (original.mood || '') ||
       current.energy !== (original.energy || '') ||
       current.achievements !== (original.achievements || '') ||
-      current.challenges !== (original.challenges || '');
+      current.challenges !== (original.challenges || '') ||
+      current.isFasting !== (original.isFasting || false);
 
     return fieldsChanged || photosChanged;
   };
@@ -489,6 +494,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
       energy: post.energy || '',
       achievements: post.achievements || '',
       challenges: post.challenges || '',
+      isFasting: post.isFasting || false,
       existingPhotos: post.photos || [],
       newPhotos: []
     });
@@ -525,6 +531,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
           formData.append('energy', editFormData.energy);
           formData.append('achievements', editFormData.achievements);
           formData.append('challenges', editFormData.challenges);
+          formData.append('isFasting', editFormData.isFasting.toString());
         }
 
         // Add existing photos that weren't removed
@@ -559,6 +566,7 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
             energy: editFormData.energy,
             achievements: editFormData.achievements,
             challenges: editFormData.challenges,
+            isFasting: editFormData.isFasting,
           }),
         });
       }
@@ -950,6 +958,11 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                       {post.sleepQuality && (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200">
                           🛏️ {post.sleepQuality.toLowerCase().replace('_', ' ')} sleep
+                        </span>
+                      )}
+                      {post.isFasting && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+                          🔥 Fasting today
                         </span>
                       )}
                     </div>
@@ -1556,6 +1569,22 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                   onChange={(e) => setEditFormData(prev => ({ ...prev, challenges: e.target.value }))}
                   rows={2}
                 />
+              </div>
+
+              {/* Fasting Option */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
+                <RadioGroup
+                  value={editFormData.isFasting ? "yes" : "no"}
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, isFasting: value === "yes" }))}
+                  orientation="horizontal"
+                >
+                  <Radio value="no">No</Radio>
+                  <Radio value="yes">Yes</Radio>
+                </RadioGroup>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  If you're fasting today, you'll receive full photo points regardless of uploaded photos.
+                </p>
               </div>
 
               {/* Photo Management Section */}

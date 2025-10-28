@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
       var energy = formData.get('energy') as string;
       var achievements = formData.get('achievements') as string;
       var challenges = formData.get('challenges') as string;
+      var isFasting = formData.get('isFasting') === 'true';
       var requestedChallengeId = formData.get('challengeId') as string;
 
       // Handle photo files
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Handle JSON (from existing forms)
       const jsonData = await request.json();
-      var { date, sleepHours, sleepQuality, mealTracking, dayDescription, mood, energy, achievements, challenges, photos, challengeId: requestedChallengeId } = jsonData;
+      var { date, sleepHours, sleepQuality, mealTracking, dayDescription, mood, energy, achievements, challenges, isFasting, photos, challengeId: requestedChallengeId } = jsonData;
     }
 
     // Check if user is admin
@@ -314,6 +315,7 @@ export async function POST(request: NextRequest) {
         energy: energy || null,
         achievements,
         challenges,
+        isFasting: isFasting || false,
         photos: photos || [],
       },
     });
