@@ -1582,9 +1582,9 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                   <Radio value="no">No</Radio>
                   <Radio value="yes">Yes</Radio>
                 </RadioGroup>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {/* <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   If you're fasting today, you'll receive full photo points regardless of uploaded photos.
-                </p>
+                </p> */}
               </div>
 
               {/* Photo Management Section */}
