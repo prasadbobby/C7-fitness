@@ -3,15 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
-import { User } from "@nextui-org/user";
-import { Divider } from "@nextui-org/divider";
 import { Pagination } from "@nextui-org/pagination";
 import { Textarea } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Slider } from "@nextui-org/slider";
-import { RadioGroup, Radio } from "@nextui-org/radio";
 import DatePicker from "@/components/UI/DatePicker";
 import { Avatar } from "@nextui-org/avatar";
+import { FastingToggle } from "@/components/UI/FastingToggle";
 import { formatDistanceToNow, format } from "date-fns";
 import {
   IconMessage2,
@@ -659,39 +657,6 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
   };
 
 
-  const getMoodColor = (mood: string) => {
-    switch (mood) {
-      case 'EXCELLENT':
-        return 'success';
-      case 'VERY_GOOD':
-        return 'primary';
-      case 'GOOD':
-        return 'secondary';
-      case 'NEUTRAL':
-        return 'default';
-      case 'LOW':
-      case 'VERY_LOW':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
-  const getEnergyColor = (energy: string) => {
-    switch (energy) {
-      case 'VERY_HIGH':
-      case 'HIGH':
-        return 'success';
-      case 'MODERATE':
-        return 'primary';
-      case 'LOW':
-        return 'warning';
-      case 'VERY_LOW':
-        return 'danger';
-      default:
-        return 'default';
-    }
-  };
 
   const getDayNumber = (postDate: string, challengeStartDate?: string | null) => {
     // Parse dates in a timezone-consistent way by using UTC dates
@@ -1573,18 +1538,14 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
 
               {/* Fasting Option */}
               <div className="space-y-4">
-                <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
-                <RadioGroup
-                  value={editFormData.isFasting ? "yes" : "no"}
-                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, isFasting: value === "yes" }))}
-                  orientation="horizontal"
-                >
-                  <Radio value="no">No</Radio>
-                  <Radio value="yes">Yes</Radio>
-                </RadioGroup>
-                {/* <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  If you're fasting today, you'll receive full photo points regardless of uploaded photos.
-                </p> */}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
+                  <FastingToggle
+                    isSelected={editFormData.isFasting}
+                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, isFasting: value }))}
+                    size="sm"
+                  />
+                </div>
               </div>
 
               {/* Photo Management Section */}

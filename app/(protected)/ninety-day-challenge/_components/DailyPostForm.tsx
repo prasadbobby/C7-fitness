@@ -7,9 +7,9 @@ import { Textarea } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Slider } from "@nextui-org/slider";
 import { Chip } from "@nextui-org/chip";
-import { RadioGroup, Radio } from "@nextui-org/radio";
 import { IconCamera, IconCheck, IconEdit } from "@tabler/icons-react";
 import { ImageModal } from "@/components/UI/ImageModal";
+import { FastingToggle } from "@/components/UI/FastingToggle";
 import { processUploadedFiles } from "@/utils/imageUtils";
 import { processImagesForUpload } from "@/utils/imageCompression";
 import { toast } from "sonner";
@@ -510,18 +510,14 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
 
             {/* Fasting Option */}
             <div className="space-y-4">
-              <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
-              <RadioGroup
-                value={formData.isFasting ? "yes" : "no"}
-                onValueChange={(value) => setFormData({ ...formData, isFasting: value === "yes" })}
-                orientation="horizontal"
-              >
-                <Radio value="no">No</Radio>
-                <Radio value="yes">Yes</Radio>
-              </RadioGroup>
-              {/* <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                If you're fasting today, you'll receive full photo points regardless of uploaded photos.
-              </p> */}
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-zinc-800 dark:text-zinc-200">Today Fasting</h4>
+                <FastingToggle
+                  isSelected={formData.isFasting}
+                  onValueChange={(value) => setFormData({ ...formData, isFasting: value })}
+                  size="sm"
+                />
+              </div>
             </div>
 
             {/* Photo Upload */}
