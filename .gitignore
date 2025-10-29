@@ -96,3 +96,5 @@ debug-week2-calculation.js
 test-comprehensive-missed-days.js
 test-photo-scoring-missed-days.js
 test-overall-leaderboard-fix.js
+PERFORMANCE_OPTIMIZATION_GUIDE.md
+test-api-performance.js

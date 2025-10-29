@@ -15,6 +15,11 @@ export async function GET(
   }
 
   try {
+    // Check if this is a request for photos specifically
+    const url = new URL(request.url);
+    const includePhotos = url.searchParams.get('includePhotos') === 'true';
+    const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
+
     const challenge = await prisma.ninetyDayChallenge.findUnique({
       where: { id: params.id },
       include: {
@@ -28,10 +33,13 @@ export async function GET(
                 sleepQuality: true,
                 mood: true,
                 energy: true,
-                photos: true,
+                // Only include photos if explicitly requested
+                ...(includePhotos && { photos: true }),
                 createdAt: true,
               },
-              orderBy: { date: 'asc' }
+              orderBy: { date: 'desc' }, // Most recent first
+              // Apply limit if specified
+              ...(limit && { take: limit })
             }
           }
         },
