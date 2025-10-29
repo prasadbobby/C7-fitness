@@ -126,18 +126,11 @@ export async function GET(request: NextRequest) {
         })
     );
 
-    // Apply pagination to the valid users
-    const totalValidUsers = validUsers.length;
-    const paginatedUsers = validUsers.slice((page - 1) * limit, page * limit);
-
-    // This is our final users array
-    const users = paginatedUsers;
-
-    // Filter by search term if provided
-    let filteredUsers = users;
+    // Filter by search term if provided (BEFORE pagination)
+    let filteredUsers = validUsers;
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredUsers = users.filter(user =>
+      filteredUsers = validUsers.filter(user =>
         user.email.toLowerCase().includes(searchLower) ||
         user.name.toLowerCase().includes(searchLower) ||
         user.firstName?.toLowerCase().includes(searchLower) ||
@@ -147,17 +140,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Apply pagination to the filtered results
+    const totalFilteredUsers = filteredUsers.length;
+    const paginatedUsers = filteredUsers.slice((page - 1) * limit, page * limit);
+
+    // This is our final users array
+    const users = paginatedUsers;
+
     // Get pending invitations
     const pendingInvitations = await prisma.pendingInvitation.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    // Separate users by role for tabs
-    const adminUsers = filteredUsers.filter(u => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
-    const regularUsers = filteredUsers.filter(u => u.role === "USER");
+    // Separate users by role for tabs (use paginated results)
+    const adminUsers = users.filter(u => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
+    const regularUsers = users.filter(u => u.role === "USER");
 
     return NextResponse.json({
-      users: filteredUsers,
+      users: users, // Return paginated results
       adminUsers,
       regularUsers,
       pendingInvitations: pendingInvitations.map(inv => ({
@@ -165,12 +165,12 @@ export async function GET(request: NextRequest) {
         createdAt: inv.createdAt.toISOString(),
         updatedAt: inv.updatedAt.toISOString(),
       })),
-      total: totalValidUsers, // Use count of users that exist in both DB and Clerk
+      total: totalFilteredUsers, // Use count of filtered users for pagination
       pagination: {
         page,
         limit,
-        total: totalValidUsers,
-        totalPages: Math.ceil(totalValidUsers / limit),
+        total: totalFilteredUsers,
+        totalPages: Math.ceil(totalFilteredUsers / limit),
       },
     });
 

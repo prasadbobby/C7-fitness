@@ -115,7 +115,7 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
     fetchCurrentUserRole();
-  }, [page, searchTerm, selectedRole]);
+  }, [page, limit, searchTerm, selectedRole]);
 
   const fetchCurrentUserRole = async () => {
     try {
