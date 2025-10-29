@@ -18,7 +18,6 @@ export async function PUT(
     const {
       packagePrice,
       discountedPrice,
-      nextPaymentDue,
       paymentNotes
     } = body;
 
@@ -47,7 +46,6 @@ export async function PUT(
         packagePrice: packagePrice ? parseFloat(packagePrice) : null,
         discountedPrice: discountedPrice ? parseFloat(discountedPrice) : null,
         remainingAmount: remainingAmount,
-        nextPaymentDue: nextPaymentDue ? new Date(nextPaymentDue) : null,
         paymentNotes: paymentNotes?.trim() || null,
       },
       select: {

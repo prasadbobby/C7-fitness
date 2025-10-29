@@ -90,7 +90,7 @@ export async function GET(request: Request) {
             createdAt: true,
           },
           orderBy: { paymentDate: 'desc' },
-          take: 5, // Latest 5 payments per user for overview
+          take: 3, // Latest 3 payments per user for overview
         },
       },
       orderBy: { updatedAt: 'desc' },

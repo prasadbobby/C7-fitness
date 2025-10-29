@@ -141,9 +141,9 @@ export async function POST(
     const newRemainingAmount = Math.max(0, finalPrice - newTotalPaid);
 
     // Create payment log and update user info in transaction
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Create payment log
-      await tx.paymentLog.create({
+      const newPaymentLog = await tx.paymentLog.create({
         data: {
           userInfoId: id,
           amount: parseFloat(amount),
@@ -153,21 +153,56 @@ export async function POST(
           notes: notes?.trim() || null,
           recordedBy: adminUserId,
         },
+        select: {
+          id: true,
+          amount: true,
+          paymentDate: true,
+          paymentMethod: true,
+          transactionId: true,
+          notes: true,
+          recordedBy: true,
+          createdAt: true,
+        },
       });
 
-      // Update user info
-      await tx.userInfo.update({
+      // Update user info and return updated data
+      const updatedUserInfo = await tx.userInfo.update({
         where: { id },
         data: {
           totalAmountPaid: newTotalPaid,
           remainingAmount: newRemainingAmount,
         },
+        select: {
+          id: true,
+          packagePrice: true,
+          discountedPrice: true,
+          totalAmountPaid: true,
+          remainingAmount: true,
+          nextPaymentDue: true,
+          paymentNotes: true,
+        },
       });
+
+      return { updatedUserInfo, newPaymentLog };
     });
+
+    // Get admin user name from Clerk
+    let recordedByName = 'Unknown Admin';
+    try {
+      const adminUser = await clerkClient.users.getUser(adminUserId);
+      recordedByName = adminUser.firstName || adminUser.username || adminUser.emailAddresses[0]?.emailAddress || 'Unknown Admin';
+    } catch (error) {
+      console.error(`Error fetching admin user ${adminUserId}:`, error);
+    }
 
     return NextResponse.json({
       success: true,
       message: "Payment recorded successfully",
+      paymentInfo: result.updatedUserInfo,
+      newPayment: {
+        ...result.newPaymentLog,
+        recordedByName
+      }
     });
 
   } catch (error) {

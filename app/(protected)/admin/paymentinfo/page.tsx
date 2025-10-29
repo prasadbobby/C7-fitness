@@ -39,10 +39,19 @@ import {
   IconCurrency,
   IconTrendingUp,
   IconTrendingDown,
+  IconPlus,
+  IconEdit,
+  IconHistory,
+  IconCurrencyRupee,
+  IconAlertCircle,
+  IconCircleCheck,
+  IconDeviceFloppy,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import BottomSheet from "@/components/UI/BottomSheet";
 import SuperAdminAuthModal from "@/components/SuperAdminAuthModal";
+import DatePicker from "@/components/UI/DatePicker";
+import { toast } from "sonner";
 
 interface PaymentLog {
   id: string;
@@ -82,6 +91,15 @@ interface PaymentStats {
   totalRevenue: number;
   totalPending: number;
 }
+
+const paymentMethods = [
+  { key: "CASH", label: "Cash" },
+  { key: "ONLINE", label: "Online" },
+  { key: "CARD", label: "Card" },
+  { key: "UPI", label: "UPI" },
+  { key: "BANK_TRANSFER", label: "Bank Transfer" },
+  { key: "CHEQUE", label: "Cheque" },
+];
 
 const getPaymentMethodIcon = (method: string) => {
   switch (method) {
@@ -143,6 +161,32 @@ export default function PaymentInfoPage() {
   const [selectedUser, setSelectedUser] = useState<PaymentUser | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  // Payment management state
+  const [allPaymentLogs, setAllPaymentLogs] = useState<PaymentLog[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [addingPayment, setAddingPayment] = useState(false);
+
+  // Pricing form state
+  const [packagePrice, setPackagePrice] = useState("");
+  const [discountedPrice, setDiscountedPrice] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+
+  // Next payment due state (for main modal)
+  const [nextPaymentDue, setNextPaymentDue] = useState<Date | undefined>(undefined);
+  const [updatingDueDate, setUpdatingDueDate] = useState(false);
+
+  // Add payment form state
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+  const [transactionId, setTransactionId] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+
+  // Modals
+  const { isOpen: isPricingOpen, onOpen: onPricingOpen, onClose: onPricingClose } = useDisclosure();
+  const { isOpen: isAddPaymentOpen, onOpen: onAddPaymentOpen, onClose: onAddPaymentClose } = useDisclosure();
+  const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
+
   // Super Admin Authentication
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(true);
@@ -200,7 +244,227 @@ export default function PaymentInfoPage() {
 
   const openUserDetails = (user: PaymentUser) => {
     setSelectedUser(user);
+    // Populate form with existing data
+    setPackagePrice(user.packagePrice?.toString() || "");
+    setDiscountedPrice(user.discountedPrice?.toString() || "");
+    setPaymentNotes(user.paymentNotes || "");
+
+    // Set next payment due date
+    if (user.nextPaymentDue) {
+      setNextPaymentDue(new Date(user.nextPaymentDue));
+    } else {
+      setNextPaymentDue(undefined);
+    }
+    fetchUserPaymentHistory(user.id);
     onOpen();
+  };
+
+  const fetchUserPaymentHistory = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/payments`);
+      if (response.ok) {
+        const data = await response.json();
+        setAllPaymentLogs(data.paymentLogs || []);
+      }
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+    }
+  };
+
+  const handleSavePricing = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        packagePrice: parseFloat(packagePrice) || null,
+        discountedPrice: parseFloat(discountedPrice) || null,
+        paymentNotes: paymentNotes.trim() || null,
+      };
+
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/payments/pricing`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        toast.success("Payment pricing updated successfully");
+        onPricingClose();
+
+        // Update the selected user with the new data
+        if (selectedUser && updatedData.paymentInfo) {
+          const paymentInfo = updatedData.paymentInfo;
+
+          // Calculate payment status
+          let paymentStatus = 'no_pricing';
+          if (paymentInfo.discountedPrice && paymentInfo.totalAmountPaid !== null) {
+            const remaining = paymentInfo.remainingAmount || 0;
+            if (remaining <= 0) {
+              paymentStatus = 'fully_paid';
+            } else if (paymentInfo.nextPaymentDue) {
+              const dueDate = new Date(paymentInfo.nextPaymentDue);
+              const today = new Date();
+              paymentStatus = dueDate < today ? 'overdue' : 'pending';
+            } else {
+              paymentStatus = 'pending';
+            }
+          }
+
+          setSelectedUser({
+            ...selectedUser,
+            packagePrice: paymentInfo.packagePrice,
+            discountedPrice: paymentInfo.discountedPrice,
+            totalAmountPaid: paymentInfo.totalAmountPaid,
+            remainingAmount: paymentInfo.remainingAmount,
+            nextPaymentDue: paymentInfo.nextPaymentDue,
+            paymentNotes: paymentInfo.paymentNotes,
+            paymentStatus: paymentStatus as any
+          });
+        }
+
+        fetchPaymentData(); // Refresh the main data
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update payment pricing");
+      }
+    } catch (error) {
+      console.error("Error updating payment pricing:", error);
+      toast.error("Failed to update payment pricing");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddPayment = async () => {
+    if (!selectedUser || !paymentAmount || !paymentMethod) {
+      toast.error("Please fill in amount and payment method");
+      return;
+    }
+
+    try {
+      setAddingPayment(true);
+
+      const payload = {
+        amount: parseFloat(paymentAmount),
+        paymentMethod,
+        paymentDate: paymentDate.toISOString(),
+        transactionId: transactionId.trim() || null,
+        notes: paymentNote.trim() || null,
+      };
+
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        toast.success("Payment recorded successfully");
+        onAddPaymentClose();
+        resetAddPaymentForm();
+
+        // Update the selected user with the new payment data
+        if (selectedUser && updatedData.paymentInfo) {
+          const paymentInfo = updatedData.paymentInfo;
+
+          // Calculate payment status
+          let paymentStatus = 'no_pricing';
+          if (paymentInfo.discountedPrice && paymentInfo.totalAmountPaid !== null) {
+            const remaining = paymentInfo.remainingAmount || 0;
+            if (remaining <= 0) {
+              paymentStatus = 'fully_paid';
+            } else if (paymentInfo.nextPaymentDue) {
+              const dueDate = new Date(paymentInfo.nextPaymentDue);
+              const today = new Date();
+              paymentStatus = dueDate < today ? 'overdue' : 'pending';
+            } else {
+              paymentStatus = 'pending';
+            }
+          }
+
+          // Update recent payments (add new payment to the beginning)
+          let updatedRecentPayments = selectedUser.recentPayments;
+
+          if (updatedData.newPayment) {
+            // Add the new payment returned from the API to the beginning
+            updatedRecentPayments = [updatedData.newPayment, ...selectedUser.recentPayments].slice(0, 3); // Keep only latest 3
+          }
+
+          setSelectedUser({
+            ...selectedUser,
+            packagePrice: paymentInfo.packagePrice,
+            discountedPrice: paymentInfo.discountedPrice,
+            totalAmountPaid: paymentInfo.totalAmountPaid,
+            remainingAmount: paymentInfo.remainingAmount,
+            nextPaymentDue: paymentInfo.nextPaymentDue,
+            paymentNotes: paymentInfo.paymentNotes,
+            paymentStatus: paymentStatus as any,
+            recentPayments: updatedRecentPayments
+          });
+        }
+
+        fetchPaymentData(); // Refresh the main data
+        fetchUserPaymentHistory(selectedUser.id); // Refresh user payment history
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to record payment");
+      }
+    } catch (error) {
+      console.error("Error adding payment:", error);
+      toast.error("Failed to record payment");
+    } finally {
+      setAddingPayment(false);
+    }
+  };
+
+  const resetAddPaymentForm = () => {
+    setPaymentAmount("");
+    setPaymentMethod("");
+    setPaymentDate(new Date());
+    setTransactionId("");
+    setPaymentNote("");
+  };
+
+  const handleUpdateDueDate = async (newDate: Date | undefined) => {
+    if (!selectedUser) return;
+
+    try {
+      setUpdatingDueDate(true);
+
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/payments/due-date`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nextPaymentDue: newDate?.toISOString() || null,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        setNextPaymentDue(newDate);
+
+        // Update selected user
+        setSelectedUser({
+          ...selectedUser,
+          nextPaymentDue: newDate?.toISOString() || null,
+        });
+
+        fetchPaymentData(); // Refresh the main data
+        toast.success("Next payment due date updated successfully");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update due date");
+      }
+    } catch (error) {
+      console.error("Error updating due date:", error);
+      toast.error("Failed to update due date");
+    } finally {
+      setUpdatingDueDate(false);
+    }
   };
 
   const handleAuthSuccess = () => {
@@ -461,18 +725,6 @@ export default function PaymentInfoPage() {
                           <IconEye size={18} />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Manage Payment">
-                        <Button
-                          as={Link}
-                          href={`/admin/users/${user.id}/progress`}
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          color="primary"
-                        >
-                          <IconCreditCard size={18} />
-                        </Button>
-                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -501,18 +753,32 @@ export default function PaymentInfoPage() {
         title={selectedUser ? `${selectedUser.userName} - Payment Details` : "Payment Details"}
         size="2xl"
         footer={
-          <div className="flex gap-3 justify-end">
-            <Button color="primary" variant="light" onPress={onClose}>
+          <div className="flex gap-2 w-full">
+            <Button variant="ghost" onPress={onClose} className="flex-1">
               Close
             </Button>
             {selectedUser && (
-              <Button
-                as={Link}
-                href={`/admin/users/${selectedUser.id}/progress`}
-                color="primary"
-              >
-                Manage Payment
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  startContent={<IconEdit size={16} />}
+                  onPress={onPricingOpen}
+                  className="flex-1"
+                >
+                  Setup Pricing
+                </Button>
+                <Button
+                  size="sm"
+                  color="primary"
+                  startContent={<IconPlus size={16} />}
+                  onPress={onAddPaymentOpen}
+                  isDisabled={!selectedUser.discountedPrice}
+                  className="flex-1"
+                >
+                  Add Payment
+                </Button>
+              </>
             )}
           </div>
         }
@@ -530,37 +796,100 @@ export default function PaymentInfoPage() {
 
             {/* Payment Summary */}
             <Card className="bg-content2">
-              <CardBody className="p-4">
-                <h4 className="font-semibold mb-3">Payment Summary</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-foreground-500">Package Price</p>
-                    <p className="font-medium">
-                      {selectedUser.packagePrice ? formatCurrency(selectedUser.packagePrice) : 'Not set'}
+              <CardHeader className="flex flex-row items-center justify-between">
+                <h4 className="font-semibold">Payment Summary</h4>
+                <div className="flex gap-2">
+                  <Chip
+                    color={getStatusColor(selectedUser.paymentStatus)}
+                    variant="flat"
+                    size="sm"
+                  >
+                    {getStatusText(selectedUser.paymentStatus)}
+                  </Chip>
+                  {allPaymentLogs.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="secondary"
+                      startContent={<IconHistory size={16} />}
+                      onPress={onHistoryOpen}
+                    >
+                      History ({allPaymentLogs.length})
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardBody className="pt-0">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                  {/* Package Price */}
+                  <div className="p-3 bg-content1 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IconCurrencyRupee size={14} className="text-foreground-500" />
+                      <span className="text-xs text-foreground-500">Package Price</span>
+                    </div>
+                    <p className="text-lg font-bold">
+                      {selectedUser.packagePrice ? formatCurrency(selectedUser.packagePrice) : '₹0'}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-foreground-500">Final Price</p>
-                    <p className="font-medium">
-                      {selectedUser.discountedPrice ? formatCurrency(selectedUser.discountedPrice) : 'Not set'}
+
+                  {/* Final Price */}
+                  <div className="p-3 bg-content1 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IconCurrencyRupee size={14} className="text-foreground-500" />
+                      <span className="text-xs text-foreground-500">Final Price</span>
+                    </div>
+                    <p className="text-lg font-bold text-primary">
+                      {selectedUser.discountedPrice ? formatCurrency(selectedUser.discountedPrice) : '₹0'}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-foreground-500">Amount Paid</p>
-                    <p className="font-medium text-success">
+
+                  {/* Amount Paid */}
+                  <div className="p-3 bg-content1 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IconCircleCheck size={14} className="text-success" />
+                      <span className="text-xs text-foreground-500">Amount Paid</span>
+                    </div>
+                    <p className="text-lg font-bold text-success">
                       {formatCurrency(selectedUser.totalAmountPaid)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-foreground-500">Remaining</p>
-                    <p className={`font-medium ${selectedUser.remainingAmount > 0 ? 'text-warning' : 'text-success'}`}>
+
+                  {/* Remaining Amount */}
+                  <div className="p-3 bg-content1 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IconAlertCircle size={14} className="text-warning" />
+                      <span className="text-xs text-foreground-500">Remaining</span>
+                    </div>
+                    <p className={`text-lg font-bold ${selectedUser.remainingAmount > 0 ? 'text-warning' : 'text-success'}`}>
                       {formatCurrency(selectedUser.remainingAmount)}
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-4 p-3 bg-content1 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <IconClock size={16} className="text-foreground-500" />
+                      <span className="text-sm text-foreground-500">Next Payment Due Date</span>
+                    </div>
+                  </div>
+                  <DatePicker
+                    value={nextPaymentDue}
+                    onChange={(date) => {
+                      setNextPaymentDue(date);
+                      handleUpdateDueDate(date);
+                    }}
+                    placeholder="Set next payment due date"
+                    disabled={updatingDueDate}
+                  />
+                  {updatingDueDate && (
+                    <p className="text-xs text-foreground-400 mt-1">Updating...</p>
+                  )}
+                </div>
+
                 {selectedUser.paymentNotes && (
-                  <div className="mt-3">
-                    <p className="text-xs text-foreground-500">Notes</p>
+                  <div className="mt-4 p-3 bg-content1 rounded-lg">
+                    <p className="text-xs text-foreground-500 mb-1">Payment Notes</p>
                     <p className="text-sm">{selectedUser.paymentNotes}</p>
                   </div>
                 )}
@@ -619,6 +948,192 @@ export default function PaymentInfoPage() {
             </div>
           </div>
         )}
+      </BottomSheet>
+
+      {/* Payment History Modal */}
+      <BottomSheet
+        isOpen={isHistoryOpen}
+        onClose={onHistoryClose}
+        title="Payment History"
+        subtitle={selectedUser ? `All recorded payments for ${selectedUser.userName}` : "Payment History"}
+      >
+        <div className="space-y-4">
+          {allPaymentLogs.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="p-4 bg-content2 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <IconHistory size={32} className="text-foreground-400" />
+              </div>
+              <h4 className="text-lg font-medium mb-2">No Payment Records</h4>
+              <p className="text-foreground-500">No payments have been recorded yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allPaymentLogs.map((log) => (
+                <Card key={log.id} shadow="none" className="border border-divider">
+                  <CardBody className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-lg font-bold text-success">{formatCurrency(log.amount)}</p>
+                        <p className="text-sm text-foreground-500">
+                          {formatDate(log.paymentDate)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Chip size="sm" variant="flat" color="secondary">
+                          {log.paymentMethod}
+                        </Chip>
+                        <p className="text-xs text-foreground-400 mt-1">
+                          by {log.recordedByName || log.recordedBy}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {log.transactionId && (
+                        <div>
+                          <p className="text-xs text-foreground-400">Transaction ID</p>
+                          <p className="text-sm font-mono">{log.transactionId}</p>
+                        </div>
+                      )}
+
+                      {log.notes && (
+                        <div>
+                          <p className="text-xs text-foreground-400">Notes</p>
+                          <p className="text-sm">{log.notes}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-foreground-300 text-right mt-3 pt-2 border-t border-divider">
+                      Recorded: {new Date(log.createdAt).toLocaleString()}
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Setup Pricing Modal */}
+      <BottomSheet
+        isOpen={isPricingOpen}
+        onClose={onPricingClose}
+        title="Setup Payment Pricing"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button variant="ghost" onPress={onPricingClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleSavePricing}
+              isLoading={saving}
+              className="flex-1"
+            >
+              Save Pricing
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              type="number"
+              label="Package Price (₹)"
+              placeholder="45000"
+              value={packagePrice}
+              onChange={(e) => setPackagePrice(e.target.value)}
+              description="Original package price"
+            />
+            <Input
+              type="number"
+              label="Final Price (₹)"
+              placeholder="40000"
+              value={discountedPrice}
+              onChange={(e) => setDiscountedPrice(e.target.value)}
+              description="Actual price offered to user"
+            />
+          </div>
+
+          <Input
+            label="Payment Notes"
+            placeholder="Special payment arrangements or notes..."
+            value={paymentNotes}
+            onChange={(e) => setPaymentNotes(e.target.value)}
+            description="Optional notes about payment arrangements"
+          />
+        </div>
+      </BottomSheet>
+
+      {/* Add Payment Modal */}
+      <BottomSheet
+        isOpen={isAddPaymentOpen}
+        onClose={onAddPaymentClose}
+        title="Record Payment"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button variant="ghost" onPress={onAddPaymentClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleAddPayment}
+              isLoading={addingPayment}
+              className="flex-1"
+            >
+              Record Payment
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              type="number"
+              label="Payment Amount (₹)"
+              placeholder="20000"
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              isRequired
+            />
+            <Select
+              label="Payment Method"
+              placeholder="Select method"
+              selectedKeys={paymentMethod ? [paymentMethod] : []}
+              onSelectionChange={(keys) => setPaymentMethod(Array.from(keys)[0] as string)}
+              isRequired
+            >
+              {paymentMethods.map((method) => (
+                <SelectItem key={method.key} value={method.key}>
+                  {method.label}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+
+          <DatePicker
+            label="Payment Date"
+            value={paymentDate}
+            onChange={(date) => setPaymentDate(date || new Date())}
+          />
+
+          <Input
+            label="Transaction ID"
+            placeholder="Optional transaction reference"
+            value={transactionId}
+            onChange={(e) => setTransactionId(e.target.value)}
+            description="For online payments or reference numbers"
+          />
+
+          <Input
+            label="Notes"
+            placeholder="Additional notes about this payment..."
+            value={paymentNote}
+            onChange={(e) => setPaymentNote(e.target.value)}
+            description="Optional notes"
+          />
+        </div>
       </BottomSheet>
     </div>
   );
