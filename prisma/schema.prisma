@@ -643,6 +643,22 @@ enum ReactionType {
   FIRE
   CLAP
 }
+model SuperAdminAuth {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  email         String    @unique
+  passwordHash  String?
+  otpSecret     String?
+  otpExpiry     DateTime?
+  lastLogin     DateTime?
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([userId])
+}
 
 // User Training Progression Model
 model UserTrainingProgression {

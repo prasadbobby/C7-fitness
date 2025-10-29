@@ -318,6 +318,14 @@ export default async function AdminDashboard() {
                   </p>
                 </div>
               </Link>
+              <Link href="/admin/paymentinfo">
+                <div className="p-4 bg-content2 rounded-lg border-l-4 border-warning hover:bg-content3 transition-colors cursor-pointer">
+                  <h4 className="font-medium text-foreground">Payment Dashboard</h4>
+                  <p className="text-sm text-foreground-500 mt-1">
+                    Monitor all user payments, billing, and financial overview.
+                  </p>
+                </div>
+              </Link>
             </div>
           </CardBody>
         </Card>

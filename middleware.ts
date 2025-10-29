@@ -10,7 +10,8 @@ export default authMiddleware({
     "/terms"
   ],
   ignoredRoutes: [
-    "/api/auth/google-fitness/callback"
+    "/api/auth/google-fitness/callback",
+    "/api/admin/super-admin-auth"
   ],
   beforeAuth: (req) => {
     // Block direct access to sign-up unless it's via invitation

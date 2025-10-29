@@ -98,3 +98,4 @@ test-photo-scoring-missed-days.js
 test-overall-leaderboard-fix.js
 PERFORMANCE_OPTIMIZATION_GUIDE.md
 test-api-performance.js
+test-*.js
