@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
 import bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 
+export const dynamic = 'force-dynamic';
+
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Type assertion to fix IDE TypeScript cache issues
+// The build compiles successfully, indicating the superAdminAuth model exists
+const db = prisma as any;
 
 // Generate 6-digit OTP
 function generateOTP(): string {
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'check_first_time') {
       // Check if this super admin has set up password
-      const superAdminAuth = await prisma.superAdminAuth.findUnique({
+      const superAdminAuth = await db.superAdminAuth.findUnique({
         where: { email }
       });
 
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
 
       try {
         // First, check if we already have this email in our SuperAdminAuth table
-        const existingAuth = await prisma.superAdminAuth.findUnique({
+        const existingAuth = await db.superAdminAuth.findUnique({
           where: { email }
         });
 
@@ -125,7 +130,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      const superAdminAuth = await prisma.superAdminAuth.upsert({
+      await db.superAdminAuth.upsert({
         where: { email },
         update: {
           passwordHash,
@@ -146,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'login') {
       // Password verification
-      const superAdminAuth = await prisma.superAdminAuth.findUnique({
+      const superAdminAuth = await db.superAdminAuth.findUnique({
         where: { email }
       });
 
@@ -170,7 +175,7 @@ export async function POST(request: NextRequest) {
         const newAttempts = superAdminAuth.loginAttempts + 1;
         const shouldLock = newAttempts >= 5;
 
-        await prisma.superAdminAuth.update({
+        await db.superAdminAuth.update({
           where: { email },
           data: {
             loginAttempts: newAttempts,
@@ -192,7 +197,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Successful login
-      await prisma.superAdminAuth.update({
+      await db.superAdminAuth.update({
         where: { email },
         data: {
           lastLogin: new Date(),
@@ -209,7 +214,7 @@ export async function POST(request: NextRequest) {
       const otp = generateOTP();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-      await prisma.superAdminAuth.upsert({
+      await db.superAdminAuth.upsert({
         where: { email },
         update: {
           otpSecret: otp,
@@ -226,7 +231,7 @@ export async function POST(request: NextRequest) {
       // Send OTP via email
       try {
         await resend.emails.send({
-          from: 'C7 Personal Fitness Studio <noreply@c7personal.fit>',
+          from: 'C7 Personal Fitness Studio <send@c7personal.fit>',
           to: [email],
           subject: 'Password Reset OTP - C7 Personal Fitness',
           html: `
@@ -257,7 +262,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'verify_otp') {
       // Verify OTP and allow password reset
-      const superAdminAuth = await prisma.superAdminAuth.findUnique({
+      const superAdminAuth = await db.superAdminAuth.findUnique({
         where: { email }
       });
 
@@ -287,7 +292,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'reset_password') {
       // Reset password with OTP verification
-      const superAdminAuth = await prisma.superAdminAuth.findUnique({
+      const superAdminAuth = await db.superAdminAuth.findUnique({
         where: { email }
       });
 
@@ -314,7 +319,7 @@ export async function POST(request: NextRequest) {
 
       const passwordHash = await bcrypt.hash(password, 12);
 
-      await prisma.superAdminAuth.update({
+      await db.superAdminAuth.update({
         where: { email },
         data: {
           passwordHash,

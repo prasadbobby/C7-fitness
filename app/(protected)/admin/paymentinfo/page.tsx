@@ -46,6 +46,8 @@ import {
   IconAlertCircle,
   IconCircleCheck,
   IconDeviceFloppy,
+  IconKey,
+  IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import BottomSheet from "@/components/UI/BottomSheet";
@@ -186,10 +188,34 @@ export default function PaymentInfoPage() {
   const { isOpen: isPricingOpen, onOpen: onPricingOpen, onClose: onPricingClose } = useDisclosure();
   const { isOpen: isAddPaymentOpen, onOpen: onAddPaymentOpen, onClose: onAddPaymentClose } = useDisclosure();
   const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
+  const { isOpen: isPasswordOpen, onOpen: onPasswordOpen, onClose: onPasswordClose } = useDisclosure();
+  const { isOpen: isEditPaymentOpen, onOpen: onEditPaymentOpen, onClose: onEditPaymentClose } = useDisclosure();
+
+  // Password update state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  // Edit payment state
+  const [editingPayment, setEditingPayment] = useState<PaymentLog | null>(null);
+  const [editPaymentAmount, setEditPaymentAmount] = useState("");
+  const [editPaymentMethod, setEditPaymentMethod] = useState("");
+  const [editPaymentDate, setEditPaymentDate] = useState<Date>(new Date());
+  const [editTransactionId, setEditTransactionId] = useState("");
+  const [editPaymentNote, setEditPaymentNote] = useState("");
+  const [updatingPayment, setUpdatingPayment] = useState(false);
 
   // Super Admin Authentication
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(true);
+
+  // Force refresh key for modal components
+  const [modalRefreshKey, setModalRefreshKey] = useState(0);
+
+  const forceModalRefresh = () => {
+    setModalRefreshKey(prev => prev + 1);
+  };
   const { isOpen: isAuthOpen, onOpen: onAuthOpen, onClose: onAuthClose } = useDisclosure();
 
   const limit = 20;
@@ -298,22 +324,16 @@ export default function PaymentInfoPage() {
         if (selectedUser && updatedData.paymentInfo) {
           const paymentInfo = updatedData.paymentInfo;
 
-          // Calculate payment status
-          let paymentStatus = 'no_pricing';
-          if (paymentInfo.discountedPrice && paymentInfo.totalAmountPaid !== null) {
-            const remaining = paymentInfo.remainingAmount || 0;
-            if (remaining <= 0) {
-              paymentStatus = 'fully_paid';
-            } else if (paymentInfo.nextPaymentDue) {
-              const dueDate = new Date(paymentInfo.nextPaymentDue);
-              const today = new Date();
-              paymentStatus = dueDate < today ? 'overdue' : 'pending';
-            } else {
-              paymentStatus = 'pending';
-            }
-          }
+          // Calculate payment status using utility function
+          const paymentStatus = calculatePaymentStatus(
+            paymentInfo.discountedPrice,
+            paymentInfo.totalAmountPaid,
+            paymentInfo.remainingAmount,
+            paymentInfo.nextPaymentDue
+          );
 
-          setSelectedUser({
+          // Update selected user with new payment status
+          const updatedUser = {
             ...selectedUser,
             packagePrice: paymentInfo.packagePrice,
             discountedPrice: paymentInfo.discountedPrice,
@@ -322,7 +342,10 @@ export default function PaymentInfoPage() {
             nextPaymentDue: paymentInfo.nextPaymentDue,
             paymentNotes: paymentInfo.paymentNotes,
             paymentStatus: paymentStatus as any
-          });
+          };
+
+          setSelectedUser(updatedUser);
+          forceModalRefresh(); // Force modal re-render
         }
 
         fetchPaymentData(); // Refresh the main data
@@ -371,20 +394,13 @@ export default function PaymentInfoPage() {
         if (selectedUser && updatedData.paymentInfo) {
           const paymentInfo = updatedData.paymentInfo;
 
-          // Calculate payment status
-          let paymentStatus = 'no_pricing';
-          if (paymentInfo.discountedPrice && paymentInfo.totalAmountPaid !== null) {
-            const remaining = paymentInfo.remainingAmount || 0;
-            if (remaining <= 0) {
-              paymentStatus = 'fully_paid';
-            } else if (paymentInfo.nextPaymentDue) {
-              const dueDate = new Date(paymentInfo.nextPaymentDue);
-              const today = new Date();
-              paymentStatus = dueDate < today ? 'overdue' : 'pending';
-            } else {
-              paymentStatus = 'pending';
-            }
-          }
+          // Calculate payment status using utility function
+          const paymentStatus = calculatePaymentStatus(
+            paymentInfo.discountedPrice,
+            paymentInfo.totalAmountPaid,
+            paymentInfo.remainingAmount,
+            paymentInfo.nextPaymentDue
+          );
 
           // Update recent payments (add new payment to the beginning)
           let updatedRecentPayments = selectedUser.recentPayments;
@@ -394,7 +410,8 @@ export default function PaymentInfoPage() {
             updatedRecentPayments = [updatedData.newPayment, ...selectedUser.recentPayments].slice(0, 3); // Keep only latest 3
           }
 
-          setSelectedUser({
+          // Update selected user with new payment status and recent payments
+          const updatedUser = {
             ...selectedUser,
             packagePrice: paymentInfo.packagePrice,
             discountedPrice: paymentInfo.discountedPrice,
@@ -404,7 +421,10 @@ export default function PaymentInfoPage() {
             paymentNotes: paymentInfo.paymentNotes,
             paymentStatus: paymentStatus as any,
             recentPayments: updatedRecentPayments
-          });
+          };
+
+          setSelectedUser(updatedUser);
+          forceModalRefresh(); // Force modal re-render
         }
 
         fetchPaymentData(); // Refresh the main data
@@ -447,11 +467,22 @@ export default function PaymentInfoPage() {
         const updatedData = await response.json();
         setNextPaymentDue(newDate);
 
-        // Update selected user
-        setSelectedUser({
+        // Recalculate payment status with new due date using utility function
+        const paymentStatus = calculatePaymentStatus(
+          selectedUser.discountedPrice,
+          selectedUser.totalAmountPaid,
+          selectedUser.remainingAmount,
+          newDate?.toISOString() || null
+        );
+
+        // Update selected user with new due date and recalculated status
+        const updatedUser = {
           ...selectedUser,
           nextPaymentDue: newDate?.toISOString() || null,
-        });
+          paymentStatus: paymentStatus as any,
+        };
+
+        setSelectedUser(updatedUser);
 
         fetchPaymentData(); // Refresh the main data
         toast.success("Next payment due date updated successfully");
@@ -473,11 +504,174 @@ export default function PaymentInfoPage() {
     onAuthClose();
   };
 
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New password and confirm password do not match");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters long");
+      return;
+    }
+
+    try {
+      setUpdatingPassword(true);
+
+      const response = await fetch('/api/admin/super-admin-auth/update-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Password updated successfully");
+        onPasswordClose();
+        resetPasswordForm();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update password");
+      }
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast.error("Failed to update password");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const openEditPayment = (payment: PaymentLog) => {
+    setEditingPayment(payment);
+    setEditPaymentAmount(payment.amount.toString());
+    setEditPaymentMethod(payment.paymentMethod);
+    setEditPaymentDate(new Date(payment.paymentDate));
+    setEditTransactionId(payment.transactionId || "");
+    setEditPaymentNote(payment.notes || "");
+    onEditPaymentOpen();
+  };
+
+  const handleUpdatePayment = async () => {
+    if (!editingPayment || !selectedUser || !editPaymentAmount || !editPaymentMethod) {
+      toast.error("Please fill in amount and payment method");
+      return;
+    }
+
+    try {
+      setUpdatingPayment(true);
+
+      const payload = {
+        amount: parseFloat(editPaymentAmount),
+        paymentMethod: editPaymentMethod,
+        paymentDate: editPaymentDate.toISOString(),
+        transactionId: editTransactionId.trim() || null,
+        notes: editPaymentNote.trim() || null,
+      };
+
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/payments/${editingPayment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        toast.success("Payment updated successfully");
+        onEditPaymentClose();
+        resetEditPaymentForm();
+
+        // Update the selected user with the new payment data if returned
+        if (selectedUser && updatedData.paymentInfo) {
+          const paymentInfo = updatedData.paymentInfo;
+
+          // Calculate payment status using utility function
+          const paymentStatus = calculatePaymentStatus(
+            paymentInfo.discountedPrice,
+            paymentInfo.totalAmountPaid,
+            paymentInfo.remainingAmount,
+            paymentInfo.nextPaymentDue
+          );
+
+          // Update selected user with new payment status
+          const updatedUser = {
+            ...selectedUser,
+            packagePrice: paymentInfo.packagePrice,
+            discountedPrice: paymentInfo.discountedPrice,
+            totalAmountPaid: paymentInfo.totalAmountPaid,
+            remainingAmount: paymentInfo.remainingAmount,
+            nextPaymentDue: paymentInfo.nextPaymentDue,
+            paymentNotes: paymentInfo.paymentNotes,
+            paymentStatus: paymentStatus as any,
+          };
+
+          setSelectedUser(updatedUser);
+          forceModalRefresh(); // Force modal re-render
+        }
+
+        fetchPaymentData(); // Refresh the main data
+        fetchUserPaymentHistory(selectedUser.id); // Refresh user payment history
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update payment");
+      }
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      toast.error("Failed to update payment");
+    } finally {
+      setUpdatingPayment(false);
+    }
+  };
+
+  const resetEditPaymentForm = () => {
+    setEditingPayment(null);
+    setEditPaymentAmount("");
+    setEditPaymentMethod("");
+    setEditPaymentDate(new Date());
+    setEditTransactionId("");
+    setEditPaymentNote("");
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
     }).format(amount);
+  };
+
+  // Utility function to calculate payment status consistently
+  const calculatePaymentStatus = (
+    discountedPrice: number | null,
+    totalAmountPaid: number | null,
+    remainingAmount: number | null,
+    nextPaymentDue: string | null
+  ) => {
+    let paymentStatus = 'no_pricing';
+    if (discountedPrice && totalAmountPaid !== null) {
+      const remaining = remainingAmount || 0;
+      if (remaining <= 0) {
+        paymentStatus = 'fully_paid';
+      } else if (nextPaymentDue) {
+        const dueDate = new Date(nextPaymentDue);
+        const today = new Date();
+        paymentStatus = dueDate < today ? 'overdue' : 'pending';
+      } else {
+        paymentStatus = 'pending';
+      }
+    }
+    return paymentStatus;
   };
 
   const formatDate = (dateString: string | null) => {
@@ -546,11 +740,24 @@ export default function PaymentInfoPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Payment Dashboard</h1>
-        <p className="text-foreground-500 mt-2">
-          Monitor and manage all user payments and billing information.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Payment Dashboard</h1>
+          <p className="text-foreground-500 mt-2">
+            Monitor and manage all user payments and billing information.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="flat"
+            color="secondary"
+            startContent={<IconKey size={16} />}
+            onPress={onPasswordOpen}
+          >
+            Update Password
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -795,11 +1002,12 @@ export default function PaymentInfoPage() {
             </div>
 
             {/* Payment Summary */}
-            <Card className="bg-content2">
+            <Card key={`payment-summary-${modalRefreshKey}`} className="bg-content2">
               <CardHeader className="flex flex-row items-center justify-between">
                 <h4 className="font-semibold">Payment Summary</h4>
                 <div className="flex gap-2">
                   <Chip
+                    key={`payment-status-${modalRefreshKey}`}
                     color={getStatusColor(selectedUser.paymentStatus)}
                     variant="flat"
                     size="sm"
@@ -979,10 +1187,21 @@ export default function PaymentInfoPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <Chip size="sm" variant="flat" color="secondary">
-                          {log.paymentMethod}
-                        </Chip>
-                        <p className="text-xs text-foreground-400 mt-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Chip size="sm" variant="flat" color="secondary">
+                            {log.paymentMethod}
+                          </Chip>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            color="primary"
+                            onPress={() => openEditPayment(log)}
+                          >
+                            <IconEdit size={16} />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-foreground-400">
                           by {log.recordedByName || log.recordedBy}
                         </p>
                       </div>
@@ -1134,6 +1353,200 @@ export default function PaymentInfoPage() {
             description="Optional notes"
           />
         </div>
+      </BottomSheet>
+
+      {/* Update Password Modal */}
+      <BottomSheet
+        isOpen={isPasswordOpen}
+        onClose={() => {
+          onPasswordClose();
+          resetPasswordForm();
+        }}
+        title="Update Password"
+        subtitle="Change your super admin password"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="ghost"
+              onPress={() => {
+                onPasswordClose();
+                resetPasswordForm();
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleUpdatePassword}
+              isLoading={updatingPassword}
+              className="flex-1"
+            >
+              Update Password
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-content2 rounded-lg">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <IconUser size={20} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium">Super Admin Account</h3>
+              <p className="text-sm text-foreground-500">Update your admin password for enhanced security</p>
+            </div>
+          </div>
+
+          <Input
+            type="password"
+            label="Current Password"
+            placeholder="Enter your current password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            isRequired
+            description="Your existing password"
+          />
+
+          <Input
+            type="password"
+            label="New Password"
+            placeholder="Enter new password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            isRequired
+            description="Must be at least 8 characters long"
+          />
+
+          <Input
+            type="password"
+            label="Confirm New Password"
+            placeholder="Confirm new password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            isRequired
+            description="Re-enter your new password"
+          />
+
+          <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+            <div className="flex items-start gap-2">
+              <IconAlertCircle size={16} className="text-warning mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-warning">Security Notice</p>
+                <p className="text-foreground-600 mt-1">
+                  Make sure to use a strong password. You will need to re-authenticate after updating your password.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* Edit Payment Modal */}
+      <BottomSheet
+        isOpen={isEditPaymentOpen}
+        onClose={() => {
+          onEditPaymentClose();
+          resetEditPaymentForm();
+        }}
+        title="Edit Payment"
+        subtitle={editingPayment ? `Editing payment of ${formatCurrency(editingPayment.amount)}` : "Edit payment details"}
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="ghost"
+              onPress={() => {
+                onEditPaymentClose();
+                resetEditPaymentForm();
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleUpdatePayment}
+              isLoading={updatingPayment}
+              className="flex-1"
+            >
+              Update Payment
+            </Button>
+          </div>
+        }
+      >
+        {editingPayment && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-content2 rounded-lg">
+              <div className="p-2 bg-warning/10 rounded-lg">
+                <IconEdit size={20} className="text-warning" />
+              </div>
+              <div>
+                <h3 className="font-medium">Edit Payment Record</h3>
+                <p className="text-sm text-foreground-500">
+                  Originally recorded on {formatDate(editingPayment.createdAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                type="number"
+                label="Payment Amount (₹)"
+                placeholder="20000"
+                value={editPaymentAmount}
+                onChange={(e) => setEditPaymentAmount(e.target.value)}
+                isRequired
+              />
+              <Select
+                label="Payment Method"
+                placeholder="Select method"
+                selectedKeys={editPaymentMethod ? [editPaymentMethod] : []}
+                onSelectionChange={(keys) => setEditPaymentMethod(Array.from(keys)[0] as string)}
+                isRequired
+              >
+                {paymentMethods.map((method) => (
+                  <SelectItem key={method.key} value={method.key}>
+                    {method.label}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+
+            <DatePicker
+              label="Payment Date"
+              value={editPaymentDate}
+              onChange={(date) => setEditPaymentDate(date || new Date())}
+            />
+
+            <Input
+              label="Transaction ID"
+              placeholder="Optional transaction reference"
+              value={editTransactionId}
+              onChange={(e) => setEditTransactionId(e.target.value)}
+              description="For online payments or reference numbers"
+            />
+
+            <Input
+              label="Notes"
+              placeholder="Additional notes about this payment..."
+              value={editPaymentNote}
+              onChange={(e) => setEditPaymentNote(e.target.value)}
+              description="Optional notes"
+            />
+
+            <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+              <div className="flex items-start gap-2">
+                <IconAlertCircle size={16} className="text-warning mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-warning">Important Notice</p>
+                  <p className="text-foreground-600 mt-1">
+                    Editing this payment will recalculate the user's total amount paid and remaining balance. Make sure the changes are accurate.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </BottomSheet>
     </div>
   );
