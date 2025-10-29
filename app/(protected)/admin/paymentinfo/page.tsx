@@ -860,6 +860,7 @@ export default function PaymentInfoPage() {
               }}
             >
             <TableHeader>
+              <TableColumn className="min-w-[60px]">S.NO</TableColumn>
               <TableColumn className="min-w-[200px]">USER</TableColumn>
               <TableColumn className="min-w-[120px]">PRICING</TableColumn>
               <TableColumn className="min-w-[100px]">PAID</TableColumn>
@@ -872,8 +873,15 @@ export default function PaymentInfoPage() {
               isLoading={loading}
               loadingContent={<div>Loading payment data...</div>}
             >
-              {users.map((user) => (
+              {users.map((user, index) => (
                 <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm font-medium text-foreground-600">
+                        #{(page - 1) * limit + index + 1}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar src={user.userImageUrl} name={user.userName} size="sm" />

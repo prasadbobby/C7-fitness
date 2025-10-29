@@ -64,9 +64,17 @@ export async function GET(request: Request) {
       }
     }
 
+    // Filter out admins and super admins from the payment table
+    const baseWhereClause = {
+      ...whereClause,
+      role: {
+        notIn: ['ADMIN', 'SUPER_ADMIN']
+      }
+    };
+
     // Get all users with payment info and payment logs (no search filter yet)
     const allUsers = await prisma.userInfo.findMany({
-      where: whereClause,
+      where: baseWhereClause,
       select: {
         id: true,
         userId: true,
@@ -209,8 +217,13 @@ export async function GET(request: Request) {
     const totalFilteredUsers = filteredUsers.length;
     const paginatedUsers = filteredUsers.slice((page - 1) * limit, page * limit);
 
-    // Calculate summary statistics
+    // Calculate summary statistics (excluding admins and super admins)
     const allUsersForStats = await prisma.userInfo.findMany({
+      where: {
+        role: {
+          notIn: ['ADMIN', 'SUPER_ADMIN']
+        }
+      },
       select: {
         discountedPrice: true,
         totalAmountPaid: true,
