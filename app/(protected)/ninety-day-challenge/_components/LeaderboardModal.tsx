@@ -29,7 +29,9 @@ interface Post {
   sleepQuality: string | null;
   mood: string | null;
   energy: string | null;
-  photos: string[] | null;
+  photos?: string[] | null; // Optional for backward compatibility
+  photoCount?: number; // Optimized format - just the count
+  isFasting?: boolean | null; // Required for photo scoring
   createdAt: string;
 }
 
@@ -109,7 +111,7 @@ export function LeaderboardModal({
   const fetchLeaderboard = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/ninety-day-challenge/leaderboard?challengeId=${challengeId}`);
+      const response = await fetch(`/api/ninety-day-challenge/leaderboard-optimized?challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         const processedLeaderboard = await processParticipants(data.participants);
@@ -146,7 +148,7 @@ export function LeaderboardModal({
 
     setWeeklyLoading(true);
     try {
-      const response = await fetch(`/api/ninety-day-challenge/leaderboard?challengeId=${challengeId}`);
+      const response = await fetch(`/api/ninety-day-challenge/leaderboard-optimized?challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         const weeklyProcessed = await processWeeklyParticipants(data.participants);

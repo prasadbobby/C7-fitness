@@ -173,17 +173,16 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
   }, 0);
 
   // Calculate photo scores accounting for missed days
-  console.log('📅 [WEEKLY DEBUG] Calculating photo score for week with', weekPosts.length, 'posts and', totalEligibleDays, 'eligible days');
+  const totalPhotoPoints = weekPosts.reduce((total, post) => {
+    // Support both old format (photos array) and new format (photoCount)
+    const photoCount = (post as any).photoCount !== undefined
+      ? (post as any).photoCount
+      : ((post.photos && Array.isArray(post.photos)) ? post.photos.length : 0);
 
-  const totalPhotoPoints = weekPosts.reduce((total, post, index) => {
-    const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
     const isFasting = post.isFasting || false;
-
-    console.log(`📸 [WEEKLY DEBUG] Post ${index + 1}: photos=${photoCount}, isFasting=${post.isFasting} (resolved to ${isFasting})`);
 
     // If fasting, award full 3 points regardless of photo count
     if (isFasting) {
-      console.log(`🔥 [WEEKLY DEBUG] Post ${index + 1}: Fasting day - awarding 3 points`);
       return total + 3;
     }
 
@@ -197,15 +196,11 @@ export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participant
       points = 3; // Cap at 3 points for 4+ photos
     }
 
-    console.log(`📸 [WEEKLY DEBUG] Post ${index + 1}: Awarded ${points} points for ${photoCount} photos`);
     return total + points;
   }, 0);
 
-  console.log('💯 [WEEKLY DEBUG] Total photo points:', totalPhotoPoints, 'across', totalEligibleDays, 'eligible days');
-
   // Average photo score across all eligible days (including missed days as 0)
   const photoScore = totalEligibleDays > 0 ? totalPhotoPoints / totalEligibleDays : 0;
-  console.log('📊 [WEEKLY DEBUG] Final weekly photo score:', photoScore);
 
   return {
     totalPosts,

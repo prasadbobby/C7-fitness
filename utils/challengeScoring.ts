@@ -267,14 +267,10 @@ export function calculateSleepHoursWithMissedDays(
  * IMPORTANT: This only averages existing posts - missed days are handled by consistency scoring
  */
 export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | null; isFasting?: boolean | null }>): number {
-  console.log('🔍 [DEBUG] calculateAveragePhotoScore called with:', posts.length, 'posts');
-
-  const photoScores = posts.map((p, index) => {
+  const photoScores = posts.map((p) => {
     const photoCount = (p.photos && Array.isArray(p.photos)) ? p.photos.length : 0;
     const isFasting = p.isFasting || false;
     const score = getPhotoScore(photoCount, isFasting);
-
-    console.log(`📸 [DEBUG] Post ${index + 1}: photos=${photoCount}, isFasting=${p.isFasting} (resolved to ${isFasting}), score=${score}`);
     return score;
   });
 
@@ -282,7 +278,6 @@ export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | nul
     ? photoScores.reduce((sum, score) => sum + score, 0) / photoScores.length
     : 0;
 
-  console.log('📊 [DEBUG] Average photo score calculated:', average, 'from scores:', photoScores);
   return average;
 }
 
@@ -292,27 +287,23 @@ export function calculateAveragePhotoScore(posts: Array<{ photos: string[] | nul
  * If fasting is true, post gets full 3 points regardless of photo count
  */
 export function calculatePhotoScoreWithMissedDays(
-  posts: Array<{ photos: string[] | null; isFasting?: boolean | null }>,
+  posts: Array<{ photos?: string[] | null; photoCount?: number; isFasting?: boolean | null }>,
   daysElapsed: number
 ): number {
-  console.log('🎯 [DEBUG] calculatePhotoScoreWithMissedDays called with:', posts.length, 'posts,', daysElapsed, 'days elapsed');
-
   // Calculate total photo points from all posts
-  const totalPhotoPoints = posts.reduce((total, post, index) => {
-    const photoCount = (post.photos && Array.isArray(post.photos)) ? post.photos.length : 0;
+  const totalPhotoPoints = posts.reduce((total, post) => {
+    // Support both old format (photos array) and new format (photoCount)
+    const photoCount = post.photoCount !== undefined
+      ? post.photoCount
+      : ((post.photos && Array.isArray(post.photos)) ? post.photos.length : 0);
+
     const isFasting = post.isFasting || false;
     const score = getPhotoScore(photoCount, isFasting);
-
-    console.log(`📸 [DEBUG] Post ${index + 1}: photos=${photoCount}, isFasting=${post.isFasting} (resolved to ${isFasting}), score=${score}`);
     return total + score;
   }, 0);
 
-  console.log('💯 [DEBUG] Total photo points:', totalPhotoPoints, 'across', daysElapsed, 'days');
-
   // Average across all eligible days (including missed days as 0)
   const finalScore = daysElapsed > 0 ? totalPhotoPoints / daysElapsed : 0;
-  console.log('📊 [DEBUG] Final photo score with missed days:', finalScore);
-
   return finalScore;
 }
 
@@ -333,23 +324,12 @@ export function calculateParticipantMetrics(
 ): ChallengeMetrics {
   const totalPosts = posts.length;
 
-  console.log('🚀 [OVERALL DEBUG] calculateParticipantMetrics called with', totalPosts, 'posts');
-  console.log('🚀 [OVERALL DEBUG] Sample post data:', posts.map((p, i) => ({
-    index: i + 1,
-    photos: p.photos,
-    photosLength: p.photos?.length || 0,
-    isFasting: p.isFasting,
-    createdAt: p.createdAt
-  })));
-
   // Use UTC dates for consistency
   const now = new Date();
   const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const joinedAtUTC = new Date(new Date(joinedAt).getUTCFullYear(), new Date(joinedAt).getUTCMonth(), new Date(joinedAt).getUTCDate());
 
   const daysElapsed = Math.max(1, Math.ceil((nowUTC.getTime() - joinedAtUTC.getTime()) / (1000 * 60 * 60 * 24)));
-
-  console.log('🚀 [OVERALL DEBUG] Days elapsed:', daysElapsed, 'from joinedAt:', joinedAt);
 
   const photoScore = calculatePhotoScoreWithMissedDays(posts, daysElapsed);
 
@@ -363,6 +343,5 @@ export function calculateParticipantMetrics(
     consistency: calculateConsistency(totalPosts, daysElapsed)
   };
 
-  console.log('✅ [OVERALL DEBUG] Final metrics - photoScore:', metrics.photoScore);
   return metrics;
 }
