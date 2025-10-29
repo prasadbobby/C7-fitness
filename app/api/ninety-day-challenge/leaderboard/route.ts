@@ -56,6 +56,7 @@ export async function GET(request: Request) {
             sleepQuality: true,
             mood: true,
             energy: true,
+            isFasting: true, // Required for photo scoring calculation
             photos: true,
             createdAt: true,
           },

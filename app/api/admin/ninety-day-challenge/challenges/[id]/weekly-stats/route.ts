@@ -44,6 +44,16 @@ export async function GET(
           where: { isEnabled: true },
           include: {
             posts: {
+              select: {
+                date: true,
+                sleepHours: true,
+                sleepQuality: true,
+                mood: true,
+                energy: true,
+                photos: true,
+                isFasting: true, // Required for photo scoring calculation
+                createdAt: true,
+              },
               orderBy: { date: 'asc' }
             }
           }

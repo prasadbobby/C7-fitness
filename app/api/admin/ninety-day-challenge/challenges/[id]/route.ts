@@ -33,6 +33,7 @@ export async function GET(
                 sleepQuality: true,
                 mood: true,
                 energy: true,
+                isFasting: true, // Required for photo scoring calculation
                 // Only include photos if explicitly requested
                 ...(includePhotos && { photos: true }),
                 createdAt: true,

@@ -54,8 +54,8 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
     try {
       setLoading(true);
       console.log('Fetching challenge data for ID:', params.id);
-      // Fetch without photos for better performance, limit to recent 50 posts per participant
-      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?limit=50&t=${Date.now()}`, {
+      // Fetch with photos for leaderboard calculations, limit to recent 50 posts per participant
+      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?includePhotos=true&limit=50&t=${Date.now()}`, {
         cache: 'no-store'
       });
       if (response.ok) {

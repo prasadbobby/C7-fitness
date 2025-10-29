@@ -27,6 +27,7 @@ interface Post {
   mood: string | null;
   energy: string | null;
   photos: string[] | null;
+  isFasting: boolean | null; // Required for photo scoring calculation
   createdAt: string;
 }
 

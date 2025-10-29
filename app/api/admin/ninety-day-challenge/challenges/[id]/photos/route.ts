@@ -35,6 +35,7 @@ export async function GET(
           id: true,
           date: true,
           photos: true,
+          isFasting: true, // Required for photo scoring calculation
           createdAt: true
         },
         orderBy: { date: 'desc' },
@@ -57,6 +58,7 @@ export async function GET(
                 id: true,
                 date: true,
                 photos: true,
+                isFasting: true, // Required for photo scoring calculation
                 createdAt: true,
               },
               where: {
