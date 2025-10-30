@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useRouter } from "next/navigation";
-import { ChallengeDetails } from "./_components/ChallengeDetails";
-import { ParticipantLeaderboard } from "./_components/ParticipantLeaderboard";
-import { WeeklyLeaderboard } from "./_components/WeeklyLeaderboard";
-import { ChallengeAnalytics } from "./_components/ChallengeAnalytics";
-import { AddParticipantModal } from "./_components/AddParticipantModal";
+
+// Lazy load heavy components for better initial load performance
+const ChallengeDetails = lazy(() => import("./_components/ChallengeDetails").then(module => ({ default: module.ChallengeDetails })));
+const ParticipantLeaderboard = lazy(() => import("./_components/ParticipantLeaderboard").then(module => ({ default: module.ParticipantLeaderboard })));
+const WeeklyLeaderboard = lazy(() => import("./_components/WeeklyLeaderboard").then(module => ({ default: module.WeeklyLeaderboard })));
+const ChallengeAnalytics = lazy(() => import("./_components/ChallengeAnalytics").then(module => ({ default: module.ChallengeAnalytics })));
+const AddParticipantModal = lazy(() => import("./_components/AddParticipantModal").then(module => ({ default: module.AddParticipantModal })));
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
@@ -54,9 +56,9 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
     try {
       setLoading(true);
       console.log('Fetching challenge data for ID:', params.id);
-      // Fetch with photos for leaderboard calculations, limit to recent 50 posts per participant
-      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?includePhotos=true&limit=50&t=${Date.now()}`, {
-        cache: 'no-store'
+      // Fetch with photos for leaderboard calculations, limit to recent 30 posts per participant for better performance
+      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?includePhotos=false&limit=30`, {
+        next: { revalidate: 300 } // Cache for 5 minutes
       });
       if (response.ok) {
         const data = await response.json();
@@ -309,16 +311,18 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
 
                 {/* Tab Content */}
                 <div className="p-6">
-                  {activeLeaderboardTab === "overall" && (
-                    <ParticipantLeaderboard participants={challenge.participants} />
-                  )}
-                  {activeLeaderboardTab === "weekly" && (
-                    <WeeklyLeaderboard
-                      participants={challenge.participants}
-                      challengeStartDate={challenge.startDate}
-                      challengeEndDate={challenge.endDate}
-                    />
-                  )}
+                  <Suspense fallback={<div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+                    {activeLeaderboardTab === "overall" && (
+                      <ParticipantLeaderboard participants={challenge.participants} />
+                    )}
+                    {activeLeaderboardTab === "weekly" && (
+                      <WeeklyLeaderboard
+                        participants={challenge.participants}
+                        challengeStartDate={challenge.startDate}
+                        challengeEndDate={challenge.endDate}
+                      />
+                    )}
+                  </Suspense>
                 </div>
               </div>
             </CardBody>
@@ -342,7 +346,9 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
               </div>
             </CardHeader>
             <CardBody className="pt-0">
-              <ChallengeAnalytics challenge={challenge} />
+              <Suspense fallback={<div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+                <ChallengeAnalytics challenge={challenge} />
+              </Suspense>
             </CardBody>
           </Card>
         </div>
@@ -364,18 +370,22 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
           </div>
         </CardHeader>
         <CardBody className="pt-0">
-          <ChallengeDetails challenge={challenge} />
+          <Suspense fallback={<div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+            <ChallengeDetails challenge={challenge} />
+          </Suspense>
         </CardBody>
       </Card>
 
 
       {/* Add Participant Modal */}
-      <AddParticipantModal
-        isOpen={isAddParticipantModalOpen}
-        onClose={() => setIsAddParticipantModalOpen(false)}
-        challengeId={challenge.id}
-        onParticipantAdded={handleParticipantAdded}
-      />
+      <Suspense fallback={null}>
+        <AddParticipantModal
+          isOpen={isAddParticipantModalOpen}
+          onClose={() => setIsAddParticipantModalOpen(false)}
+          challengeId={challenge.id}
+          onParticipantAdded={handleParticipantAdded}
+        />
+      </Suspense>
     </div>
   );
 }

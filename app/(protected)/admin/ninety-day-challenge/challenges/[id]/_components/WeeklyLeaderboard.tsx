@@ -37,7 +37,8 @@ interface Post {
   sleepQuality: string | null;
   mood: string | null;
   energy: string | null;
-  photos: string[] | null;
+  photos?: string[] | null; // Optional for backward compatibility
+  photoCount?: number; // New optimized field for scoring
   isFasting: boolean | null; // Required for photo scoring calculation
   createdAt: string;
 }
