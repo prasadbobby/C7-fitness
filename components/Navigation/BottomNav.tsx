@@ -9,12 +9,12 @@ import {
   IconBook,
   IconHelp,
 } from "@tabler/icons-react";
-import { GaugeIcon, type GaugeIconHandle } from "@/components/ui/gauge-icon";
-import { ActivityIcon, type ActivityIconHandle } from "@/components/ui/activity-icon";
-import { WorkoutIcon, type WorkoutIconHandle } from "@/components/ui/workout-icon";
-import { ChallengeIcon, type ChallengeIconHandle } from "@/components/ui/challenge-icon";
-import { UserIcon, type UserIconHandle } from "@/components/ui/user-icon";
-import { BoxesIcon, type BoxesIconHandle } from "@/components/ui/boxes-icon";
+import { GaugeIcon, type GaugeIconHandle } from "@/components/UI/gauge-icon";
+import { ActivityIcon, type ActivityIconHandle } from "@/components/UI/activity-icon";
+import { WorkoutIcon, type WorkoutIconHandle } from "@/components/UI/workout-icon";
+import { ChallengeIcon, type ChallengeIconHandle } from "@/components/UI/challenge-icon";
+import { UserIcon, type UserIconHandle } from "@/components/UI/user-icon";
+import { BoxesIcon, type BoxesIconHandle } from "@/components/UI/boxes-icon";
 
 interface BottomNavItemProps {
   icon: JSX.Element;
