@@ -854,10 +854,6 @@ export default function PaymentInfoPage() {
             <Table
               aria-label="Payment information table"
               isStriped
-              classNames={{
-                table: "min-h-[400px]",
-                wrapper: "min-h-[400px]",
-              }}
             >
             <TableHeader>
               <TableColumn className="min-w-[60px]">S.NO</TableColumn>
