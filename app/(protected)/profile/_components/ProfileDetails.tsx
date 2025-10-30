@@ -3,28 +3,24 @@ import { useState } from "react";
 import { Card, CardBody, CardFooter, CardHeader } from "@nextui-org/card";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
-import { IconDeviceFloppy, IconSettings, IconUser, IconCalendar } from "@tabler/icons-react";
+import { IconDeviceFloppy, IconSettings, IconUser } from "@tabler/icons-react";
 import { handleUpdateUserDetails } from "@/server-actions/UserServerActions";
 import { toast } from "sonner";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import EnhancedDatePicker from "@/components/UI/EnhancedDatePicker";
 
 export default function ProfileDetails({
   username,
   firstName,
   lastName,
-  dateOfBirth,
 }: {
   username: string | undefined;
   firstName: string | undefined;
   lastName: string | undefined;
-  dateOfBirth?: Date | null;
 }) {
   const [inputName, setInputName] = useState(username || "");
   const [inputFirstName, setInputFirstName] = useState(firstName || "");
   const [inputLastName, setInputLastName] = useState(lastName || "");
-  const [inputDateOfBirth, setInputDateOfBirth] = useState<Date | null>(dateOfBirth || null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -33,7 +29,6 @@ export default function ProfileDetails({
       username: inputName,
       firstName: inputFirstName,
       lastName: inputLastName,
-      dateOfBirth: inputDateOfBirth,
     };
 
     const response = await handleUpdateUserDetails(data);
@@ -80,15 +75,6 @@ export default function ProfileDetails({
                 placeholder="Enter your last name"
                 value={inputLastName}
                 onChange={(e) => setInputLastName(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <EnhancedDatePicker
-                label="Date of Birth"
-                value={inputDateOfBirth || undefined}
-                onChange={(date: Date | undefined) => setInputDateOfBirth(date || null)}
-                placeholder="Select your date of birth"
               />
             </div>
           </CardBody>

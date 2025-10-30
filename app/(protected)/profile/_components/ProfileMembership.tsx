@@ -243,15 +243,15 @@ export default function ProfileMembership() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-content2 rounded-lg">
-              <IconCalendarDue size={20} className="text-warning" />
-            </div>
-            <div>
+          <div className="flex items-center gap-3 justify-end">
+            <div className="text-right">
               <p className="text-xs text-zinc-500">End Date</p>
               <p className="text-sm font-medium">
                 {new Date(membershipInfo.endDate!).toLocaleDateString()}
               </p>
+            </div>
+            <div className="p-2 bg-content2 rounded-lg">
+              <IconCalendarDue size={20} className="text-warning" />
             </div>
           </div>
         </div>

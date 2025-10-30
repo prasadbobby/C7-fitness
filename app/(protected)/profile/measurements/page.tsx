@@ -73,7 +73,7 @@ export default async function MeasurementsPage() {
         <EnhancedProfileMeasurements userMeasurements={userMeasurements} />
 
         {/* Mobile-Friendly Tips Section */}
-        <Card className="mt-6">
+        {/* <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -113,7 +113,7 @@ export default async function MeasurementsPage() {
               </div>
             </div>
           </CardBody>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
