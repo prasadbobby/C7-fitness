@@ -2,6 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Pull-to-refresh CSS */
+html, body {
+  /* Prevent default overscroll behavior for pull-to-refresh */
+  overscroll-behavior-y: contain;
+  /* Ensure smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Allow normal scrolling */
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar styles for better UX */
+::-webkit-scrollbar {
+  width: 2px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Modern Pull-to-Refresh Animations */
+.animation-delay-75 {
+  animation-delay: 75ms;
+}
+
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+/* Enhanced fitness-themed animations */
+@keyframes fitness-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes energy-wave {
+  0% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.4) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.fitness-pulse {
+  animation: fitness-pulse 1.5s ease-in-out infinite;
+}
+
+.energy-wave {
+  animation: energy-wave 2s ease-out infinite;
+}
+
 html.dark {
   /* background-color: rgb(17, 17, 19); */
   background-color: #18181b;
