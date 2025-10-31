@@ -1,7 +1,7 @@
 import Sidebar from "@/components/Sidebar/Sidebar";
 import Navbar from "@/components/Navbar/Navbar";
 import MobileHeader from "@/components/Navigation/MobileHeader";
-import BottomNav from "@/components/Navigation/BottomNav";
+import AnimatedBottomNav from "@/components/Navigation/AnimatedBottomNav";
 import ActiveWorkoutWarning from "@/components/Notices/ActiveWorkoutWarning";
 import LayoutWrapper from "./LayoutWrapper.client";
 import SiteNotice from "./SiteNotice";
@@ -41,8 +41,8 @@ export default function RootLayout({
             </LayoutWrapper>
           </ResponsiveLayoutWrapper>
         </main>
-        {/* Bottom Navigation - Shows only on mobile */}
-        <BottomNav />
+        {/* Animated Bottom Navigation - Shows only on mobile */}
+        <AnimatedBottomNav />
       </div>
     </>
   );
