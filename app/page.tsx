@@ -15,7 +15,51 @@ import Image from "next/image";
 import { Button } from "@nextui-org/button";
 import { Card, CardBody, CardHeader } from "@nextui-org/card";
 import Footer from "@/components/Footer/Footer";
+import { Metadata } from 'next';
+import StructuredData from "@/components/SEO/StructuredData";
 //import PricingCard from "@/components/LandingPage/PricingCard";
+
+export const metadata: Metadata = {
+  title: 'C7 Personal Fitness Studio - Transform Your Fitness Journey',
+  description: 'C7 Personal Fitness Studio: The ultimate fitness tracking app for serious athletes. Track workouts, log exercises, join 90-day challenges, and achieve your fitness goals with comprehensive analytics and progress tracking.',
+
+  keywords: [
+    'C7 Personal Fitness Studio',
+    'fitness app',
+    'workout tracker',
+    'exercise tracking',
+    'gym app',
+    'personal training',
+    'fitness challenges',
+    '90 day challenge',
+    'fitness community',
+    'workout analytics',
+    'fitness progress',
+    'strength training',
+    'bodybuilding',
+    'fitness goals',
+    'workout planner',
+    'fitness studio app'
+  ],
+
+  openGraph: {
+    title: 'C7 Personal Fitness Studio - Your Fitness Journey Starts Here',
+    description: 'Transform your fitness with C7 Personal Fitness Studio. Track every rep, achieve every goal. Join thousands of athletes already using our comprehensive fitness tracking app.',
+    type: 'website',
+    images: ['/og-image.jpg'],
+    url: 'https://c7personal.fit'
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'C7 Personal Fitness Studio - Track Every Rep, Achieve Every Goal',
+    description: 'The ultimate fitness tracking app for serious athletes. Join challenges, track progress, and transform your fitness journey.',
+  },
+
+  alternates: {
+    canonical: 'https://c7personal.fit'
+  }
+};
 
 export default function Home() {
   const cardData = [
@@ -43,6 +87,7 @@ export default function Home() {
 
   return (
     <>
+    <StructuredData />
     <main className="min-h-dvh bg-gradient-to-b from-white to-zinc-200 dark:from-zinc-900 dark:to-zinc-950">
       <nav className="px-3 md:px-10 py-3 mb-5 flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -70,8 +115,9 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg text-zinc-500 mb-5">
-              Your ultimate fitness companion. Stay on track, stay active with
-              C7.
+              C7 Personal Fitness Studio - Your ultimate fitness companion. Track workouts,
+              join fitness challenges, and achieve your goals with our comprehensive fitness app.
+              Stay on track, stay active with C7.
             </p>
             <div className="flex gap-3">
               <Button
