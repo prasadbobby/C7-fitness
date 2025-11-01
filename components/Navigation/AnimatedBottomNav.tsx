@@ -60,7 +60,7 @@ function AnimatedNavItem({ icon, label, href, active, color, iconRef, onItemClic
     >
       <div className={`
         flex items-center justify-center transition-all duration-300
-        text-foreground-500
+        ${active ? 'text-primary' : 'text-foreground-500'}
       `}>
         <div className="text-lg">
           {icon}
