@@ -20,8 +20,6 @@ import {
   Pagination,
   useDisclosure,
   Tooltip,
-  Tabs,
-  Tab,
   Textarea,
   Dropdown,
   DropdownTrigger,
@@ -1650,21 +1648,40 @@ export default function PaymentInfoPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs
-        aria-label="Payment Dashboard Tabs"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(key as string)}
-        className="w-full"
-        color="primary"
-        variant="underlined"
-        size="lg"
-      >
-        <Tab key="user-payments" title={
-          <div className="flex items-center space-x-2">
-            <IconCreditCard size={18} />
-            <span>User Payments</span>
-          </div>
-        }>
+      <Card>
+        <CardBody className="p-0">
+          <div className="w-full">
+            {/* Tab Headers */}
+            <div className="flex border-b border-divider px-6 bg-content1">
+              <button
+                onClick={() => setActiveTab("user-payments")}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  activeTab === "user-payments"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconCreditCard size={18} />
+                <span className="font-medium">User Payments</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("monthly-expenses")}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                  activeTab === "monthly-expenses"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-foreground-500 hover:text-foreground"
+                }`}
+              >
+                <IconCalculator size={18} />
+                <span className="font-medium">Monthly Expenses</span>
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-96">
+              {activeTab === "user-payments" && (
+                <div className="p-6">
           {/* User Payments Content */}
           <div className="space-y-6 mt-6">
             {/* Stats Cards */}
@@ -1956,14 +1973,11 @@ export default function PaymentInfoPage() {
         </CardBody>
       </Card>
           </div>
-        </Tab>
+                </div>
+              )}
 
-        <Tab key="monthly-expenses" title={
-          <div className="flex items-center space-x-2">
-            <IconCalculator size={18} />
-            <span>Monthly Expenses</span>
-          </div>
-        }>
+              {activeTab === "monthly-expenses" && (
+                <div className="p-6">
           {/* Monthly Expenses Content */}
           <div className="space-y-6 mt-6">
             {/* Header */}
@@ -3115,8 +3129,12 @@ export default function PaymentInfoPage() {
               </div>
             )}
           </div>
-        </Tab>
-      </Tabs>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {/* User Details BottomSheet */}
       <BottomSheet
