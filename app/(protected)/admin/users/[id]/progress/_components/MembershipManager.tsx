@@ -12,6 +12,7 @@ import {
   Textarea,
   Chip,
   useDisclosure,
+  Checkbox,
 } from "@nextui-org/react";
 import {
   IconCalendar,
@@ -28,6 +29,7 @@ import {
   IconPlus,
   IconPlayerPause,
   IconPlayerPlay,
+  IconGift,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
 import BottomSheet from "@/components/UI/BottomSheet";
@@ -54,6 +56,9 @@ interface MembershipInfo {
   canCancel?: boolean;
   // Extension fields
   originalEndDate?: string;
+  // Payment fields
+  discountedPrice?: number;
+  remainingAmount?: number;
   totalPausedDays?: number;
 }
 
@@ -122,6 +127,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
   const [extensionValue, setExtensionValue] = useState<string>("");
   const [extensionReason, setExtensionReason] = useState<string>("");
   const [extending, setExtending] = useState(false);
+  const [isComplementary, setIsComplementary] = useState<boolean>(false);
 
   // Pause/Resume state
   const [pausing, setPausing] = useState(false);
@@ -131,9 +137,49 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
     fetchMembershipInfo();
   }, [userId]);
 
+  // Listen for membership updates from other components
+  useEffect(() => {
+    const handleMembershipUpdate = (event: any) => {
+      // Refresh membership data when updated from other components
+      const shouldRefresh = event.detail?.userId === userId ||
+                           event.detail?.type === 'clear' ||
+                           !event.detail?.userId; // Refresh if no specific userId (global updates)
+
+      if (shouldRefresh) {
+        fetchMembershipInfo();
+        // Also refresh history if it's currently open
+        if (isHistoryOpen) {
+          fetchMembershipHistory();
+        }
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'membershipUpdated') {
+        fetchMembershipInfo();
+        // Also refresh history if it's currently open
+        if (isHistoryOpen) {
+          fetchMembershipHistory();
+        }
+      }
+    };
+
+    window.addEventListener('membershipUpdated', handleMembershipUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('membershipUpdated', handleMembershipUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [userId, isHistoryOpen]);
+
   const fetchMembershipInfo = async () => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/membership`);
+      const response = await fetch(`/api/admin/users/${userId}/membership?_t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setMembershipInfo(data.membership);
@@ -151,7 +197,11 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
   const fetchMembershipHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/membership-history`);
+      const response = await fetch(`/api/admin/users/${userId}/membership-history?_t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setMembershipHistory(data.membershipLogs || []);
@@ -245,6 +295,15 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         setMembershipInfo(data.membership);
         toast.success("Membership updated successfully");
         onClose();
+
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(new CustomEvent('membershipUpdated', {
+          detail: { userId, type: 'save' }
+        }));
+
+        // Also trigger localStorage event for cross-tab communication
+        localStorage.setItem('membershipUpdated', Date.now().toString());
+        localStorage.removeItem('membershipUpdated');
       } else {
         const errorData = await response.json().catch(() => ({}));
         toast.error(`Failed to update membership: ${errorData.error || response.status}`);
@@ -279,21 +338,40 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
           extensionType,
           extensionValue: parseInt(extensionValue),
           reason: extensionReason || `Extended by ${extensionValue} ${extensionType.toLowerCase()}`,
+          isComplementary,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setMembershipInfo(data.membership);
-        toast.success(`Membership extended by ${extensionValue} ${extensionType.toLowerCase()}!`);
+
+        // Show success message with payment information
+        if (isComplementary) {
+          toast.success(`Membership extended by ${extensionValue} ${extensionType.toLowerCase()} as complementary - No additional payment required!`);
+        } else if (data.paymentCalculation?.additionalPaymentRequired > 0) {
+          toast.success(`Membership extended by ${extensionValue} ${extensionType.toLowerCase()}! Additional payment required: ₹${data.paymentCalculation.additionalPaymentRequired.toFixed(2)}`);
+        } else {
+          toast.success(`Membership extended by ${extensionValue} ${extensionType.toLowerCase()}!`);
+        }
 
         // Reset form
         setExtensionValue("");
         setExtensionReason("");
+        setIsComplementary(false);
         onExtendClose();
 
         // Refresh data
         fetchMembershipInfo();
+
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(new CustomEvent('membershipUpdated', {
+          detail: { userId, type: 'extension' }
+        }));
+
+        // Also trigger localStorage event for cross-tab communication
+        localStorage.setItem('membershipUpdated', Date.now().toString());
+        localStorage.removeItem('membershipUpdated');
       } else {
         const errorData = await response.json().catch(() => ({}));
         toast.error(`Failed to extend membership: ${errorData.error || response.status}`);
@@ -331,6 +409,15 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         toast.success("Membership paused successfully");
         await fetchMembershipInfo(); // Refresh data
         await fetchMembershipHistory(); // Refresh history
+
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(new CustomEvent('membershipUpdated', {
+          detail: { userId: membershipInfo.userId, type: 'pause' }
+        }));
+
+        // Also trigger localStorage event for cross-tab communication
+        localStorage.setItem('membershipUpdated', Date.now().toString());
+        localStorage.removeItem('membershipUpdated');
       } else {
         const errorData = await response.text();
         toast.error(`Failed to pause membership: ${errorData}`);
@@ -368,6 +455,15 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         toast.success("Membership resumed successfully");
         await fetchMembershipInfo(); // Refresh data
         await fetchMembershipHistory(); // Refresh history
+
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(new CustomEvent('membershipUpdated', {
+          detail: { userId: membershipInfo.userId, type: 'resume' }
+        }));
+
+        // Also trigger localStorage event for cross-tab communication
+        localStorage.setItem('membershipUpdated', Date.now().toString());
+        localStorage.removeItem('membershipUpdated');
       } else {
         const errorData = await response.text();
         toast.error(`Failed to resume membership: ${errorData}`);
@@ -1006,6 +1102,110 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
               </Button>
             </div>
           </div>
+
+          {/* Complementary Extension Option */}
+          <div className="space-y-3">
+            <Checkbox
+              isSelected={isComplementary}
+              onValueChange={setIsComplementary}
+              color="success"
+              size="md"
+              classNames={{
+                base: "inline-flex w-full max-w-full bg-content1 hover:bg-content2 items-center justify-start cursor-pointer rounded-lg gap-2 p-4 border-2 border-transparent data-[selected=true]:border-success",
+                label: "w-full",
+              }}
+            >
+              <div className="w-full flex justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <IconGift size={20} className="text-success" />
+                    <span className="text-medium font-semibold text-foreground">
+                      Complementary Extension
+                    </span>
+                  </div>
+                  <p className="text-small text-foreground-500 mt-1">
+                    {isComplementary
+                      ? "No additional payment required for this extension"
+                      : "Standard extension - payment calculated based on membership rate"}
+                  </p>
+                </div>
+              </div>
+            </Checkbox>
+          </div>
+
+          {/* Payment Calculation Preview */}
+          {extensionValue && membershipInfo && (
+            <Card className={`${isComplementary ? 'bg-success-50 border-success-200' : 'bg-warning-50 border-warning-200'} border`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  {isComplementary ? (
+                    <IconGift size={20} className="text-success" />
+                  ) : (
+                    <IconCalendar size={20} className="text-warning" />
+                  )}
+                  <h4 className={`font-semibold ${isComplementary ? 'text-success-700' : 'text-warning-700'}`}>
+                    Payment Information
+                  </h4>
+                </div>
+              </CardHeader>
+              <CardBody className="pt-0">
+                {membershipInfo.discountedPrice && membershipInfo.membershipDuration ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-content1 p-3 rounded-lg">
+                        <p className="text-xs text-foreground-500 mb-1">Per Day Rate</p>
+                        <p className="text-lg font-bold text-foreground">₹{(membershipInfo.discountedPrice / membershipInfo.membershipDuration).toFixed(2)}</p>
+                      </div>
+                      <div className="bg-content1 p-3 rounded-lg">
+                        <p className="text-xs text-foreground-500 mb-1">Extension Days</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {extensionType === 'DAYS' ? parseInt(extensionValue) :
+                           extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                           parseInt(extensionValue) * 30} days
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={`p-3 rounded-lg ${isComplementary ? 'bg-success-100' : 'bg-warning-100'}`}>
+                        <p className="text-xs text-foreground-500 mb-1">Additional Payment</p>
+                        <p className={`text-lg font-bold ${isComplementary ? 'text-success-700' : 'text-warning-700'}`}>
+                          {isComplementary ? 'FREE (Complementary)' :
+                           `₹${((membershipInfo.discountedPrice / membershipInfo.membershipDuration) *
+                               (extensionType === 'DAYS' ? parseInt(extensionValue) :
+                                extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                                parseInt(extensionValue) * 30)).toFixed(2)}`}
+                        </p>
+                      </div>
+                      <div className="bg-content1 p-3 rounded-lg">
+                        <p className="text-xs text-foreground-500 mb-1">New Total Remaining</p>
+                        <p className="text-lg font-bold text-foreground">
+                          ₹{isComplementary ?
+                              (membershipInfo.remainingAmount || 0).toFixed(2) :
+                              ((membershipInfo.remainingAmount || 0) +
+                               ((membershipInfo.discountedPrice / membershipInfo.membershipDuration) *
+                                (extensionType === 'DAYS' ? parseInt(extensionValue) :
+                                 extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                                 parseInt(extensionValue) * 30))).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isComplementary && (
+                      <div className="flex items-center gap-2 p-3 bg-success-100 rounded-lg">
+                        <IconGift size={16} className="text-success-700" />
+                        <p className="text-sm text-success-700 font-medium">
+                          This extension is complementary - no additional payment required!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground-500">No pricing information available for payment calculation</p>
+                )}
+              </CardBody>
+            </Card>
+          )}
 
           {/* Extension Reason */}
           <Textarea

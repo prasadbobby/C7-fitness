@@ -28,7 +28,8 @@ import {
   calculateWeeklyMetrics,
   calculateWeeklyScore,
   formatWeekDisplay,
-  type WeekInfo
+  type WeekInfo,
+  type WeeklyMetrics
 } from "@/utils/weeklyScoring";
 
 interface Post {
@@ -116,7 +117,7 @@ export function WeeklyLeaderboard({
     setLoading(true);
     try {
       const enhanced = participants.map((participant) => {
-        const weeklyMetrics = calculateWeeklyMetrics(
+        const weeklyMetrics: WeeklyMetrics = calculateWeeklyMetrics(
           participant.posts,
           selectedWeek,
           participant.joinedAt

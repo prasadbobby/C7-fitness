@@ -36,7 +36,8 @@ model UserInfo {
 
   // Payment tracking fields
   packagePrice        Float?    // Original package price (e.g., 45000)
-  discountedPrice     Float?    // Actual price offered (e.g., 40000)
+  initialOfferedPrice Float?    // Initial price offered to customer (before extensions)
+  discountedPrice     Float?    // Current total price (may include extensions)
   totalAmountPaid     Float?    @default(0) // Total amount paid so far
   remainingAmount     Float?    // Calculated: discountedPrice - totalAmountPaid
   nextPaymentDue      DateTime? // When next payment is expected
@@ -429,12 +430,14 @@ model StepLog {
   isCompleted     Boolean   @default(false) // Whether daily goal was met
   dataSource      StepDataSource @default(MANUAL) // Whether manually entered or from Google Fit
   googleFitDataId String?   // Reference to Google Fit data if auto-synced
+  fitbitConnectionId String? // Reference to Fitbit connection if synced from Fitbit
   lastUpdated     DateTime  @default(now()) // When this record was last updated
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   // Relations
   stepGoal        StepGoal? @relation(fields: [stepGoalId], references: [id], onDelete: Cascade)
+  fitbitConnection FitbitConnection? @relation(fields: [fitbitConnectionId], references: [id], onDelete: SetNull)
 
   @@unique([userId, date])
   @@index([userId, date])
@@ -875,6 +878,24 @@ model FitnessDataSync {
   @@index([syncType, status])
 }
 
+model FitbitConnection {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  accessToken       String    // Encrypted access token
+  refreshToken      String?   // Encrypted refresh token
+  tokenExpiry       DateTime  // When the access token expires
+  isConnected       Boolean   @default(true)
+  lastSyncAt        DateTime? // Last successful sync
+  syncEnabled       Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  stepLogs          StepLog[]
+
+  @@index([userId, isConnected])
+}
+
 // Enhanced fitness data models
 model HeartRateData {
   id                String    @id @default(uuid())
@@ -979,6 +1000,7 @@ enum StepDataSource {
   MANUAL        // Manually entered by user
   GOOGLE_FIT    // Automatically synced from Google Fit
   HEALTH_CONNECT // Future: synced from Health Connect
+  FITBIT        // Fitbit integration
 }
 
 // Body Measurements Tracking Models
@@ -1044,4 +1066,25 @@ enum MeasurementType {
   THIGH_LEFT
   CALF_RIGHT
   CALF_LEFT
+}
+
+// Monthly Expenses Model for Gym Management
+model MonthlyExpense {
+  id                    String    @id @default(uuid())
+  month                 String    // Month name (e.g., "January", "February")
+  year                  Int       // Year (e.g., 2024, 2025)
+  rent                  Float     @default(0)
+  salaries              Float     @default(0)
+  electricity           Float     @default(0)
+  internetMaintenance   Float     @default(0)
+  miscellaneous         Float     @default(0)
+  customExpenses        Json?     @default("[]") // Array of custom expense items
+  totalExpenses         Float     @default(0) // Calculated total of all expenses
+  notes                 String?   // Optional notes for the month
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([month, year], name: "month_year")
+  @@index([year])
+  @@index([month, year])
 }

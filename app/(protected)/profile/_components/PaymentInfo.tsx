@@ -237,7 +237,6 @@ export default function PaymentInfo() {
         isOpen={isHistoryOpen}
         onClose={onHistoryClose}
         title="Payment History"
-        subtitle="Your recorded payments"
       >
         <div className="space-y-4">
           {paymentLogs.length === 0 ? (

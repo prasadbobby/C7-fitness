@@ -62,6 +62,13 @@ async function getParticipantDetails(participantId: string) {
       user: userInfo,
       joinedAt: participant.joinedAt.toISOString(),
       lastActiveDate: participant.lastActiveDate ? participant.lastActiveDate.toISOString() : null,
+      challenge: {
+        ...participant.challenge,
+        startDate: participant.challenge.startDate.toISOString(),
+        endDate: participant.challenge.endDate ? participant.challenge.endDate.toISOString() : null,
+        createdAt: participant.challenge.createdAt.toISOString(),
+        updatedAt: participant.challenge.updatedAt.toISOString(),
+      },
     };
   } catch (error) {
     console.error("Error fetching participant details:", error);
@@ -101,7 +108,7 @@ export default async function ParticipantDetailsPage({ params }: PageProps) {
             participantId={participant.id}
             userId={participant.userId}
             challengeId={participant.challengeId}
-            challengeStartDate={participant.challenge.startDate.toISOString()}
+            challengeStartDate={participant.challenge.startDate}
           />
         </div>
       </div>

@@ -408,7 +408,6 @@ export default function PaymentManager({ userId, userInfo }: PaymentManagerProps
         isOpen={isHistoryOpen}
         onClose={onHistoryClose}
         title="Payment History"
-        subtitle={`All recorded payments for ${userInfo.firstName || userInfo.username || userInfo.email}`}
       >
         <div className="space-y-4">
           {paymentLogs.length === 0 ? (

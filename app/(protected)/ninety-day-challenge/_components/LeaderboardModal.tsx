@@ -15,7 +15,8 @@ import {
   calculateWeeklyMetrics,
   calculateWeeklyScore,
   formatWeekDisplay,
-  type WeekInfo
+  type WeekInfo,
+  type WeeklyMetrics
 } from "@/utils/weeklyScoring";
 import {
   calculateParticipantMetrics,
@@ -60,6 +61,7 @@ interface LeaderboardEntry extends Participant {
     avgEnergy: number;
     photoScore: number;
     consistency: number;
+    daysElapsed: number;
   };
   rank: number;
 }
@@ -207,7 +209,13 @@ export function LeaderboardModal({
   const processParticipants = async (participants: Participant[]): Promise<LeaderboardEntry[]> => {
     const enhanced = participants.map((participant) => {
       // Use unified scoring system from challengeScoring.ts
-      const metrics = calculateParticipantMetrics(participant.posts, participant.joinedAt);
+      const metrics = calculateParticipantMetrics(
+        participant.posts.map(post => ({
+          ...post,
+          photos: post.photos ?? null
+        })),
+        participant.joinedAt
+      );
 
       // Calculate days elapsed for unified scoring
       const now = new Date();
@@ -229,7 +237,8 @@ export function LeaderboardModal({
           avgMood: metrics.avgMood,
           avgEnergy: metrics.avgEnergy,
           photoScore: metrics.photoScore,
-          consistency: metrics.consistency
+          consistency: metrics.consistency,
+          daysElapsed
         }
       };
     });
@@ -761,7 +770,7 @@ export function LeaderboardModal({
                                     {participant.score} pts
                                   </Chip>
                                   <span className="text-xs text-foreground-500">
-                                    {participant.metrics.weekProgress}/{participant.metrics.totalWeekDays} days
+                                    {participant.metrics.totalPosts}/{participant.metrics.daysElapsed} days
                                   </span>
                                 </div>
                               </div>

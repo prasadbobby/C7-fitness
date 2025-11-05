@@ -12,6 +12,19 @@ export interface WeekInfo {
   isCompleted: boolean;
 }
 
+export interface WeeklyMetrics {
+  totalPosts: number;
+  totalEligibleDays: number;
+  totalWeekDays: number;
+  weekProgress: number;
+  consistency: number;
+  avgSleepHours: number;
+  avgSleepQuality: number;
+  avgMood: number;
+  avgEnergy: number;
+  photoScore: number;
+}
+
 /**
  * Convert a date to Indian Standard Time (IST)
  */
@@ -117,7 +130,7 @@ export function getPostsForWeek(posts: any[], week: WeekInfo): any[] {
 /**
  * Calculate weekly metrics for a participant
  */
-export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participantJoinedAt: string) {
+export function calculateWeeklyMetrics(posts: any[], week: WeekInfo, participantJoinedAt: string): WeeklyMetrics {
   const weekPosts = getPostsForWeek(posts, week);
   const joinedDate = new Date(participantJoinedAt);
 

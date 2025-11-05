@@ -99,3 +99,7 @@ test-overall-leaderboard-fix.js
 PERFORMANCE_OPTIMIZATION_GUIDE.md
 test-api-performance.js
 test-*.js
+ADVANCED_PAYMENT_SYSTEM.md
+cron-setup.md
+vercel.json
+debug-*.js

@@ -72,18 +72,32 @@ export async function GET(request: Request) {
       }
     };
 
-    // Get all users with payment info and payment logs (no search filter yet)
+    // Get all users with payment info, membership info, and payment logs (no search filter yet)
     const allUsers = await prisma.userInfo.findMany({
       where: baseWhereClause,
       select: {
         id: true,
         userId: true,
         packagePrice: true,
+        initialOfferedPrice: true,
         discountedPrice: true,
         totalAmountPaid: true,
         remainingAmount: true,
         nextPaymentDue: true,
         paymentNotes: true,
+        // Membership fields
+        membershipStartDate: true,
+        membershipEndDate: true,
+        membershipDuration: true,
+        membershipStatus: true,
+        membershipNotes: true,
+        membershipSetBy: true,
+        // Pause/freeze fields
+        pausedFrom: true,
+        pausedUntil: true,
+        totalPausedDays: true,
+        pauseReason: true,
+        originalEndDate: true,
         createdAt: true,
         updatedAt: true,
         paymentLogs: {
@@ -183,6 +197,58 @@ export async function GET(request: Request) {
         };
       });
 
+      // Calculate membership analytics
+      const now = new Date();
+      let membershipAnalytics = null;
+
+      // Calculate analytics if user has valid membership data (pricing is optional for display)
+      if (user.membershipStartDate && user.membershipDuration && user.membershipStatus !== 'INACTIVE') {
+        const startDate = new Date(user.membershipStartDate);
+        const endDate = user.membershipEndDate ? new Date(user.membershipEndDate) : new Date(startDate.getTime() + (user.membershipDuration * 24 * 60 * 60 * 1000));
+
+        const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysElapsed = Math.max(0, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const totalDays = user.membershipDuration;
+        const monthsTotal = Math.floor(totalDays / 30);
+        const remainingMonths = Math.floor(daysRemaining / 30);
+        const isExpired = now > endDate;
+        const isPaused = user.membershipStatus === 'PAUSED';
+        const isUpcoming = now < startDate;
+
+        // Calculate per-day rate and pricing breakdown
+        const perDayRate = user.discountedPrice ? user.discountedPrice / totalDays : 0;
+        const setupDiscount = user.packagePrice && user.discountedPrice ? user.packagePrice - user.discountedPrice : 0;
+        const discountPercentage = user.packagePrice && setupDiscount > 0 ? (setupDiscount / user.packagePrice) * 100 : 0;
+
+        // Payment completion percentage
+        const paymentPercentage = user.discountedPrice && user.discountedPrice > 0 ?
+          Math.min(100, ((user.totalAmountPaid || 0) / user.discountedPrice) * 100) : 0;
+
+        // Days covered by payments
+        const daysCoveredByPayments = perDayRate > 0 ? Math.floor((user.totalAmountPaid || 0) / perDayRate) : 0;
+
+        membershipAnalytics = {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalDays,
+          monthsTotal,
+          daysRemaining,
+          remainingMonths,
+          daysElapsed,
+          isExpired,
+          isPaused,
+          isUpcoming,
+          perDayRate: Math.round(perDayRate * 100) / 100,
+          setupDiscount: Math.round(setupDiscount * 100) / 100,
+          discountPercentage: Math.round(discountPercentage * 100) / 100,
+          paymentPercentage: Math.round(paymentPercentage * 100) / 100,
+          daysCoveredByPayments,
+          pausedDays: user.totalPausedDays || 0,
+          membershipStatus: user.membershipStatus,
+          membershipNotes: user.membershipNotes,
+        };
+      }
+
       return {
         id: user.id,
         userId: user.userId,
@@ -190,12 +256,14 @@ export async function GET(request: Request) {
         userEmail,
         userImageUrl,
         packagePrice: user.packagePrice,
+        initialOfferedPrice: user.initialOfferedPrice,
         discountedPrice: user.discountedPrice,
         totalAmountPaid: user.totalAmountPaid,
         remainingAmount: user.remainingAmount,
         nextPaymentDue: user.nextPaymentDue?.toISOString() || null,
         paymentNotes: user.paymentNotes,
         paymentStatus,
+        membershipAnalytics,
         recentPayments: enhancedPaymentLogs,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),

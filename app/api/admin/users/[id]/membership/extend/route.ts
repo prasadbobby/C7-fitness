@@ -13,6 +13,7 @@ interface ExtensionRequest {
   extensionValue: number; // Number of days/weeks/months to extend
   reason?: string;
   maintainCurrentEnd?: boolean; // If true, extend from current end date regardless of status
+  isComplementary?: boolean; // If true, no additional payment required (complimentary extension)
 }
 
 // POST - Extend membership
@@ -26,7 +27,7 @@ export async function POST(
     const { id } = params;
 
     const body: ExtensionRequest = await request.json();
-    const { extensionType, extensionValue, reason, maintainCurrentEnd = false } = body;
+    const { extensionType, extensionValue, reason, maintainCurrentEnd = false, isComplementary = false } = body;
 
     // Validate input
     if (!extensionType || !extensionValue || extensionValue <= 0) {
@@ -50,6 +51,12 @@ export async function POST(
         pausedUntil: true,
         totalPausedDays: true,
         originalEndDate: true,
+        packagePrice: true,
+        discountedPrice: true,
+        totalAmountPaid: true,
+        remainingAmount: true,
+        nextPaymentDue: true,
+        paymentNotes: true,
       },
     });
 
@@ -69,6 +76,33 @@ export async function POST(
       case 'MONTHS':
         extensionDays = extensionValue * 30; // Approximate
         break;
+    }
+
+    // Calculate payment adjustments for extension
+    let paymentUpdates: any = {};
+    let additionalPaymentRequired = 0;
+
+    if (!isComplementary && currentMembership.discountedPrice && currentMembership.membershipDuration) {
+      // Calculate per-day rate based on current package pricing
+      const perDayRate = currentMembership.discountedPrice / currentMembership.membershipDuration;
+      additionalPaymentRequired = perDayRate * extensionDays;
+
+      // Calculate new total package price for the extended duration
+      const newTotalDuration = (currentMembership.membershipDuration || 0) + extensionDays;
+      const newDiscountedPrice = perDayRate * newTotalDuration;
+      const currentTotalPaid = currentMembership.totalAmountPaid || 0;
+      const newRemainingAmount = newDiscountedPrice - currentTotalPaid;
+
+      // Update payment fields
+      paymentUpdates = {
+        discountedPrice: newDiscountedPrice,
+        remainingAmount: newRemainingAmount,
+        paymentNotes: `${currentMembership.paymentNotes || ''}\nExtended by ${extensionValue} ${extensionType.toLowerCase()} (${extensionDays} days) - Additional payment required: ₹${additionalPaymentRequired.toFixed(2)}`.trim()
+      };
+    } else if (isComplementary) {
+      paymentUpdates = {
+        paymentNotes: `${currentMembership.paymentNotes || ''}\nComplementary extension: ${extensionValue} ${extensionType.toLowerCase()} (${extensionDays} days) - No payment required`.trim()
+      };
     }
 
     // Calculate new dates based on current membership status
@@ -190,7 +224,7 @@ export async function POST(
       }
     }
 
-    // Update membership
+    // Update membership with payment calculations
     const updatedMembership = await prisma.userInfo.update({
       where: { id },
       data: {
@@ -207,6 +241,8 @@ export async function POST(
         }),
         // Set original end date if this is the first time
         originalEndDate: currentMembership.originalEndDate || currentMembership.membershipEndDate,
+        // Apply payment updates
+        ...paymentUpdates,
         updatedAt: new Date(),
       },
     });
@@ -244,7 +280,17 @@ export async function POST(
           type: extensionType,
           value: extensionValue,
           days: extensionDays,
+          isComplementary,
+          additionalPaymentRequired: isComplementary ? 0 : additionalPaymentRequired,
         },
+      },
+      paymentCalculation: {
+        perDayRate: currentMembership.discountedPrice && currentMembership.membershipDuration ?
+          currentMembership.discountedPrice / currentMembership.membershipDuration : 0,
+        extensionDays,
+        additionalPaymentRequired: isComplementary ? 0 : additionalPaymentRequired,
+        isComplementary,
+        totalRemainingAmount: updatedMembership.remainingAmount,
       },
     });
 

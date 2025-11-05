@@ -33,6 +33,7 @@ import {
   IconClipboardList,
   IconHistory,
   IconRulerMeasure,
+  IconTrash,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import BottomSheet from "@/components/UI/BottomSheet";
@@ -134,6 +135,7 @@ export default function UserProgressDashboard() {
   const [editLoading, setEditLoading] = useState(false);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  const { isOpen: isClearConfirmOpen, onOpen: onClearConfirmOpen, onClose: onClearConfirmClose } = useDisclosure();
 
   // Month navigation functions
   const goToPreviousMonth = () => {
@@ -179,7 +181,11 @@ export default function UserProgressDashboard() {
 
   const fetchUserProgress = async () => {
     try {
-      const response = await fetch(`/api/admin/users/${id}/progress`);
+      const response = await fetch(`/api/admin/users/${id}/progress?_t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch user progress: ${response.status}`);
       }
@@ -203,6 +209,43 @@ export default function UserProgressDashboard() {
       }
     } catch (error) {
       console.error("Error fetching user role:", error);
+    }
+  };
+
+  // Clear only membership data
+  const handleClearUserRecords = () => {
+    if (!user) return;
+    onClearConfirmOpen();
+  };
+
+  const performClearMembership = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${id}/clear-membership`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success("Membership data cleared successfully!");
+        // Refresh the data
+        fetchUserProgress();
+
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(new CustomEvent('membershipUpdated', {
+          detail: { userId: user?.id, type: 'clear' }
+        }));
+
+        // Also trigger localStorage event for cross-tab communication
+        localStorage.setItem('membershipUpdated', Date.now().toString());
+        localStorage.removeItem('membershipUpdated');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to clear membership data");
+      }
+    } catch (error) {
+      console.error("Error clearing membership data:", error);
+      toast.error("Failed to clear membership data");
     }
   };
 
@@ -457,7 +500,17 @@ export default function UserProgressDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex justify-center sm:justify-end">
+          <div className="flex flex-col sm:flex-row gap-2 justify-center sm:justify-end">
+            <Button
+              color="danger"
+              variant="flat"
+              startContent={<IconTrash size={18} />}
+              className="font-semibold w-full sm:w-auto"
+              size="sm"
+              onPress={handleClearUserRecords}
+            >
+              Clear Membership
+            </Button>
             <Button
               as={Link}
               href={`/admin/users/${id}/assigned-workouts`}
@@ -1246,6 +1299,54 @@ export default function UserProgressDashboard() {
             </div>
           </div>
         )}
+      </BottomSheet>
+
+      {/* Clear Membership Confirmation Modal */}
+      <BottomSheet
+        isOpen={isClearConfirmOpen}
+        onClose={onClearConfirmClose}
+        title="Clear Membership Data"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button variant="ghost" onPress={onClearConfirmClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onPress={() => {
+                performClearMembership();
+                onClearConfirmClose();
+              }}
+              className="flex-1"
+            >
+              Clear Membership
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            <IconTrash size={48} className="text-danger mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Clear Membership Data</h3>
+            <p className="text-foreground-500 mb-4">
+              Clear membership data for{' '}
+              <span className="font-bold text-primary">{user?.username || user?.firstName || user?.email}</span>?
+            </p>
+            <div className="space-y-3">
+              <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
+                <p className="text-sm text-warning font-medium mb-2">This will permanently delete only:</p>
+                <ul className="text-sm text-warning space-y-1">
+                  <li>• Membership information (start date, end date, duration, status)</li>
+                </ul>
+              </div>
+              <div className="p-4 bg-danger/10 rounded-lg border border-danger/20">
+                <p className="text-sm text-danger font-medium">
+                  ⚠️ This action cannot be undone!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </BottomSheet>
       </div>
     </div>

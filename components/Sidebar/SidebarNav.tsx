@@ -35,6 +35,7 @@ import {
   IconScale,
   IconLock,
   IconCreditCard,
+  IconCurrencyRupee,
 } from "@tabler/icons-react";
 
 export default function SidebarNav() {
@@ -132,12 +133,14 @@ export default function SidebarNav() {
             />
 
             {userRole === "SUPER_ADMIN" && (
-              <NavItem
-                icon={<IconCreditCard size={22} className="shrink-0" />}
-                label="Payment Info"
-                href="/admin/paymentinfo"
-                active={pathname === "/admin/paymentinfo"}
-              />
+              <>
+                <NavItem
+                  icon={<IconCreditCard size={22} className="shrink-0" />}
+                  label="Payment Info"
+                  href="/admin/paymentinfo"
+                  active={pathname === "/admin/paymentinfo"}
+                />
+              </>
             )}
 
             {/* Workout Section for Admin */}

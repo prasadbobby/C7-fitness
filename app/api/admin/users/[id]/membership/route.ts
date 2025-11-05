@@ -35,6 +35,11 @@ export async function GET(
         totalPausedDays: true,
         pauseReason: true,
         originalEndDate: true,
+        // Payment information
+        packagePrice: true,
+        discountedPrice: true,
+        totalAmountPaid: true,
+        remainingAmount: true,
       },
     });
 
@@ -155,10 +160,10 @@ export async function GET(
         isUpcoming,
         statusDetails,
         // Helper flags for frontend
-        canExtend: ['ACTIVE', 'EXPIRED', 'PAUSED', 'UPCOMING', 'CANCELLED', 'SUSPENDED'].includes(userInfo.membershipStatus),
-        canPause: userInfo.membershipStatus === 'ACTIVE',
+        canExtend: userInfo.membershipStartDate && userInfo.membershipEndDate && ['ACTIVE', 'EXPIRED', 'PAUSED', 'UPCOMING', 'CANCELLED', 'SUSPENDED'].includes(userInfo.membershipStatus),
+        canPause: userInfo.membershipStatus === 'ACTIVE' && userInfo.membershipStartDate && userInfo.membershipEndDate,
         canResume: userInfo.membershipStatus === 'PAUSED',
-        canCancel: ['ACTIVE', 'PAUSED', 'UPCOMING'].includes(userInfo.membershipStatus),
+        canCancel: ['ACTIVE', 'PAUSED', 'UPCOMING'].includes(userInfo.membershipStatus) && userInfo.membershipStartDate && userInfo.membershipEndDate,
       }
     });
 

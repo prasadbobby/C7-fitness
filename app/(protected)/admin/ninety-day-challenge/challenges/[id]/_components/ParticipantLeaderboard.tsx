@@ -86,7 +86,13 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
           const userInfo = participant.user;
 
           // Calculate metrics using unified scoring system
-          const metrics = calculateParticipantMetrics(participant.posts, participant.joinedAt);
+          const metrics = calculateParticipantMetrics(
+            participant.posts.map(post => ({
+              ...post,
+              photos: post.photos ?? null
+            })),
+            participant.joinedAt
+          );
 
           // Calculate score using unified scoring system
           const now = new Date();

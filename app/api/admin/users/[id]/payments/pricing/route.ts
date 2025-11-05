@@ -17,6 +17,7 @@ export async function PUT(
 
     const {
       packagePrice,
+      initialOfferedPrice,
       discountedPrice,
       paymentNotes
     } = body;
@@ -44,6 +45,7 @@ export async function PUT(
       where: { id },
       data: {
         packagePrice: packagePrice ? parseFloat(packagePrice) : null,
+        initialOfferedPrice: initialOfferedPrice ? parseFloat(initialOfferedPrice) : null,
         discountedPrice: discountedPrice ? parseFloat(discountedPrice) : null,
         remainingAmount: remainingAmount,
         paymentNotes: paymentNotes?.trim() || null,
@@ -51,6 +53,7 @@ export async function PUT(
       select: {
         id: true,
         packagePrice: true,
+        initialOfferedPrice: true,
         discountedPrice: true,
         totalAmountPaid: true,
         remainingAmount: true,
