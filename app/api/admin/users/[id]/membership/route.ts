@@ -3,6 +3,7 @@ import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { auth } from "@clerk/nextjs";
 import { MembershipStatus, MembershipChangeType } from "@prisma/client";
+import { nowIST, daysRemainingIST, daysBetweenIST, utcToIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,11 @@ export async function GET(
         totalPausedDays: true,
         pauseReason: true,
         originalEndDate: true,
+        // Upcoming extension fields
+        upcomingStartDate: true,
+        upcomingEndDate: true,
+        upcomingDuration: true,
+        upcomingNotes: true,
         // Payment information
         packagePrice: true,
         discountedPrice: true,
@@ -47,8 +53,8 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Enhanced membership status and days calculation
-    const now = new Date();
+    // Enhanced membership status and days calculation using IST
+    const now = nowIST();
     let daysRemaining = 0;
     let isExpired = false;
     let isPaused = userInfo.membershipStatus === 'PAUSED';
@@ -59,26 +65,25 @@ export async function GET(
       const startDate = new Date(userInfo.membershipStartDate);
       const endDate = new Date(userInfo.membershipEndDate);
 
-      // Check if membership hasn't started yet
+      // Check if membership hasn't started yet (using IST)
       if (now < startDate) {
         isUpcoming = true;
         userInfo.membershipStatus = 'UPCOMING';
-        const diffToStart = startDate.getTime() - now.getTime();
-        const daysToStart = Math.ceil(diffToStart / (1000 * 60 * 60 * 24));
+        const daysToStart = daysRemainingIST(startDate);
+        daysRemaining = daysToStart; // Set daysRemaining to days until start for UPCOMING
         statusDetails = {
           daysToStart,
           message: `Starts in ${daysToStart} days`,
         };
       } else {
-        const diffTime = endDate.getTime() - now.getTime();
-        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        isExpired = daysRemaining < 0;
+        daysRemaining = daysRemainingIST(endDate);
+        isExpired = daysRemaining <= 0;
       }
     }
 
-    // Handle paused membership calculations
+    // Handle paused membership calculations using IST
     if (isPaused && userInfo.pausedFrom) {
-      const pausedDays = Math.ceil((now.getTime() - userInfo.pausedFrom.getTime()) / (1000 * 60 * 60 * 24));
+      const pausedDays = daysBetweenIST(userInfo.pausedFrom, now);
       statusDetails = {
         pausedDays,
         pausedSince: userInfo.pausedFrom.toISOString(),
@@ -99,9 +104,9 @@ export async function GET(
       userInfo.membershipStatus = 'EXPIRED';
     }
 
-    // Auto-resume paused membership if pausedUntil date has passed
+    // Auto-resume paused membership if pausedUntil date has passed (using IST)
     if (isPaused && userInfo.pausedUntil && now > userInfo.pausedUntil) {
-      const pausedDays = Math.ceil((userInfo.pausedUntil.getTime() - userInfo.pausedFrom!.getTime()) / (1000 * 60 * 60 * 24));
+      const pausedDays = daysBetweenIST(userInfo.pausedFrom!, userInfo.pausedUntil);
       const totalPausedDays = (userInfo.totalPausedDays || 0) + pausedDays;
 
       // Extend end date by paused days
@@ -151,6 +156,23 @@ export async function GET(
       }
     }
 
+    // Check if there's an upcoming extension (using IST)
+    const hasUpcomingExtension = userInfo.upcomingStartDate && userInfo.upcomingEndDate;
+    let upcomingExtensionInfo = null;
+
+    if (hasUpcomingExtension) {
+      const upcomingStart = new Date(userInfo.upcomingStartDate!);
+      const daysUntilExtension = daysRemainingIST(upcomingStart);
+
+      upcomingExtensionInfo = {
+        startDate: userInfo.upcomingStartDate,
+        endDate: userInfo.upcomingEndDate,
+        duration: userInfo.upcomingDuration,
+        daysUntilStart: Math.max(0, daysUntilExtension),
+        notes: userInfo.upcomingNotes
+      };
+    }
+
     return NextResponse.json({
       membership: {
         ...userInfo,
@@ -159,6 +181,7 @@ export async function GET(
         isPaused,
         isUpcoming,
         statusDetails,
+        upcomingExtension: upcomingExtensionInfo,
         // Helper flags for frontend
         canExtend: userInfo.membershipStartDate && userInfo.membershipEndDate && ['ACTIVE', 'EXPIRED', 'PAUSED', 'UPCOMING', 'CANCELLED', 'SUSPENDED'].includes(userInfo.membershipStatus),
         canPause: userInfo.membershipStatus === 'ACTIVE' && userInfo.membershipStartDate && userInfo.membershipEndDate,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { nowIST, formatIST, formatISTDateTime, toISTDateString } from "@/utils/timezone";
 import {
   Card,
   CardBody,
@@ -299,7 +300,7 @@ export default function PaymentInfoPage() {
   const [addingPayment, setAddingPayment] = useState(false);
 
   // Monthly Expenses State
-  const [monthlyCurrentDate, setMonthlyCurrentDate] = useState(new Date());
+  const [monthlyCurrentDate, setMonthlyCurrentDate] = useState(nowIST());
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState<MonthlyExpenses[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
@@ -343,7 +344,7 @@ export default function PaymentInfoPage() {
   // Add payment form state
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+  const [paymentDate, setPaymentDate] = useState<Date>(nowIST());
   const [transactionId, setTransactionId] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
 
@@ -376,7 +377,7 @@ export default function PaymentInfoPage() {
   const [editingPayment, setEditingPayment] = useState<PaymentLog | null>(null);
   const [editPaymentAmount, setEditPaymentAmount] = useState("");
   const [editPaymentMethod, setEditPaymentMethod] = useState("");
-  const [editPaymentDate, setEditPaymentDate] = useState<Date>(new Date());
+  const [editPaymentDate, setEditPaymentDate] = useState<Date>(nowIST());
   const [editTransactionId, setEditTransactionId] = useState("");
   const [editPaymentNote, setEditPaymentNote] = useState("");
   const [updatingPayment, setUpdatingPayment] = useState(false);
@@ -410,7 +411,7 @@ export default function PaymentInfoPage() {
     category: "",
     description: "",
     amount: "",
-    date: new Date().toISOString().split('T')[0],
+    date: toISTDateString(nowIST()),
     notes: "",
   });
   const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
@@ -486,7 +487,7 @@ export default function PaymentInfoPage() {
       category: "",
       description: "",
       amount: "",
-      date: new Date().toISOString().split('T')[0],
+      date: toISTDateString(nowIST()),
       notes: "",
     });
     onAddExpenseOpen();
@@ -601,7 +602,7 @@ export default function PaymentInfoPage() {
   };
 
   const getMonthName = (monthIndex: number) => {
-    return new Date(2024, monthIndex, 1).toLocaleDateString('en-IN', { month: 'long' });
+    return formatIST(new Date(2024, monthIndex, 1), false, { month: 'long' });
   };
 
   useEffect(() => {
@@ -951,7 +952,7 @@ export default function PaymentInfoPage() {
   const resetAddPaymentForm = () => {
     setPaymentAmount("");
     setPaymentMethod("");
-    setPaymentDate(new Date());
+    setPaymentDate(nowIST());
     setTransactionId("");
     setPaymentNote("");
   };
@@ -1283,7 +1284,7 @@ export default function PaymentInfoPage() {
     setEditingPayment(null);
     setEditPaymentAmount("");
     setEditPaymentMethod("");
-    setEditPaymentDate(new Date());
+    setEditPaymentDate(nowIST());
     setEditTransactionId("");
     setEditPaymentNote("");
   };
@@ -1309,7 +1310,7 @@ export default function PaymentInfoPage() {
         paymentStatus = 'fully_paid';
       } else if (nextPaymentDue) {
         const dueDate = new Date(nextPaymentDue);
-        const today = new Date();
+        const today = nowIST();
         paymentStatus = dueDate < today ? 'overdue' : 'pending';
       } else {
         paymentStatus = 'pending';
@@ -1320,7 +1321,7 @@ export default function PaymentInfoPage() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    return formatIST(new Date(dateString), true, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -1393,14 +1394,14 @@ export default function PaymentInfoPage() {
         });
 
         monthBreakdown.push({
-          month: monthStart.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-          startDate: rangeStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-          endDate: rangeEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          month: formatIST(monthStart, false, { month: 'long', year: 'numeric' }),
+          startDate: formatIST(rangeStart, false, { day: 'numeric', month: 'short' }),
+          endDate: formatIST(rangeEnd, false, { day: 'numeric', month: 'short' }),
           days: daysInMonth,
           allocatedAmount: Math.round(monthAmount * 100) / 100,
           paidAmount: monthPayments.reduce((sum, p) => sum + p.amount, 0),
           payments: monthPayments.map(p => ({
-            date: new Date(p.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+            date: formatIST(new Date(p.paymentDate), true, { day: 'numeric', month: 'short', year: 'numeric' }),
             amount: p.amount,
             method: p.paymentMethod,
             transactionId: p.transactionId
@@ -1428,8 +1429,8 @@ export default function PaymentInfoPage() {
       totalPaidAmount,
       remainingAmount: user.remainingAmount,
       membershipInfo: {
-        startDate: startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-        endDate: endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+        startDate: formatIST(startDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
+        endDate: formatIST(endDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
         duration: membershipDuration,
         status: membershipInfo.membershipStatus,
         perDayRate: Math.round(perDayRate * 100) / 100
@@ -1464,7 +1465,7 @@ export default function PaymentInfoPage() {
         paymentsByMonth[monthKey] = {
           payments: [],
           total: 0,
-          month: paymentDate.toLocaleDateString('en-IN', { month: 'long' }),
+          month: formatIST(paymentDate, false, { month: 'long' }),
           year: paymentDate.getFullYear()
         };
       }
@@ -1486,11 +1487,11 @@ export default function PaymentInfoPage() {
 
         return {
           month: `${monthData.month} ${monthData.year}`,
-          startDate: startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-          endDate: endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          startDate: formatIST(startDate, false, { day: 'numeric', month: 'short' }),
+          endDate: formatIST(endDate, false, { day: 'numeric', month: 'short' }),
           paidAmount: monthData.total,
           payments: payments.map(p => ({
-            date: new Date(p.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+            date: formatIST(new Date(p.paymentDate), true, { day: 'numeric', month: 'short', year: 'numeric' }),
             amount: p.amount,
             method: p.paymentMethod,
             transactionId: p.transactionId
@@ -1508,8 +1509,8 @@ export default function PaymentInfoPage() {
       totalPaidAmount,
       remainingAmount: user.remainingAmount,
       paymentPeriod: {
-        startDate: firstPaymentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-        endDate: lastPaymentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+        startDate: formatIST(firstPaymentDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
+        endDate: formatIST(lastPaymentDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
         days: periodDays
       },
       monthBreakdown,
@@ -2245,7 +2246,7 @@ export default function PaymentInfoPage() {
                           {(() => {
                             // Calculate real year-to-date cash flow scenarios
                             const calculateYearCashFlowScenarios = () => {
-                              const currentDate = new Date();
+                              const currentDate = nowIST();
                               const currentYear = monthlyCurrentDate.getFullYear();
 
                               let totalOnTimePayments = 0;
@@ -2439,7 +2440,7 @@ export default function PaymentInfoPage() {
 
                             const monthBalance = (monthData?.totalIncome || 0) - (monthExpenses?.totalExpenses || 0);
                             const profitMargin = monthData?.totalIncome ? ((monthBalance / monthData.totalIncome) * 100) : 0;
-                            const currentMonth = new Date().getMonth();
+                            const currentMonth = nowIST().getMonth();
                             const isCurrentMonth = monthIndex === currentMonth;
 
                             return (
@@ -2975,8 +2976,8 @@ export default function PaymentInfoPage() {
                                 return prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue * 100) : 0;
                               })() : 0;
 
-                            const currentMonth = new Date().getMonth();
-                            const isFutureMonth = monthIndex > currentMonth && monthlyCurrentDate.getFullYear() === new Date().getFullYear();
+                            const currentMonth = nowIST().getMonth();
+                            const isFutureMonth = monthIndex > currentMonth && monthlyCurrentDate.getFullYear() === nowIST().getFullYear();
 
                           return (
                             <Card
@@ -3724,7 +3725,7 @@ export default function PaymentInfoPage() {
           <DatePicker
             label="Payment Date"
             value={paymentDate}
-            onChange={(date) => setPaymentDate(date || new Date())}
+            onChange={(date) => setPaymentDate(date || nowIST())}
           />
 
           <Input
@@ -3903,7 +3904,7 @@ export default function PaymentInfoPage() {
             <DatePicker
               label="Payment Date"
               value={editPaymentDate}
-              onChange={(date) => setEditPaymentDate(date || new Date())}
+              onChange={(date) => setEditPaymentDate(date || nowIST())}
             />
 
             <Input
@@ -4631,7 +4632,7 @@ export default function PaymentInfoPage() {
 
                       // Real calculation functions
                       const calculateRealScenarios = () => {
-                        const currentDate = new Date();
+                        const currentDate = nowIST();
                         const selectedMonthDate = new Date(selectedMonth.year, new Date(`${selectedMonth.month} 1, ${selectedMonth.year}`).getMonth(), 1);
                         const monthStart = new Date(selectedMonth.year, selectedMonthDate.getMonth(), 1);
                         const monthEnd = new Date(selectedMonth.year, selectedMonthDate.getMonth() + 1, 0);
@@ -5249,7 +5250,7 @@ export default function PaymentInfoPage() {
                                   <Chip size="sm" variant="flat">{payment.paymentMethod}</Chip>
                                 </TableCell>
                                 <TableCell>
-                                  <span className="text-sm">{new Date(payment.paymentDate).toLocaleDateString()}</span>
+                                  <span className="text-sm">{formatIST(new Date(payment.paymentDate))}</span>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -5362,14 +5363,14 @@ export default function PaymentInfoPage() {
                                   <TableCell>
                                     <div className="text-sm">
                                       <p className="font-medium">
-                                        {new Date(expense.date).toLocaleDateString('en-IN', {
+                                        {formatIST(new Date(expense.date), true, {
                                           day: '2-digit',
                                           month: 'short',
                                           year: 'numeric'
                                         })}
                                       </p>
                                       <p className="text-foreground-500">
-                                        {new Date(expense.date).toLocaleDateString('en-IN', { weekday: 'short' })}
+                                        {formatIST(new Date(expense.date), true, { weekday: 'short' })}
                                       </p>
                                     </div>
                                   </TableCell>

@@ -34,6 +34,12 @@ model UserInfo {
   // Original end date before any extensions/changes
   originalEndDate     DateTime? // Track original membership end date
 
+  // Upcoming extension fields (for future-dated extensions)
+  upcomingStartDate   DateTime? // Start date of upcoming extension
+  upcomingEndDate     DateTime? // End date of upcoming extension
+  upcomingDuration    Int?      // Duration of upcoming extension in days
+  upcomingNotes       String?   // Notes about the upcoming extension
+
   // Payment tracking fields
   packagePrice        Float?    // Original package price (e.g., 45000)
   initialOfferedPrice Float?    // Initial price offered to customer (before extensions)

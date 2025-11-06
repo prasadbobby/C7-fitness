@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { nowIST, formatIST, formatISTDateTime, toISTDateString } from "@/utils/timezone";
 import {
   Card,
   CardBody,
@@ -16,6 +17,7 @@ import {
 } from "@nextui-org/react";
 import {
   IconCalendar,
+  IconCalendarPlus,
   IconClock,
   IconUserCheck,
   IconUserX,
@@ -60,6 +62,14 @@ interface MembershipInfo {
   discountedPrice?: number;
   remainingAmount?: number;
   totalPausedDays?: number;
+  // Upcoming extension fields
+  upcomingExtension?: {
+    startDate: string;
+    endDate: string;
+    duration: number;
+    daysUntilStart: number;
+    notes?: string;
+  };
 }
 
 interface MembershipLog {
@@ -120,11 +130,18 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
-  const { isOpen: isExtendOpen, onOpen: onExtendOpen, onClose: onExtendClose } = useDisclosure();
+  const { isOpen: isExtendOpen, onOpen: onExtendOpenBase, onClose: onExtendClose } = useDisclosure();
+
+  // Custom extend open handler to clear start date
+  const onExtendOpen = () => {
+    setExtensionStartDate(""); // Empty by default
+    onExtendOpenBase();
+  };
 
   // Extension form states
   const [extensionType, setExtensionType] = useState<string>("DAYS");
   const [extensionValue, setExtensionValue] = useState<string>("");
+  const [extensionStartDate, setExtensionStartDate] = useState<string>("");
   const [extensionReason, setExtensionReason] = useState<string>("");
   const [extending, setExtending] = useState(false);
   const [isComplementary, setIsComplementary] = useState<boolean>(false);
@@ -257,7 +274,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
     if (membershipInfo?.membershipStartDate) {
       setStartDate(new Date(membershipInfo.membershipStartDate));
     } else {
-      setStartDate(new Date());
+      setStartDate(nowIST());
     }
     setDuration(membershipInfo?.membershipDuration?.toString() || "90");
     setStatus(membershipInfo?.membershipStatus || "ACTIVE");
@@ -337,6 +354,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         body: JSON.stringify({
           extensionType,
           extensionValue: parseInt(extensionValue),
+          extensionStartDate,
           reason: extensionReason || `Extended by ${extensionValue} ${extensionType.toLowerCase()}`,
           isComplementary,
         }),
@@ -613,7 +631,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 <div>
                   <p className="text-xs text-foreground-500">Start Date</p>
                   <p className="text-sm font-medium">
-                    {new Date(membershipInfo.membershipStartDate!).toLocaleDateString()}
+                    {formatIST(new Date(membershipInfo.membershipStartDate!))}
                   </p>
                 </div>
               </div>
@@ -626,7 +644,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 <div>
                   <p className="text-xs text-foreground-500">End Date</p>
                   <p className="text-sm font-medium">
-                    {new Date(membershipInfo.membershipEndDate!).toLocaleDateString()}
+                    {formatIST(new Date(membershipInfo.membershipEndDate!))}
                   </p>
                 </div>
               </div>
@@ -634,11 +652,13 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
               {/* Days Remaining */}
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-content2 rounded-lg">
-                  <IconClock size={20} className={membershipInfo.isExpired ? "text-danger" : "text-success"} />
+                  <IconClock size={20} className={membershipInfo.isExpired ? "text-danger" : membershipInfo.isUpcoming ? "text-primary" : "text-success"} />
                 </div>
                 <div>
-                  <p className="text-xs text-foreground-500">Days Remaining</p>
-                  <p className={`text-sm font-medium ${membershipInfo.isExpired ? "text-danger" : "text-success"}`}>
+                  <p className="text-xs text-foreground-500">
+                    {membershipInfo.isUpcoming ? "Starts In" : "Days Remaining"}
+                  </p>
+                  <p className={`text-sm font-medium ${membershipInfo.isExpired ? "text-danger" : membershipInfo.isUpcoming ? "text-primary" : "text-success"}`}>
                     {membershipInfo.isExpired ? "Expired" : `${membershipInfo.daysRemaining} days`}
                   </p>
                 </div>
@@ -656,11 +676,11 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <p className="text-foreground-500">Original End Date</p>
-                    <p className="font-medium">{new Date(membershipInfo.originalEndDate).toLocaleDateString()}</p>
+                    <p className="font-medium">{formatIST(new Date(membershipInfo.originalEndDate))}</p>
                   </div>
                   <div>
                     <p className="text-foreground-500">Extended To</p>
-                    <p className="font-medium text-success">{new Date(membershipInfo.membershipEndDate).toLocaleDateString()}</p>
+                    <p className="font-medium text-success">{formatIST(new Date(membershipInfo.membershipEndDate))}</p>
                   </div>
                 </div>
                 <div className="mt-2">
@@ -681,7 +701,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <p className="text-foreground-500">Paused Since</p>
-                    <p className="font-medium">{membershipInfo.statusDetails.pausedSince ? new Date(membershipInfo.statusDetails.pausedSince).toLocaleDateString() : 'Unknown'}</p>
+                    <p className="font-medium">{membershipInfo.statusDetails.pausedSince ? formatIST(new Date(membershipInfo.statusDetails.pausedSince)) : 'Unknown'}</p>
                   </div>
                   <div>
                     <p className="text-foreground-500">Days Paused</p>
@@ -691,7 +711,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 {membershipInfo.statusDetails.resumeDate && (
                   <div className="mt-2">
                     <p className="text-xs text-foreground-500">
-                      Auto-resume on: {new Date(membershipInfo.statusDetails.resumeDate).toLocaleDateString()}
+                      Auto-resume on: {formatIST(new Date(membershipInfo.statusDetails.resumeDate))}
                     </p>
                   </div>
                 )}
@@ -719,13 +739,52 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                   </div>
                   <div>
                     <p className="text-foreground-500">Start Date</p>
-                    <p className="font-medium">{membershipInfo.membershipStartDate ? new Date(membershipInfo.membershipStartDate).toLocaleDateString() : 'Not set'}</p>
+                    <p className="font-medium">{membershipInfo.membershipStartDate ? formatIST(new Date(membershipInfo.membershipStartDate)) : 'Not set'}</p>
                   </div>
                 </div>
                 {membershipInfo.statusDetails.message && (
                   <div className="mt-2">
                     <p className="text-xs text-foreground-500">
                       {membershipInfo.statusDetails.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Upcoming Extension Information */}
+            {membershipInfo.upcomingExtension && (
+              <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <IconCalendarPlus size={16} className="text-warning" />
+                  <span className="text-sm font-medium text-warning">Scheduled Extension</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-foreground-500">Extension Start</p>
+                    <p className="font-medium">
+                      {formatIST(new Date(membershipInfo.upcomingExtension.startDate))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-foreground-500">Extension End</p>
+                    <p className="font-medium">
+                      {formatIST(new Date(membershipInfo.upcomingExtension.endDate))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-foreground-500">Extension Duration</p>
+                    <p className="font-medium text-warning">{membershipInfo.upcomingExtension.duration} days</p>
+                  </div>
+                  <div>
+                    <p className="text-foreground-500">Starts In</p>
+                    <p className="font-medium text-warning">{membershipInfo.upcomingExtension.daysUntilStart} days</p>
+                  </div>
+                </div>
+                {membershipInfo.upcomingExtension.notes && (
+                  <div className="mt-2">
+                    <p className="text-xs text-foreground-500">
+                      {membershipInfo.upcomingExtension.notes}
                     </p>
                   </div>
                 )}
@@ -853,8 +912,8 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
               <CardBody className="bg-content2">
                 <p className="text-sm font-medium mb-2">Membership Preview:</p>
                 <div className="text-sm space-y-1">
-                  <p><strong>Start:</strong> {startDate.toLocaleDateString()}</p>
-                  <p><strong>End:</strong> {new Date(startDate.getTime() + parseInt(duration) * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
+                  <p><strong>Start:</strong> {formatIST(startDate, false)}</p>
+                  <p><strong>End:</strong> {formatIST(new Date(startDate.getTime() + parseInt(duration) * 24 * 60 * 60 * 1000), false)}</p>
                   <p><strong>Duration:</strong> {duration} days ({Math.round(parseInt(duration) / 30 * 10) / 10} months)</p>
                 </div>
               </CardBody>
@@ -885,7 +944,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
             </div>
           ) : (
             <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              {membershipHistory.map((log, index) => (
+              {membershipHistory.map((log) => (
                 <Card key={log.id} className="bg-content1 border border-divider">
                   <CardBody className="p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -901,7 +960,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                           </Chip>
                         </div>
                         <div className="text-xs text-foreground-500">
-                          {format(new Date(log.changeDate), 'MMM dd, yyyy HH:mm')}
+                          {formatISTDateTime(new Date(log.changeDate))}
                         </div>
                       </div>
                     </div>
@@ -923,11 +982,11 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-foreground-600">Start Date:</span>
                           <span className="text-foreground-400">
-                            {log.previousStartDate ? format(new Date(log.previousStartDate), 'MMM dd, yyyy') : 'None'}
+                            {log.previousStartDate ? formatIST(new Date(log.previousStartDate)) : 'None'}
                           </span>
                           <span className="text-foreground-400">→</span>
                           <span className="text-foreground-700">
-                            {format(new Date(log.newStartDate), 'MMM dd, yyyy')}
+                            {formatIST(new Date(log.newStartDate))}
                           </span>
                         </div>
                       )}
@@ -936,11 +995,11 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-foreground-600">End Date:</span>
                           <span className="text-foreground-400">
-                            {log.previousEndDate ? format(new Date(log.previousEndDate), 'MMM dd, yyyy') : 'None'}
+                            {log.previousEndDate ? formatIST(new Date(log.previousEndDate)) : 'None'}
                           </span>
                           <span className="text-foreground-400">→</span>
                           <span className="text-foreground-700">
-                            {format(new Date(log.newEndDate), 'MMM dd, yyyy')}
+                            {formatIST(new Date(log.newEndDate))}
                           </span>
                         </div>
                       )}
@@ -990,7 +1049,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         isOpen={isExtendOpen}
         onClose={onExtendClose}
         title="Extend Membership"
-        size="lg"
+        size="xl"
         footer={
           <>
             <Button variant="ghost" onPress={onExtendClose}>
@@ -1020,7 +1079,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 <div>
                   <p className="text-foreground-500">End Date</p>
                   <p className="font-medium">
-                    {new Date(membershipInfo.membershipEndDate!).toLocaleDateString()}
+                    {formatIST(new Date(membershipInfo.membershipEndDate!))}
                   </p>
                 </div>
               </div>
@@ -1056,51 +1115,15 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
             description={`How many ${extensionType.toLowerCase()} to extend the membership`}
           />
 
-          {/* Quick Extension Presets */}
+          {/* Extension Start Date */}
           <div>
-            <p className="text-sm font-medium mb-3">Quick Extensions:</p>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={() => {
-                  setExtensionType("DAYS");
-                  setExtensionValue("30");
-                }}
-              >
-                +30 Days
-              </Button>
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={() => {
-                  setExtensionType("DAYS");
-                  setExtensionValue("60");
-                }}
-              >
-                +60 Days
-              </Button>
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={() => {
-                  setExtensionType("MONTHS");
-                  setExtensionValue("3");
-                }}
-              >
-                +3 Months
-              </Button>
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={() => {
-                  setExtensionType("MONTHS");
-                  setExtensionValue("6");
-                }}
-              >
-                +6 Months
-              </Button>
-            </div>
+            <DatePicker
+              label="Extension Start Date"
+              placeholder="Select when the extension should start"
+              value={extensionStartDate ? new Date(extensionStartDate) : undefined}
+              onChange={(date) => setExtensionStartDate(date ? date.toISOString().split('T')[0] : "")}
+            />
+            <p className="text-xs text-foreground-500 mt-1">Choose the date when the extension should begin</p>
           </div>
 
           {/* Complementary Extension Option */}
@@ -1220,41 +1243,91 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
           {extensionValue && membershipInfo && (
             <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
               <h4 className="font-medium text-success mb-2">Extension Preview:</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-foreground-500">Current Duration</p>
-                  <p className="font-medium">{membershipInfo.membershipDuration} days</p>
-                </div>
-                <div>
-                  <p className="text-foreground-500">After Extension</p>
-                  <p className="font-medium text-success">
-                    {(membershipInfo.membershipDuration || 0) +
-                     (extensionType === 'DAYS' ? parseInt(extensionValue) :
-                      extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
-                      parseInt(extensionValue) * 30)} days
-                  </p>
-                </div>
-                <div>
-                  <p className="text-foreground-500">Current End Date</p>
-                  <p className="font-medium">
-                    {new Date(membershipInfo.membershipEndDate!).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-foreground-500">New End Date</p>
-                  <p className="font-medium text-success">
-                    {(() => {
-                      const currentEnd = new Date(membershipInfo.membershipEndDate!);
-                      const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
-                                          extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
-                                          parseInt(extensionValue) * 30;
-                      const newEnd = new Date(currentEnd);
-                      newEnd.setDate(newEnd.getDate() + extensionDays);
-                      return newEnd.toLocaleDateString();
-                    })()}
-                  </p>
-                </div>
-              </div>
+              {/* Check if custom start date is different from default (continuing from current end) */}
+              {(() => {
+                const isCustomStartDate = extensionStartDate && typeof extensionStartDate === 'string' && extensionStartDate.trim() !== "";
+
+                if (isCustomStartDate) {
+                  // Show custom start date format
+                  return (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-foreground-500">Current End Date</p>
+                        <p className="font-medium">
+                          {formatIST(new Date(membershipInfo.membershipEndDate!))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">Extension Start Date</p>
+                        <p className="font-medium text-primary">
+                          {formatIST(new Date(extensionStartDate))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">Extension Duration</p>
+                        <p className="font-medium">
+                          {extensionType === 'DAYS' ? parseInt(extensionValue) :
+                           extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                           parseInt(extensionValue) * 30} days
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">New End Date</p>
+                        <p className="font-medium text-success">
+                          {(() => {
+                            const extensionStart = new Date(extensionStartDate);
+                            const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
+                                                extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                                                parseInt(extensionValue) * 30;
+                            const newEnd = new Date(extensionStart);
+                            newEnd.setDate(newEnd.getDate() + extensionDays);
+                            return formatIST(newEnd, false);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Show original format (default behavior)
+                  return (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-foreground-500">Current Duration</p>
+                        <p className="font-medium">{membershipInfo.membershipDuration} days</p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">After Extension</p>
+                        <p className="font-medium text-success">
+                          {(membershipInfo.membershipDuration || 0) +
+                           (extensionType === 'DAYS' ? parseInt(extensionValue) :
+                            extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                            parseInt(extensionValue) * 30)} days
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">Current End Date</p>
+                        <p className="font-medium">
+                          {formatIST(new Date(membershipInfo.membershipEndDate!))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-foreground-500">New End Date</p>
+                        <p className="font-medium text-success">
+                          {(() => {
+                            const currentEnd = new Date(membershipInfo.membershipEndDate!);
+                            const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
+                                                extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                                                parseInt(extensionValue) * 30;
+                            const newEnd = new Date(currentEnd);
+                            newEnd.setDate(newEnd.getDate() + extensionDays);
+                            return formatIST(newEnd, false);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           )}
         </div>

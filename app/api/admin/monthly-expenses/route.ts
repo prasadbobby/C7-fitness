@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser, clerkClient } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
+import { nowIST } from '@/utils/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
-    const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+    const year = parseInt(url.searchParams.get('year') || nowIST().getFullYear().toString());
 
     // Fetch all payment logs for the year
     const startOfYear = new Date(year, 0, 1);

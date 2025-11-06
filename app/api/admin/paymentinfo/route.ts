@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser, clerkClient } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
+import { nowIST } from '@/utils/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
             {
               OR: [
                 { nextPaymentDue: null },
-                { nextPaymentDue: { gte: new Date() } }
+                { nextPaymentDue: { gte: nowIST() } }
               ]
             }
           ];
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
           whereClause.AND = [
             { discountedPrice: { not: null } },
             { remainingAmount: { gt: 0 } },
-            { nextPaymentDue: { lt: new Date() } }
+            { nextPaymentDue: { lt: nowIST() } }
           ];
           break;
       }
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
       if (user.discountedPrice !== null) {
         if ((user.remainingAmount || 0) <= 0) {
           paymentStatus = 'fully_paid';
-        } else if (user.nextPaymentDue && new Date(user.nextPaymentDue) < new Date()) {
+        } else if (user.nextPaymentDue && new Date(user.nextPaymentDue) < nowIST()) {
           paymentStatus = 'overdue';
         } else {
           paymentStatus = 'pending';
@@ -198,7 +199,7 @@ export async function GET(request: Request) {
       });
 
       // Calculate membership analytics
-      const now = new Date();
+      const now = nowIST();
       let membershipAnalytics = null;
 
       // Calculate analytics if user has valid membership data (pricing is optional for display)
@@ -308,7 +309,7 @@ export async function GET(request: Request) {
         u.discountedPrice !== null &&
         (u.remainingAmount || 0) > 0 &&
         u.nextPaymentDue &&
-        new Date(u.nextPaymentDue) < new Date()
+        new Date(u.nextPaymentDue) < nowIST()
       ).length,
       totalRevenue: allUsersForStats.reduce((sum, u) => sum + (u.totalAmountPaid || 0), 0),
       totalPending: allUsersForStats.reduce((sum, u) => sum + (u.remainingAmount || 0), 0),
