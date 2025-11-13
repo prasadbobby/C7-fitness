@@ -960,7 +960,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                           </Chip>
                         </div>
                         <div className="text-xs text-foreground-500">
-                          {formatISTDateTime(new Date(log.changeDate))}
+                          {formatISTDateTime(new Date(log.changeDate), false)}
                         </div>
                       </div>
                     </div>
