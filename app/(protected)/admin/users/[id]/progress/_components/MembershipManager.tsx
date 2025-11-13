@@ -134,14 +134,14 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
 
   // Custom extend open handler to clear start date
   const onExtendOpen = () => {
-    setExtensionStartDate(""); // Empty by default
+    setExtensionStartDate(undefined); // Empty by default
     onExtendOpenBase();
   };
 
   // Extension form states
   const [extensionType, setExtensionType] = useState<string>("DAYS");
   const [extensionValue, setExtensionValue] = useState<string>("");
-  const [extensionStartDate, setExtensionStartDate] = useState<string>("");
+  const [extensionStartDate, setExtensionStartDate] = useState<Date | undefined>(undefined);
   const [extensionReason, setExtensionReason] = useState<string>("");
   const [extending, setExtending] = useState(false);
   const [isComplementary, setIsComplementary] = useState<boolean>(false);
@@ -354,7 +354,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         body: JSON.stringify({
           extensionType,
           extensionValue: parseInt(extensionValue),
-          extensionStartDate,
+          extensionStartDate: extensionStartDate ? extensionStartDate.toISOString().split('T')[0] : "",
           reason: extensionReason || `Extended by ${extensionValue} ${extensionType.toLowerCase()}`,
           isComplementary,
         }),
@@ -685,7 +685,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                 </div>
                 <div className="mt-2">
                   <p className="text-xs text-foreground-500">
-                    Extended by {Math.ceil((new Date(membershipInfo.membershipEndDate).getTime() - new Date(membershipInfo.originalEndDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                    Extended by {membershipInfo.membershipDuration || 0} days
                   </p>
                 </div>
               </div>
@@ -1120,8 +1120,8 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
             <DatePicker
               label="Extension Start Date"
               placeholder="Select when the extension should start"
-              value={extensionStartDate ? new Date(extensionStartDate) : undefined}
-              onChange={(date) => setExtensionStartDate(date ? date.toISOString().split('T')[0] : "")}
+              value={extensionStartDate}
+              onChange={setExtensionStartDate}
             />
             <p className="text-xs text-foreground-500 mt-1">Choose the date when the extension should begin</p>
           </div>
@@ -1245,7 +1245,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
               <h4 className="font-medium text-success mb-2">Extension Preview:</h4>
               {/* Check if custom start date is different from default (continuing from current end) */}
               {(() => {
-                const isCustomStartDate = extensionStartDate && typeof extensionStartDate === 'string' && extensionStartDate.trim() !== "";
+                const isCustomStartDate = extensionStartDate instanceof Date;
 
                 if (isCustomStartDate) {
                   // Show custom start date format
@@ -1260,7 +1260,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                       <div>
                         <p className="text-foreground-500">Extension Start Date</p>
                         <p className="font-medium text-primary">
-                          {formatIST(new Date(extensionStartDate))}
+                          {formatIST(extensionStartDate)}
                         </p>
                       </div>
                       <div>
@@ -1275,7 +1275,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                         <p className="text-foreground-500">New End Date</p>
                         <p className="font-medium text-success">
                           {(() => {
-                            const extensionStart = new Date(extensionStartDate);
+                            const extensionStart = extensionStartDate;
                             const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
                                                 extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
                                                 parseInt(extensionValue) * 30;

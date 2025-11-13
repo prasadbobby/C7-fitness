@@ -156,6 +156,75 @@ export async function GET(
       }
     }
 
+    // Check if there's a scheduled extension that should now be applied
+    if (userInfo.upcomingStartDate && userInfo.upcomingEndDate) {
+      const upcomingStart = new Date(userInfo.upcomingStartDate);
+      const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
+
+      // If the extension start date has passed, apply it automatically
+      if (nowIST >= upcomingStart) {
+        console.log(`Auto-applying scheduled extension for user ${userId} - Start date ${upcomingStart.toISOString()} has passed`);
+
+        // Store the original end date for tracking
+        const originalEndDate = userInfo.membershipEndDate;
+
+        // Apply the scheduled extension
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            membershipStartDate: userInfo.upcomingStartDate, // Update start date to extension start
+            membershipEndDate: userInfo.upcomingEndDate,
+            membershipDuration: userInfo.upcomingDuration,
+            membershipStatus: 'ACTIVE',
+            originalEndDate: originalEndDate, // Store the previous end date
+            // Clear upcoming extension fields since it's now applied
+            upcomingStartDate: null,
+            upcomingEndDate: null,
+            upcomingDuration: null,
+            upcomingNotes: null
+          }
+        });
+
+        // Create a membership log entry for this auto-extension application
+        await prisma.membershipLog.create({
+          data: {
+            userInfoId: userInfo.id,
+            changeType: 'EXTENSION',
+            previousStatus: userInfo.membershipStatus,
+            newStatus: 'ACTIVE',
+            previousEndDate: originalEndDate,
+            newEndDate: userInfo.upcomingEndDate,
+            previousDuration: userInfo.membershipDuration,
+            newDuration: userInfo.upcomingDuration,
+            changeDate: new Date(),
+            notes: `Scheduled extension automatically applied on ${nowIST.toISOString()}. ${userInfo.upcomingNotes || ''}`.trim(),
+            recordedBy: 'SYSTEM'
+          }
+        });
+
+        // Update local variables to reflect the changes
+        userInfo.membershipStartDate = userInfo.upcomingStartDate; // Update start date too
+        userInfo.membershipEndDate = userInfo.upcomingEndDate;
+        userInfo.membershipDuration = userInfo.upcomingDuration;
+        userInfo.membershipStatus = 'ACTIVE';
+        userInfo.originalEndDate = originalEndDate;
+        userInfo.upcomingStartDate = null;
+        userInfo.upcomingEndDate = null;
+        userInfo.upcomingDuration = null;
+        userInfo.upcomingNotes = null;
+
+        // Recalculate status variables
+        if (userInfo.membershipEndDate) {
+          const diffTime = userInfo.membershipEndDate.getTime() - now.getTime();
+          daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          isExpired = daysRemaining < 0;
+        }
+        isPaused = false;
+        isUpcoming = false;
+        statusDetails = `Membership extended and active. ${daysRemaining} days remaining.`;
+      }
+    }
+
     // Check if there's an upcoming extension (using IST)
     const hasUpcomingExtension = userInfo.upcomingStartDate && userInfo.upcomingEndDate;
     let upcomingExtensionInfo = null;
