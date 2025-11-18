@@ -186,8 +186,15 @@ export async function GET(
     const enhancedParticipants = nonAdminParticipants.map((participant) => {
       const user = userMap.get(participant.userId);
 
+      // Filter posts to only include those created after participant joined (for reset functionality)
+      const filteredPosts = participant.posts.filter((post: any) => {
+        const postCreatedAt = new Date(post.createdAt);
+        const participantJoinedAt = new Date(participant.joinedAt);
+        return postCreatedAt >= participantJoinedAt;
+      });
+
       // Transform posts to include photoCount for scoring from our efficient lookup
-      const transformedPosts = participant.posts.map((post: any) => ({
+      const transformedPosts = filteredPosts.map((post: any) => ({
         ...post,
         photoCount: photoCountMap.get(post.id) || 0, // Get photo count from our efficient lookup
         // Photos are excluded from main query for performance - only counts are included

@@ -21,8 +21,10 @@ import {
   IconMessageCircle,
   IconChevronRight,
   IconCalendarWeek,
+  IconRefresh,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { ConfirmationModal } from "@/components/UI/ConfirmationModal";
 
 interface PageProps {
   params: { id: string };
@@ -46,6 +48,8 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
   const [activeLeaderboardTab, setActiveLeaderboardTab] = useState<"overall" | "weekly">("overall");
+  const [clearingScores, setClearingScores] = useState(false);
+  const [showClearScoresModal, setShowClearScoresModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -57,8 +61,8 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
       setLoading(true);
       console.log('Fetching challenge data for ID:', params.id);
       // Fetch with photos for leaderboard calculations, limit to recent 30 posts per participant for better performance
-      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?includePhotos=false&limit=30`, {
-        next: { revalidate: 300 } // Cache for 5 minutes
+      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${params.id}?includePhotos=false&limit=30&_t=${Date.now()}`, {
+        cache: 'no-store' // Don't cache when scores might have been reset
       });
       if (response.ok) {
         const data = await response.json();
@@ -86,6 +90,44 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
   const handleParticipantAdded = () => {
     console.log('Participant added, refreshing challenge data...');
     fetchChallengeData(); // Refresh the data
+  };
+
+  const handleClearScoresClick = () => {
+    setShowClearScoresModal(true);
+  };
+
+  const handleClearScoresConfirm = async () => {
+    if (!challenge) return;
+
+    setShowClearScoresModal(false);
+
+    try {
+      setClearingScores(true);
+      console.log('Clearing scores for challenge:', challenge.id);
+
+      const response = await fetch(`/api/admin/ninety-day-challenge/challenges/${challenge.id}/reset-points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Success!\n\n${data.message}\n\nParticipants updated: ${data.participantsUpdated}`);
+
+        // Refresh the challenge data to show updated scores
+        await fetchChallengeData();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to clear scores'}`);
+      }
+    } catch (error) {
+      console.error('Error clearing scores:', error);
+      alert('Error: Failed to clear scores. Please try again.');
+    } finally {
+      setClearingScores(false);
+    }
   };
 
   if (loading) {
@@ -150,6 +192,17 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <Button
+              color="danger"
+              variant="bordered"
+              size="lg"
+              startContent={<IconRefresh size={18} />}
+              onPress={handleClearScoresClick}
+              isLoading={clearingScores}
+              className="w-full sm:w-auto min-h-12 px-4"
+            >
+              {clearingScores ? "Clearing..." : "Clear Scores"}
+            </Button>
             <Button
               as={Link}
               href={`/ninety-day-challenge/posts?challengeId=${challenge.id}`}
@@ -386,6 +439,34 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
           onParticipantAdded={handleParticipantAdded}
         />
       </Suspense>
+
+      {/* Clear Scores Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearScoresModal}
+        onClose={() => setShowClearScoresModal(false)}
+        onConfirm={handleClearScoresConfirm}
+        title="Clear All Scores"
+        message={
+          <div className="space-y-3">
+            <p>Are you sure you want to clear all scores for <strong>"{challenge?.title}"</strong>?</p>
+            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+              <p className="text-sm text-warning-600">
+                <strong>What this does:</strong>
+              </p>
+              <ul className="text-sm text-warning-600 mt-1 space-y-1">
+                <li>• Resets all participant points to 0</li>
+                <li>• Scoring will restart from today's date</li>
+                <li>• All posts remain intact</li>
+                <li>• Only future posts will count toward scores</li>
+              </ul>
+            </div>
+          </div>
+        }
+        confirmText="Clear Scores"
+        confirmColor="danger"
+        isLoading={clearingScores}
+        destructive={true}
+      />
     </div>
   );
 }

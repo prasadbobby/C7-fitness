@@ -93,8 +93,15 @@ export async function GET(request: NextRequest) {
       participantsWithUserInfo = nonAdminParticipants.map(participant => {
         const clerkUser = clerkUserMap[participant.userId];
 
+        // Filter posts to only include those created after participant joined (for reset functionality)
+        const filteredPosts = participant.posts.filter(post => {
+          const postCreatedAt = new Date(post.createdAt);
+          const participantJoinedAt = new Date(participant.joinedAt);
+          return postCreatedAt >= participantJoinedAt;
+        });
+
         // Optimize post data - convert photos arrays to counts only
-        const optimizedPosts = participant.posts.map(post => ({
+        const optimizedPosts = filteredPosts.map(post => ({
           ...post,
           photoCount: post.photos ? post.photos.length : 0,
           // Remove the actual photos array to save bandwidth
