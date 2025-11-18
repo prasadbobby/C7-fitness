@@ -163,14 +163,14 @@ export async function GET(
 
       // If the extension start date has passed, apply it automatically
       if (nowIST >= upcomingStart) {
-        console.log(`Auto-applying scheduled extension for user ${userId} - Start date ${upcomingStart.toISOString()} has passed`);
+        console.log(`Auto-applying scheduled extension for user ${userInfo.userId} - Start date ${upcomingStart.toISOString()} has passed`);
 
         // Store the original end date for tracking
         const originalEndDate = userInfo.membershipEndDate;
 
         // Apply the scheduled extension
-        await prisma.user.update({
-          where: { id: userId },
+        await prisma.userInfo.update({
+          where: { id },
           data: {
             membershipStartDate: userInfo.upcomingStartDate, // Update start date to extension start
             membershipEndDate: userInfo.upcomingEndDate,

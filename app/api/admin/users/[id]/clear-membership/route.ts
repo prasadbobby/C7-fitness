@@ -42,6 +42,11 @@ export async function DELETE(
           pauseReason: null,
           // Clear original end date
           originalEndDate: null,
+          // Clear upcoming extension fields
+          upcomingStartDate: null,
+          upcomingEndDate: null,
+          upcomingDuration: null,
+          upcomingNotes: null,
           // IMPORTANT: Also clear payment-related fields that create analytics
           packagePrice: null,
           discountedPrice: null,
