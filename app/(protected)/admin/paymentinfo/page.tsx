@@ -689,33 +689,41 @@ export default function PaymentInfoPage() {
     setPage(1);
   };
 
-  // Calculate pricing based on months and per-month rate
-  const calculatePricing = (months: number, perMonthRate: number) => {
-    const totalPrice = months * perMonthRate;
-    setPackagePrice(totalPrice.toString());
-    setInitialOfferedPrice(totalPrice.toString()); // Set initial offered price
-    setDiscountedPrice(totalPrice.toString()); // Default same as package price
+  // Calculate pricing based on discounted price and months
+  const calculatePricing = (finalPrice: number, months: number) => {
+    const perMonthRate = finalPrice / months;
+    setPricePerMonth(perMonthRate.toString());
   };
 
   // Handle months change
   const handleMonthsChange = (value: string) => {
     setMembershipMonths(value);
     const months = parseInt(value);
-    const perMonth = parseFloat(pricePerMonth);
+    const finalPriceValue = parseFloat(discountedPrice);
 
-    if (months > 0 && perMonth > 0) {
-      calculatePricing(months, perMonth);
+    if (months > 0 && finalPriceValue > 0) {
+      calculatePricing(finalPriceValue, months);
     }
   };
 
-  // Handle per-month price change
-  const handlePerMonthChange = (value: string) => {
-    setPricePerMonth(value);
-    const months = parseInt(membershipMonths);
-    const perMonth = parseFloat(value);
+  // Handle package price change
+  const handlePackagePriceChange = (value: string) => {
+    setPackagePrice(value);
 
-    if (months > 0 && perMonth > 0) {
-      calculatePricing(months, perMonth);
+    // Set discounted price to package price by default (can be changed by user)
+    if (!discountedPrice) {
+      setDiscountedPrice(value);
+    }
+  };
+
+  // Handle final price change
+  const handleFinalPriceChange = (value: string) => {
+    setDiscountedPrice(value);
+    const finalPriceValue = parseFloat(value);
+    const months = parseInt(membershipMonths);
+
+    if (months > 0 && finalPriceValue > 0) {
+      calculatePricing(finalPriceValue, months);
     }
   };
 
@@ -723,7 +731,6 @@ export default function PaymentInfoPage() {
     setSelectedUser(user);
     // Populate form with existing data
     setPackagePrice(user.packagePrice?.toString() || "");
-    setInitialOfferedPrice((user as any).initialOfferedPrice?.toString() || "");
     setDiscountedPrice(user.discountedPrice?.toString() || "");
     setPaymentNotes(user.paymentNotes || "");
 
@@ -772,7 +779,7 @@ export default function PaymentInfoPage() {
 
       const payload = {
         packagePrice: parseFloat(packagePrice) || null,
-        initialOfferedPrice: parseFloat(initialOfferedPrice) || null,
+        initialOfferedPrice: null, // Not using this field anymore
         discountedPrice: parseFloat(discountedPrice) || null,
         paymentNotes: paymentNotes.trim() || null,
       };
@@ -813,16 +820,28 @@ export default function PaymentInfoPage() {
             // Re-calculate analytics if membership exists
             membershipAnalytics: selectedUser.membershipAnalytics ? {
               ...selectedUser.membershipAnalytics,
-              perDayRate: paymentInfo.discountedPrice && selectedUser.membershipAnalytics.totalDays ?
-                paymentInfo.discountedPrice / selectedUser.membershipAnalytics.totalDays : 0,
+              // Calculate based on current membership pricing, not total accumulated pricing
+              perDayRate: (() => {
+                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                return currentMembershipPrice && selectedUser.membershipAnalytics.totalDays ?
+                  currentMembershipPrice / selectedUser.membershipAnalytics.totalDays : 0;
+              })(),
               setupDiscount: paymentInfo.packagePrice && paymentInfo.discountedPrice ?
-                paymentInfo.packagePrice - paymentInfo.discountedPrice : 0,
-              discountPercentage: paymentInfo.packagePrice && paymentInfo.discountedPrice && paymentInfo.packagePrice > paymentInfo.discountedPrice ?
-                ((paymentInfo.packagePrice - paymentInfo.discountedPrice) / paymentInfo.packagePrice) * 100 : 0,
-              paymentPercentage: paymentInfo.discountedPrice && paymentInfo.totalAmountPaid ?
-                Math.min(100, (paymentInfo.totalAmountPaid / paymentInfo.discountedPrice) * 100) : 0,
-              daysCoveredByPayments: paymentInfo.discountedPrice && selectedUser.membershipAnalytics.totalDays && paymentInfo.totalAmountPaid ?
-                Math.floor((paymentInfo.totalAmountPaid / paymentInfo.discountedPrice) * selectedUser.membershipAnalytics.totalDays) : 0
+                paymentInfo.packagePrice - Math.min(paymentInfo.packagePrice, 35000) : 0,
+              discountPercentage: paymentInfo.packagePrice && paymentInfo.packagePrice > 35000 ?
+                ((paymentInfo.packagePrice - 35000) / paymentInfo.packagePrice) * 100 : 0,
+              paymentPercentage: (() => {
+                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                return currentMembershipPrice && paymentInfo.totalAmountPaid ?
+                  Math.min(100, (paymentInfo.totalAmountPaid / currentMembershipPrice) * 100) : 0;
+              })(),
+              daysCoveredByPayments: (() => {
+                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                const perDayRate = currentMembershipPrice && selectedUser.membershipAnalytics.totalDays ?
+                  currentMembershipPrice / selectedUser.membershipAnalytics.totalDays : 0;
+                return perDayRate && paymentInfo.totalAmountPaid ?
+                  Math.floor(paymentInfo.totalAmountPaid / perDayRate) : 0;
+              })()
             } : null
           };
 
@@ -1328,26 +1347,45 @@ export default function PaymentInfoPage() {
     });
   };
 
-  // Payment breakdown calculation function based on gym membership period
-  const calculatePaymentBreakdown = async (user: PaymentUser) => {
-    if (!user.discountedPrice || user.discountedPrice <= 0) {
-      return null;
-    }
+  // Helper function to calculate correct analytics for current membership pricing
+  const getCorrectAnalytics = (user: PaymentUser) => {
+    if (!user.membershipAnalytics) return null;
 
-    // Fetch membership information for this user
-    let membershipInfo = null;
+    const currentMembershipPrice = Math.min(user.packagePrice || 0, 35000);
+    const totalDays = user.membershipAnalytics.totalDays;
+    const perDayRate = currentMembershipPrice / totalDays;
+    const paymentPercentage = currentMembershipPrice > 0 ? Math.min(100, (user.totalAmountPaid / currentMembershipPrice) * 100) : 0;
+    const daysCoveredByPayments = perDayRate > 0 ? Math.floor(user.totalAmountPaid / perDayRate) : 0;
+
+    return {
+      ...user.membershipAnalytics,
+      perDayRate: Math.round(perDayRate * 100) / 100,
+      paymentPercentage: Math.round(paymentPercentage * 100) / 100,
+      daysCoveredByPayments,
+      // Calculate correct remaining amount and days
+      correctRemainingAmount: Math.max(0, currentMembershipPrice - user.totalAmountPaid),
+      correctDaysRemaining: Math.max(0, totalDays - daysCoveredByPayments)
+    };
+  };
+
+  // Payment breakdown calculation function based on gym membership periods
+  const calculatePaymentBreakdown = async (user: PaymentUser) => {
+    // Fetch membership history for this user
+    let membershipHistory = null;
+    let currentMembership = null;
     try {
-      const membershipResponse = await fetch(`/api/admin/users/${user.id}/membership`);
-      if (membershipResponse.ok) {
-        const membershipData = await membershipResponse.json();
-        membershipInfo = membershipData.membership;
+      const historyResponse = await fetch(`/api/admin/users/${user.id}/membership-history`);
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        membershipHistory = historyData.membershipLogs;
+        currentMembership = historyData.membershipInfo;
       }
     } catch (error) {
-      console.error('Error fetching membership info:', error);
+      console.error('Error fetching membership history:', error);
     }
 
-    // If no membership info or invalid membership period, return specific error type
-    if (!membershipInfo || !membershipInfo.membershipStartDate || !membershipInfo.membershipDuration) {
+    // If no current membership info, return error
+    if (!currentMembership || !currentMembership.membershipStartDate || !currentMembership.membershipDuration) {
       return {
         type: 'noMembership',
         userName: user.userName,
@@ -1355,91 +1393,269 @@ export default function PaymentInfoPage() {
       };
     }
 
-    const totalPackageAmount = user.discountedPrice;
-    const totalPaidAmount = user.totalAmountPaid;
-    const membershipDuration = membershipInfo.membershipDuration;
-    const perDayRate = totalPackageAmount / membershipDuration;
-
-    // Use membership period for calculation
-    const startDate = new Date(membershipInfo.membershipStartDate);
-    const endDate = new Date(membershipInfo.membershipEndDate || startDate);
-
-    // If no end date, calculate from start date + duration
-    if (!membershipInfo.membershipEndDate) {
-      endDate.setDate(startDate.getDate() + membershipDuration - 1);
+    // Fetch ALL payment logs (not just recent 3)
+    let allPayments = [];
+    try {
+      const paymentsResponse = await fetch(`/api/admin/users/${user.id}/payments`);
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json();
+        allPayments = paymentsData.paymentLogs || [];
+      }
+    } catch (error) {
+      console.error('Error fetching payment logs:', error);
     }
 
-    // Calculate month-wise breakdown based on membership period
-    const monthBreakdown = [];
-    const currentDate = new Date(startDate);
+    // Build membership periods from history
+    const membershipPeriods: Array<{
+      startDate: Date;
+      endDate: Date;
+      duration: number;
+      status: string;
+      changeType: string;
+      notes: string | null;
+      packagePrice: number;
+    }> = [];
 
-    while (currentDate <= endDate) {
-      const month = currentDate.getMonth();
-      const year = currentDate.getFullYear();
-      const monthStart = new Date(year, month, 1);
-      const monthEnd = new Date(year, month + 1, 0);
+    // First pass: collect all periods without pricing
+    const tempPeriods: Array<{
+      startDate: Date;
+      endDate: Date;
+      duration: number;
+      status: string;
+      changeType: string;
+      notes: string | null;
+    }> = [];
 
-      // Calculate days in this month that fall within membership period
-      const rangeStart = currentDate < monthStart ? monthStart : new Date(currentDate);
-      const rangeEnd = endDate < monthEnd ? endDate : monthEnd;
+    if (membershipHistory && membershipHistory.length > 0) {
+      // Sort logs by change date ascending
+      const sortedLogs = [...membershipHistory].sort((a: any, b: any) =>
+        new Date(a.changeDate).getTime() - new Date(b.changeDate).getTime()
+      );
 
-      if (rangeStart <= rangeEnd) {
-        const daysInMonth = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const monthAmount = daysInMonth * perDayRate;
+      // Track all membership periods treating extensions as separate billing periods
+      for (let i = 0; i < sortedLogs.length; i++) {
+        const log = sortedLogs[i];
 
-        // Find payments made in this month
-        const monthPayments = user.recentPayments.filter(payment => {
-          const paymentDate = new Date(payment.paymentDate);
-          return paymentDate.getMonth() === month && paymentDate.getFullYear() === year;
-        });
+        // Skip status-only changes that don't create new periods
+        if (log.changeType === 'STATUS_CHANGE' || log.changeType === 'PAUSE' || log.changeType === 'RESUME') {
+          continue;
+        }
 
-        monthBreakdown.push({
-          month: formatIST(monthStart, false, { month: 'long', year: 'numeric' }),
-          startDate: formatIST(rangeStart, false, { day: 'numeric', month: 'short' }),
-          endDate: formatIST(rangeEnd, false, { day: 'numeric', month: 'short' }),
-          days: daysInMonth,
-          allocatedAmount: Math.round(monthAmount * 100) / 100,
-          paidAmount: monthPayments.reduce((sum, p) => sum + p.amount, 0),
-          payments: monthPayments.map(p => ({
-            date: formatIST(new Date(p.paymentDate), true, { day: 'numeric', month: 'short', year: 'numeric' }),
-            amount: p.amount,
-            method: p.paymentMethod,
-            transactionId: p.transactionId
-          }))
-        });
+        // For INITIAL_SETUP, use the newStartDate and newEndDate
+        if (log.changeType === 'INITIAL_SETUP' && log.newStartDate && log.newEndDate && log.newDuration) {
+          const startDate = new Date(log.newStartDate);
+          const endDate = new Date(log.newEndDate);
+          const duration = log.newDuration;
+
+          const now = nowIST();
+          let actualStatus = 'ACTIVE';
+          if (now < startDate) {
+            actualStatus = 'UPCOMING';
+          } else if (now > endDate) {
+            actualStatus = 'EXPIRED';
+          } else if (log.newStatus === 'PAUSED') {
+            actualStatus = 'PAUSED';
+          }
+
+          tempPeriods.push({
+            startDate,
+            endDate,
+            duration,
+            status: actualStatus,
+            changeType: log.changeType,
+            notes: log.notes
+          });
+        }
+        // For EXTENSION, create a new period from previousEndDate to newEndDate
+        else if (log.changeType === 'EXTENSION' && log.previousEndDate && log.newEndDate && log.newDuration) {
+          const prevEnd = new Date(log.previousEndDate);
+          const newEnd = new Date(log.newEndDate);
+
+          // Skip extensions that don't actually extend (duplicate/invalid logs)
+          if (prevEnd.getTime() === newEnd.getTime()) {
+            continue;
+          }
+
+          // Try to extract actual start date from notes
+          // Notes format: "Extension of X months starting Mon Nov 03 2025"
+          let actualStartDate: Date | null = null;
+          if (log.notes) {
+            const dateMatch = log.notes.match(/starting\s+\w+\s+(\w+)\s+(\d+)\s+(\d{4})/);
+            if (dateMatch) {
+              const [, month, day, year] = dateMatch;
+              const dateStr = `${month} ${day}, ${year}`;
+              actualStartDate = new Date(dateStr);
+            }
+          }
+
+          // Use the extracted date if valid, otherwise fall back to previousEndDate
+          const startDate = actualStartDate && !isNaN(actualStartDate.getTime())
+            ? actualStartDate
+            : prevEnd;
+          const endDate = newEnd;
+          const duration = log.newDuration;
+
+          const now = nowIST();
+          let actualStatus = 'ACTIVE';
+          if (now < startDate) {
+            actualStatus = 'UPCOMING';
+          } else if (now > endDate) {
+            actualStatus = 'EXPIRED';
+          } else if (log.newStatus === 'PAUSED') {
+            actualStatus = 'PAUSED';
+          }
+
+          tempPeriods.push({
+            startDate,
+            endDate,
+            duration,
+            status: actualStatus,
+            changeType: log.changeType,
+            notes: log.notes
+          });
+        }
+        // For RENEWAL or other types with full date info
+        else if (log.newStartDate && log.newEndDate && log.newDuration) {
+          const startDate = new Date(log.newStartDate);
+          const endDate = new Date(log.newEndDate);
+          const duration = log.newDuration;
+
+          const now = nowIST();
+          let actualStatus = 'ACTIVE';
+          if (now < startDate) {
+            actualStatus = 'UPCOMING';
+          } else if (now > endDate) {
+            actualStatus = 'EXPIRED';
+          } else if (log.newStatus === 'PAUSED') {
+            actualStatus = 'PAUSED';
+          }
+
+          tempPeriods.push({
+            startDate,
+            endDate,
+            duration,
+            status: actualStatus,
+            changeType: log.changeType,
+            notes: log.notes
+          });
+        }
+      }
+    }
+
+    // If no periods from logs, use current membership
+    if (tempPeriods.length === 0) {
+      const startDate = new Date(currentMembership.membershipStartDate);
+      const endDate = currentMembership.membershipEndDate ?
+        new Date(currentMembership.membershipEndDate) :
+        new Date(startDate.getTime() + (currentMembership.membershipDuration * 24 * 60 * 60 * 1000));
+
+      const now = nowIST();
+      let actualStatus = 'ACTIVE';
+      if (now < startDate) {
+        actualStatus = 'UPCOMING';
+      } else if (now > endDate) {
+        actualStatus = 'EXPIRED';
+      } else if (currentMembership.membershipStatus === 'PAUSED') {
+        actualStatus = 'PAUSED';
       }
 
-      // Move to next month
-      currentDate.setDate(1);
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      tempPeriods.push({
+        startDate,
+        endDate,
+        duration: currentMembership.membershipDuration,
+        status: actualStatus,
+        changeType: 'CURRENT',
+        notes: currentMembership.membershipNotes
+      });
     }
 
-    // Adjust the last month to ensure total equals exactly the package amount
-    if (monthBreakdown.length > 0) {
-      const totalAllocated = monthBreakdown.reduce((sum, month) => sum + month.allocatedAmount, 0);
-      const difference = totalPackageAmount - totalAllocated;
-      monthBreakdown[monthBreakdown.length - 1].allocatedAmount += difference;
-      monthBreakdown[monthBreakdown.length - 1].allocatedAmount = Math.round(monthBreakdown[monthBreakdown.length - 1].allocatedAmount * 100) / 100;
+    // Calculate total duration of all periods
+    const totalDurationAllPeriods = tempPeriods.reduce((sum, p) => sum + p.duration, 0);
+    const totalPackagePrice = user.discountedPrice || 0;
+
+    // Second pass: assign pricing to each period proportionally
+    for (const period of tempPeriods) {
+      // Calculate price proportionally based on duration
+      const periodPackagePrice = totalDurationAllPeriods > 0
+        ? (period.duration / totalDurationAllPeriods) * totalPackagePrice
+        : totalPackagePrice;
+
+      membershipPeriods.push({
+        ...period,
+        packagePrice: Math.round(periodPackagePrice * 100) / 100
+      });
     }
+
+    // Sort periods by start date descending (latest first)
+    membershipPeriods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+    // Calculate payment breakdown for each membership period
+    const membershipBreakdown = membershipPeriods.map((period, index) => {
+      const periodStart = period.startDate;
+      const periodEnd = period.endDate;
+      const periodDuration = period.duration;
+
+      // Use the package price calculated for this specific period
+      const periodPackagePrice = period.packagePrice;
+
+      // Find payments made during this period
+      const periodPayments = allPayments.filter((payment: any) => {
+        const paymentDate = new Date(payment.paymentDate);
+        return paymentDate >= periodStart && paymentDate <= periodEnd;
+      });
+
+      const periodPaidAmount = periodPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+      const periodRemainingAmount = Math.max(0, periodPackagePrice - periodPaidAmount);
+      const perDayRate = periodDuration > 0 ? periodPackagePrice / periodDuration : 0;
+
+      return {
+        periodNumber: index + 1,
+        startDate: formatIST(periodStart, false, { day: 'numeric', month: 'long', year: 'numeric' }),
+        endDate: formatIST(periodEnd, false, { day: 'numeric', month: 'long', year: 'numeric' }),
+        duration: periodDuration,
+        status: period.status,
+        changeType: period.changeType,
+        notes: period.notes,
+        packagePrice: Math.round(periodPackagePrice * 100) / 100,
+        paidAmount: Math.round(periodPaidAmount * 100) / 100,
+        remainingAmount: Math.round(periodRemainingAmount * 100) / 100,
+        perDayRate: Math.round(perDayRate * 100) / 100,
+        paymentProgress: periodPackagePrice > 0 ? Math.round((periodPaidAmount / periodPackagePrice) * 100) : 0,
+        payments: periodPayments.map((p: any) => ({
+          date: formatIST(new Date(p.paymentDate), true, { day: 'numeric', month: 'short', year: 'numeric' }),
+          amount: p.amount,
+          method: p.paymentMethod,
+          transactionId: p.transactionId,
+          notes: p.notes,
+          recordedByName: p.recordedByName
+        }))
+      };
+    });
+
+    const totalPackageAmount = user.discountedPrice || 0;
+    const totalPaidAmount = user.totalAmountPaid || 0;
 
     return {
       type: 'success',
       userName: user.userName,
       totalPackageAmount,
       totalPaidAmount,
-      remainingAmount: user.remainingAmount,
+      remainingAmount: user.remainingAmount || 0,
       membershipInfo: {
-        startDate: formatIST(startDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
-        endDate: formatIST(endDate, false, { day: 'numeric', month: 'long', year: 'numeric' }),
-        duration: membershipDuration,
-        status: membershipInfo.membershipStatus,
-        perDayRate: Math.round(perDayRate * 100) / 100
+        startDate: formatIST(new Date(currentMembership.membershipStartDate), false, { day: 'numeric', month: 'long', year: 'numeric' }),
+        endDate: currentMembership.membershipEndDate ?
+          formatIST(new Date(currentMembership.membershipEndDate), false, { day: 'numeric', month: 'long', year: 'numeric' }) :
+          'Not set',
+        duration: currentMembership.membershipDuration,
+        status: currentMembership.membershipStatus,
+        perDayRate: totalPackageAmount > 0 && currentMembership.membershipDuration > 0 ?
+          Math.round((totalPackageAmount / currentMembership.membershipDuration) * 100) / 100 : 0
       },
-      monthBreakdown,
+      membershipBreakdown,
       paymentStats: {
-        totalPayments: user.recentPayments.length,
-        averagePayment: user.recentPayments.length > 0 ? Math.round((totalPaidAmount / user.recentPayments.length) * 100) / 100 : 0,
-        completionPercentage: Math.round((totalPaidAmount / totalPackageAmount) * 100)
+        totalPayments: allPayments.length,
+        averagePayment: allPayments.length > 0 ? Math.round((totalPaidAmount / allPayments.length) * 100) / 100 : 0,
+        completionPercentage: totalPackageAmount > 0 ? Math.round((totalPaidAmount / totalPackageAmount) * 100) : 0
       }
     };
   };
@@ -1851,24 +2067,26 @@ export default function PaymentInfoPage() {
                   </TableCell>
                   <TableCell>
                     <div className="min-w-0">
-                      {user.packagePrice && user.membershipAnalytics?.setupDiscount && user.membershipAnalytics.setupDiscount > 0 && (
-                        <div className="flex items-center gap-1 mb-1">
-                          <p className="text-xs text-foreground-400 line-through leading-tight">
-                            {formatCurrency(user.packagePrice)}
-                          </p>
-                          <Chip size="sm" color="success" variant="flat" className="text-xs">
-                            -{user.membershipAnalytics.discountPercentage.toFixed(0)}%
-                          </Chip>
-                        </div>
-                      )}
-                      <p className="font-medium text-foreground leading-tight">
-                        {user.discountedPrice ? formatCurrency(user.discountedPrice) : 'Not set'}
-                      </p>
-                      {user.membershipAnalytics?.setupDiscount && user.membershipAnalytics.setupDiscount > 0 && (
-                        <p className="text-xs text-success leading-tight mt-0.5">
-                          Saved {formatCurrency(user.membershipAnalytics.setupDiscount)}
-                        </p>
-                      )}
+                      {(() => {
+                        // Calculate per-period pricing
+                        // Assuming standard 3-month (90-day) periods
+                        const totalPrice = user.discountedPrice || 0;
+                        const totalDays = user.membershipAnalytics?.totalDays || 90;
+                        const standardPeriodDays = 90;
+                        const numberOfPeriods = Math.ceil(totalDays / standardPeriodDays);
+                        const perPeriodPrice = numberOfPeriods > 0 ? totalPrice / numberOfPeriods : totalPrice;
+
+                        return (
+                          <>
+                            <p className="font-medium text-foreground leading-tight">
+                              {formatCurrency(perPeriodPrice)}
+                            </p>
+                            <p className="text-xs text-foreground-400 leading-tight mt-0.5">
+                              Per {standardPeriodDays} days
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -3273,11 +3491,21 @@ export default function PaymentInfoPage() {
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
                             <span className="text-foreground-500">Per Month:</span>
-                            <span className="font-medium ml-1">₹{(selectedUser.membershipAnalytics.totalDays > 0 ? (selectedUser.discountedPrice || 0) / (selectedUser.membershipAnalytics.totalDays / 30) : 0).toFixed(0)}</span>
+                            <span className="font-medium ml-1">₹{(() => {
+                              // Calculate per month for current membership (35000 for 3 months)
+                              const currentMembershipPrice = Math.min(selectedUser.packagePrice || 0, 35000);
+                              const monthsTotal = selectedUser.membershipAnalytics.totalDays / 30;
+                              return monthsTotal > 0 ? (currentMembershipPrice / monthsTotal).toFixed(0) : '0';
+                            })()}</span>
                           </div>
                           <div>
                             <span className="text-foreground-500">Per Day:</span>
-                            <span className="font-medium ml-1">₹{selectedUser.membershipAnalytics.perDayRate}</span>
+                            <span className="font-medium ml-1">₹{(() => {
+                              // Calculate per day for current membership (35000 for 90 days)
+                              const currentMembershipPrice = Math.min(selectedUser.packagePrice || 0, 35000);
+                              const totalDays = selectedUser.membershipAnalytics.totalDays;
+                              return totalDays > 0 ? (currentMembershipPrice / totalDays).toFixed(2) : '0';
+                            })()}</span>
                           </div>
                         </div>
                       </div>
@@ -3292,13 +3520,12 @@ export default function PaymentInfoPage() {
                         </div>
                         <p className="text-lg font-bold text-success">
                           {(() => {
-                            // Use stored initial offered price if available
-                            const user = selectedUser as any;
-                            if (user.initialOfferedPrice) {
-                              return formatCurrency(user.initialOfferedPrice);
-                            }
-                            // Fallback to discounted price if no initial offered price is stored
-                            return formatCurrency(selectedUser.discountedPrice || 0);
+                            // Calculate current membership offered price
+                            // If packagePrice exists, use that as base, otherwise use discountedPrice
+                            const basePrice = selectedUser.packagePrice || selectedUser.discountedPrice || 0;
+                            // For current membership, show the package price or a reasonable offered price
+                            const offeredPrice = Math.min(basePrice, 35000); // Cap at 35000 for current membership
+                            return formatCurrency(offeredPrice);
                           })()}
                         </p>
                       </div>
@@ -3312,7 +3539,11 @@ export default function PaymentInfoPage() {
                           </p>
                         </div>
                         <p className="text-lg font-bold text-foreground-600">
-                          {selectedUser.discountedPrice ? formatCurrency(selectedUser.discountedPrice) : '₹0'}
+                          {(() => {
+                            // Show current membership value, not accumulated total
+                            const currentMembershipValue = Math.min(selectedUser.packagePrice || 0, 35000);
+                            return formatCurrency(currentMembershipValue);
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -3321,18 +3552,34 @@ export default function PaymentInfoPage() {
 
                 {/* Payment Status Overview */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                  {/* Amount Paid */}
-                  <div className="p-3 bg-content1 rounded-lg">
+                  {/* Amount Paid - Clickable */}
+                  <div
+                    className="p-3 bg-content1 rounded-lg cursor-pointer hover:bg-content2 transition-colors group"
+                    onClick={async () => {
+                      // Show payment breakdown modal
+                      setLoadingBreakdown(true);
+                      try {
+                        const breakdown = await calculatePaymentBreakdown(selectedUser);
+                        setPaymentBreakdown(breakdown);
+                        onBreakdownOpen();
+                      } catch (error) {
+                        console.error('Error calculating payment breakdown:', error);
+                      } finally {
+                        setLoadingBreakdown(false);
+                      }
+                    }}
+                  >
                     <div className="flex items-center gap-2 mb-2">
                       <IconCircleCheck size={14} className="text-success" />
                       <span className="text-xs text-foreground-500">Amount Paid</span>
+                      <IconChevronRight size={12} className="text-foreground-400 ml-auto group-hover:text-foreground-600 transition-colors" />
                     </div>
                     <p className="text-lg font-bold text-success">
                       {formatCurrency(selectedUser.totalAmountPaid)}
                     </p>
                     {selectedUser.membershipAnalytics && (
                       <p className="text-xs text-foreground-500 mt-1">
-                        {selectedUser.membershipAnalytics.paymentPercentage.toFixed(1)}% completed
+                        {getCorrectAnalytics(selectedUser)?.paymentPercentage.toFixed(1)}% completed
                       </p>
                     )}
                   </div>
@@ -3343,12 +3590,12 @@ export default function PaymentInfoPage() {
                       <IconAlertCircle size={14} className="text-warning" />
                       <span className="text-xs text-foreground-500">Remaining</span>
                     </div>
-                    <p className={`text-lg font-bold ${selectedUser.remainingAmount > 0 ? 'text-warning' : 'text-success'}`}>
-                      {formatCurrency(selectedUser.remainingAmount)}
+                    <p className={`text-lg font-bold ${(getCorrectAnalytics(selectedUser)?.correctRemainingAmount || 0) > 0 ? 'text-warning' : 'text-success'}`}>
+                      {formatCurrency(getCorrectAnalytics(selectedUser)?.correctRemainingAmount || selectedUser.remainingAmount)}
                     </p>
                     {selectedUser.membershipAnalytics && (
                       <p className="text-xs text-foreground-500 mt-1">
-                        {selectedUser.membershipAnalytics.daysCoveredByPayments} days covered
+                        {getCorrectAnalytics(selectedUser)?.daysCoveredByPayments} days covered
                       </p>
                     )}
                   </div>
@@ -3361,7 +3608,7 @@ export default function PaymentInfoPage() {
                         <span className="text-xs text-foreground-500">Days Left</span>
                       </div>
                       <p className={`text-lg font-bold ${selectedUser.membershipAnalytics.isExpired ? "text-danger" : "text-info"}`}>
-                        {selectedUser.membershipAnalytics.isExpired ? 'Expired' : selectedUser.membershipAnalytics.daysRemaining}
+                        {selectedUser.membershipAnalytics.isExpired ? 'Expired' : getCorrectAnalytics(selectedUser)?.correctDaysRemaining || selectedUser.membershipAnalytics.daysRemaining}
                       </p>
                       <p className="text-xs text-foreground-500 mt-1">
                         of {selectedUser.membershipAnalytics.totalDays} total days
@@ -3561,10 +3808,19 @@ export default function PaymentInfoPage() {
         }
       >
         <div className="space-y-6">
-          {/* Membership Duration & Rate Setup */}
+          {/* Membership Setup */}
           <div>
             <h5 className="font-medium text-sm text-foreground-700 mb-3">Membership Setup</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                type="number"
+                label="Package Price (₹)"
+                placeholder="45000"
+                value={packagePrice}
+                onChange={(e) => handlePackagePriceChange(e.target.value)}
+                description="Total price for the membership"
+                min="1"
+              />
               <Input
                 type="number"
                 label="Membership Duration (Months)"
@@ -3575,104 +3831,96 @@ export default function PaymentInfoPage() {
                 min="1"
                 max="24"
               />
-              <Input
-                type="number"
-                label="Price Per Month (₹)"
-                placeholder="15000"
-                value={pricePerMonth}
-                onChange={(e) => handlePerMonthChange(e.target.value)}
-                description="Monthly rate for membership"
-                min="1"
-              />
             </div>
+
+            {/* Auto-calculated Price Per Month */}
+            {membershipMonths && discountedPrice && (
+              <div className="mt-4">
+                <Input
+                  type="number"
+                  label="Price Per Month (₹)"
+                  value={pricePerMonth}
+                  isReadOnly
+                  description="Auto-calculated from final pricing and duration"
+                  classNames={{
+                    input: "bg-content2 text-foreground-500",
+                    inputWrapper: "bg-content2"
+                  }}
+                />
+              </div>
+            )}
 
           </div>
 
-          {/* Calculated Pricing */}
-          {membershipMonths && pricePerMonth && (
+
+          {/* Final Pricing */}
+          <div>
+            <h5 className="font-medium text-sm text-foreground-700 mb-3">Final Pricing</h5>
+            <div className="max-w-md">
+              <Input
+                type="number"
+                label="Final Total Price (₹)"
+                placeholder="45000"
+                value={discountedPrice}
+                onChange={(e) => handleFinalPriceChange(e.target.value)}
+                description="Final price after any discounts"
+              />
+            </div>
+          </div>
+
+          {/* Calculated Pricing - moved below Final Pricing */}
+          {membershipMonths && discountedPrice && (
             <div className="bg-content2 rounded-lg p-4">
               <h5 className="font-medium text-sm text-foreground-700 mb-3">Calculated Pricing</h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-content1 rounded-lg p-3">
                   <p className="text-xs text-foreground-500 mb-1">Package Price (Total)</p>
-                  <p className="text-lg font-bold text-foreground">₹{formatCurrency(parseInt(packagePrice) || 0).replace('₹', '')}</p>
+                  <p className="text-lg font-bold text-foreground">₹{formatCurrency(parseInt(discountedPrice) || 0).replace('₹', '')}</p>
                   <p className="text-xs text-foreground-400">{membershipMonths} months × ₹{parseInt(pricePerMonth).toLocaleString()}</p>
                 </div>
                 <div className="bg-content1 rounded-lg p-3">
                   <p className="text-xs text-foreground-500 mb-1">Per Day Rate</p>
-                  <p className="text-lg font-bold text-foreground">₹{((parseInt(packagePrice) || 0) / (parseInt(membershipMonths) * 30)).toFixed(0)}</p>
+                  <p className="text-lg font-bold text-foreground">₹{((parseInt(discountedPrice) || 0) / (parseInt(membershipMonths) * 30)).toFixed(0)}</p>
                   <p className="text-xs text-foreground-400">Based on 30 days/month</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Final Pricing */}
-          <div>
-            <h5 className="font-medium text-sm text-foreground-700 mb-3">Final Pricing</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                type="number"
-                label="Package Price (₹)"
-                placeholder="45000"
-                value={packagePrice}
-                onChange={(e) => setPackagePrice(e.target.value)}
-                description="Original calculated price"
-                isReadOnly={membershipMonths && pricePerMonth ? true : false}
-                classNames={{
-                  input: membershipMonths && pricePerMonth ? "bg-content2" : ""
-                }}
-              />
-              <Input
-                type="number"
-                label="Initial Offered Price (₹)"
-                placeholder="40000"
-                value={initialOfferedPrice}
-                onChange={(e) => setInitialOfferedPrice(e.target.value)}
-                description="Original price offered to customer"
-              />
-              <Input
-                type="number"
-                label="Current Total Price (₹)"
-                placeholder="44444"
-                value={discountedPrice}
-                onChange={(e) => setDiscountedPrice(e.target.value)}
-                description="Current total price (may include extensions)"
-              />
-            </div>
-
-            {/* Discount Calculation */}
-            {packagePrice && discountedPrice && parseFloat(packagePrice) !== parseFloat(discountedPrice) && (
-              <div className="mt-3 p-3 bg-success-50 border border-success-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <IconCurrencyRupee size={16} className="text-success-600" />
-                  <span className="text-sm font-medium text-success-700">Discount Applied</span>
+          {/* Discount Calculation */}
+          {packagePrice && discountedPrice && parseFloat(packagePrice) !== parseFloat(discountedPrice) && (
+            <div className="mt-3 p-3 bg-success-50 border border-success-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <IconCurrencyRupee size={16} className="text-success-600" />
+                <span className="text-sm font-medium text-success-700">Discount Applied</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-foreground-500">Discount Amount:</span>
+                  <span className="font-medium ml-1 text-success-600">
+                    ₹{(parseFloat(packagePrice) - parseFloat(discountedPrice)).toLocaleString()}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-foreground-500">Discount Amount:</span>
-                    <span className="font-medium ml-1 text-success-600">
-                      ₹{(parseFloat(packagePrice) - parseFloat(discountedPrice)).toLocaleString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-foreground-500">Discount %:</span>
-                    <span className="font-medium ml-1 text-success-600">
-                      {(((parseFloat(packagePrice) - parseFloat(discountedPrice)) / parseFloat(packagePrice)) * 100).toFixed(1)}%
-                    </span>
-                  </div>
+                <div>
+                  <span className="text-foreground-500">Discount %:</span>
+                  <span className="font-medium ml-1 text-success-600">
+                    {(((parseFloat(packagePrice) - parseFloat(discountedPrice)) / parseFloat(packagePrice)) * 100).toFixed(1)}%
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <Input
-            label="Payment Notes"
-            placeholder="Special payment arrangements or notes..."
-            value={paymentNotes}
-            onChange={(e) => setPaymentNotes(e.target.value)}
-            description="Optional notes about payment arrangements"
-          />
+          {/* Payment Notes */}
+          <div>
+            <Input
+              label="Payment Notes"
+              placeholder="Special payment arrangements or notes..."
+              value={paymentNotes}
+              onChange={(e) => setPaymentNotes(e.target.value)}
+              description="Optional notes about payment arrangements"
+            />
+          </div>
         </div>
       </BottomSheet>
 
@@ -3978,7 +4226,7 @@ export default function PaymentInfoPage() {
                   <CardBody className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
-                        <p className="text-sm text-foreground-500">Client</p>
+                        <p className="text-sm text-foreground-500">Client Information</p>
                         <div className="flex items-center gap-3">
                           <Avatar src={selectedUser?.userImageUrl} name={selectedUser?.userName} size="sm" />
                           <div>
@@ -3988,20 +4236,16 @@ export default function PaymentInfoPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <p className="text-sm text-foreground-500">Package Pricing</p>
+                        <p className="text-sm text-foreground-500">Package Pricing (Per Period)</p>
                         <div className="space-y-1">
-                          {selectedUser?.packagePrice && selectedUser?.membershipAnalytics?.setupDiscount && selectedUser.membershipAnalytics.setupDiscount > 0 && (
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm text-foreground-400 line-through">₹{selectedUser.packagePrice?.toLocaleString()}</p>
-                              <Chip size="sm" color="success" variant="flat">
-                                -{selectedUser.membershipAnalytics.discountPercentage.toFixed(0)}%
-                              </Chip>
-                            </div>
-                          )}
-                          <p className="text-lg font-bold text-primary">₹{paymentBreakdown.totalPackageAmount?.toLocaleString()}</p>
-                          {selectedUser?.membershipAnalytics?.setupDiscount && selectedUser.membershipAnalytics.setupDiscount > 0 && (
-                            <p className="text-xs text-success">Saved ₹{selectedUser.membershipAnalytics.setupDiscount?.toLocaleString()}</p>
-                          )}
+                          <p className="text-lg font-bold text-primary">
+                            ₹{paymentBreakdown.membershipBreakdown && paymentBreakdown.membershipBreakdown.length > 0
+                              ? paymentBreakdown.membershipBreakdown[0].packagePrice?.toLocaleString()
+                              : '0'}
+                          </p>
+                          <p className="text-xs text-foreground-400">
+                            For {paymentBreakdown.membershipBreakdown?.[0]?.duration || 0} days membership
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -4092,72 +4336,121 @@ export default function PaymentInfoPage() {
                   </CardBody>
                 </Card>
 
-                {/* Month-wise Payment Breakdown */}
+                {/* Membership-wise Payment Breakdown */}
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <IconCalendarDue size={20} className="text-primary" />
-                    Payment History by Month
+                    Payment Details by Membership Period
                   </h4>
 
                   <div className="space-y-3">
-                    {paymentBreakdown.monthBreakdown?.map((month: any, index: number) => (
+                    {paymentBreakdown.membershipBreakdown?.map((period: any, index: number) => (
                       <Card key={index} className="border border-divider">
-                        <CardBody className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-foreground">{month.month}</h5>
-                              <p className="text-sm text-foreground-500">
-                                {month.startDate} - {month.endDate} ({month.days} days, {month.payments?.length || 0} payment{(month.payments?.length || 0) > 1 ? 's' : ''})
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-primary">₹{month.allocatedAmount?.toLocaleString()}</p>
-                              <p className="text-sm text-success-600">Paid: ₹{month.paidAmount?.toLocaleString()}</p>
-                            </div>
-                          </div>
-
-                          {/* Individual payments in this month */}
-                          {month.payments && month.payments.length > 0 && (
-                            <div className="space-y-2 mt-3 pt-3 border-t border-divider">
-                              {month.payments.map((payment: any, paymentIndex: number) => (
-                                <div key={paymentIndex} className="flex items-center justify-between text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-foreground-600">{payment.date}</span>
-                                    <Chip size="sm" variant="flat" color="secondary">
-                                      {payment.method}
-                                    </Chip>
-                                    {payment.transactionId && (
-                                      <span className="text-xs text-foreground-400">#{payment.transactionId}</span>
-                                    )}
-                                  </div>
-                                  <span className="font-medium text-foreground">₹{payment.amount?.toLocaleString()}</span>
+                        <CardBody className="p-4">
+                          <div className="space-y-3">
+                            {/* Period Header */}
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h5 className="font-bold text-foreground">Membership Period {period.periodNumber}</h5>
+                                  <Chip size="sm" variant="flat" color={
+                                    period.status === 'ACTIVE' ? 'success' :
+                                    period.status === 'EXPIRED' ? 'danger' :
+                                    period.status === 'PAUSED' ? 'warning' : 'default'
+                                  }>
+                                    {period.status}
+                                  </Chip>
                                 </div>
-                              ))}
+                                <p className="text-sm text-foreground-500">
+                                  {period.startDate} → {period.endDate}
+                                </p>
+                                <p className="text-xs text-foreground-400 mt-1">
+                                  Duration: {period.duration} days • ₹{period.perDayRate}/day
+                                </p>
+                                {period.notes && (
+                                  <p className="text-xs text-foreground-400 mt-1 italic">
+                                    Note: {period.notes}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          )}
+
+                            {/* Payment Progress Bar */}
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <p className="text-sm text-foreground-500">Payment Progress</p>
+                                <p className="text-sm font-medium text-foreground">{period.paymentProgress}%</p>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    period.paymentProgress === 100 ? 'bg-success' :
+                                    period.paymentProgress > 50 ? 'bg-primary' : 'bg-warning'
+                                  }`}
+                                  style={{ width: `${Math.min(100, period.paymentProgress)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Payment Stats Grid */}
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="text-center p-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+                                <p className="text-xs text-foreground-500">Package Price</p>
+                                <p className="text-base font-bold text-primary">₹{period.packagePrice?.toLocaleString()}</p>
+                              </div>
+                              <div className="text-center p-2 bg-success-50 dark:bg-success-900/20 rounded-lg">
+                                <p className="text-xs text-foreground-500">Paid</p>
+                                <p className="text-base font-bold text-success">₹{period.paidAmount?.toLocaleString()}</p>
+                              </div>
+                              <div className={`text-center p-2 rounded-lg ${
+                                period.remainingAmount > 0 ?
+                                'bg-warning-50 dark:bg-warning-900/20' :
+                                'bg-success-50 dark:bg-success-900/20'
+                              }`}>
+                                <p className="text-xs text-foreground-500">Remaining</p>
+                                <p className={`text-base font-bold ${
+                                  period.remainingAmount > 0 ? 'text-warning' : 'text-success'
+                                }`}>₹{period.remainingAmount?.toLocaleString()}</p>
+                              </div>
+                            </div>
+
+                            {/* Individual payments in this period */}
+                            {period.payments && period.payments.length > 0 && (
+                              <div className="space-y-2 pt-3 border-t border-divider">
+                                <p className="text-xs font-semibold text-foreground-500 uppercase">
+                                  Payments ({period.payments.length})
+                                </p>
+                                {period.payments.map((payment: any, paymentIndex: number) => (
+                                  <div key={paymentIndex} className="flex items-center justify-between text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <span className="text-foreground-600 font-medium">{payment.date}</span>
+                                      <Chip size="sm" variant="flat" color="secondary">
+                                        {payment.method}
+                                      </Chip>
+                                      {payment.transactionId && (
+                                        <span className="text-xs text-foreground-400">#{payment.transactionId}</span>
+                                      )}
+                                    </div>
+                                    <span className="font-bold text-foreground">₹{payment.amount?.toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* No payments warning */}
+                            {(!period.payments || period.payments.length === 0) && (
+                              <div className="p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning/20">
+                                <p className="text-sm text-warning flex items-center gap-2">
+                                  <IconAlertTriangle size={16} />
+                                  No payments recorded for this period
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </CardBody>
                       </Card>
                     ))}
                   </div>
-
-                  {/* Total Summary */}
-                  <Card className="bg-success-50 dark:bg-success-900/20 border-success">
-                    <CardBody className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h5 className="font-semibold text-success-700 dark:text-success-300">Total Paid</h5>
-                          <p className="text-sm text-success-600 dark:text-success-400">
-                            {paymentBreakdown.paymentStats?.completionPercentage}% of package amount
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-success-700 dark:text-success-300">
-                            ₹{paymentBreakdown.totalPaidAmount?.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    </CardBody>
-                  </Card>
                 </div>
 
                 {/* Payment Status */}
@@ -4194,135 +4487,6 @@ export default function PaymentInfoPage() {
                   )}
                 </div>
 
-                {/* Monthly Budget Allocation for Admin Spending Control */}
-                {selectedUser?.membershipAnalytics && paymentBreakdown.monthBreakdown && (
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                      <IconChartPie size={20} className="text-primary" />
-                      Monthly Budget Allocation
-                      <Chip size="sm" color="primary" variant="flat">Cash Flow Control</Chip>
-                    </h4>
-
-                    <Card className="bg-primary-50 dark:bg-primary-900/20 border-primary">
-                      <CardBody className="p-4">
-                        <div className="flex items-start gap-3 mb-4">
-                          <IconReportAnalytics size={24} className="text-primary flex-shrink-0 mt-1" />
-                          <div>
-                            <h5 className="font-semibold text-primary mb-1">Smart Budget Management</h5>
-                            <p className="text-sm text-foreground-600">
-                              Membership fees are allocated proportionally across months. Only spend what's allocated for each month to maintain healthy cash flow.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-foreground-500">Total Collected</p>
-                            <p className="text-lg font-bold text-success">₹{selectedUser.totalAmountPaid?.toLocaleString()}</p>
-                            <p className="text-xs text-foreground-400">From {paymentBreakdown.paymentStats?.totalPayments} payments</p>
-                          </div>
-                          <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-foreground-500">Monthly Rate</p>
-                            <p className="text-lg font-bold text-primary">₹{(selectedUser.membershipAnalytics.perDayRate * 30).toLocaleString()}</p>
-                            <p className="text-xs text-foreground-400">Per 30 days</p>
-                          </div>
-                          <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-foreground-500">Available Budget</p>
-                            <p className="text-lg font-bold text-warning">₹{Math.floor((selectedUser.totalAmountPaid || 0) / (selectedUser.membershipAnalytics.totalDays / 30))?.toLocaleString()}</p>
-                            <p className="text-xs text-foreground-400">Average per month</p>
-                          </div>
-                        </div>
-                      </CardBody>
-                    </Card>
-
-                    {/* Month-wise Available Budget */}
-                    <div className="space-y-3">
-                      <h5 className="font-semibold text-foreground">Available Spending Budget by Month</h5>
-                      <div className="grid gap-3">
-                        {paymentBreakdown.monthBreakdown?.map((month: any, index: number) => {
-                          const paidInMonth = month.paidAmount || 0;
-                          const allocatedForMonth = month.allocatedAmount || 0;
-                          const availableToSpend = Math.min(paidInMonth, allocatedForMonth);
-                          const spendingStatus = paidInMonth >= allocatedForMonth ? 'safe' : 'partial';
-
-                          return (
-                            <Card key={index} className={`border ${spendingStatus === 'safe' ? 'border-success' : 'border-warning'}`}>
-                              <CardBody className="p-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h6 className="font-semibold text-foreground">{month.month}</h6>
-                                      <Chip
-                                        size="sm"
-                                        color={spendingStatus === 'safe' ? 'success' : 'warning'}
-                                        variant="flat"
-                                      >
-                                        {spendingStatus === 'safe' ? 'Full Budget' : 'Partial Budget'}
-                                      </Chip>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-foreground-500">Allocated for month:</p>
-                                        <p className="font-medium text-foreground">₹{allocatedForMonth?.toLocaleString()}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-foreground-500">Payments received:</p>
-                                        <p className="font-medium text-success">₹{paidInMonth?.toLocaleString()}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm text-foreground-500 mb-1">Available to Spend</p>
-                                    <p className={`text-xl font-bold ${spendingStatus === 'safe' ? 'text-success' : 'text-warning'}`}>
-                                      ₹{availableToSpend?.toLocaleString()}
-                                    </p>
-                                    <div className="w-20 bg-gray-200 rounded-full h-1.5 mt-2">
-                                      <div
-                                        className={`h-full ${spendingStatus === 'safe' ? 'bg-success' : 'bg-warning'} rounded-full transition-all`}
-                                        style={{ width: `${Math.min(100, (paidInMonth / allocatedForMonth) * 100)}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {month.payments && month.payments.length > 0 && (
-                                  <div className="mt-3 pt-3 border-t border-divider">
-                                    <p className="text-xs text-foreground-500 mb-2">Payments this month:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {month.payments.map((payment: any, paymentIndex: number) => (
-                                        <Chip key={paymentIndex} size="sm" color="secondary" variant="flat">
-                                          {payment.date}: ₹{payment.amount?.toLocaleString()}
-                                        </Chip>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </CardBody>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Budget Guidelines */}
-                    <Card className="bg-warning-50 dark:bg-warning-900/20 border-warning">
-                      <CardBody className="p-4">
-                        <div className="flex items-start gap-3">
-                          <IconAlertTriangle size={20} className="text-warning flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h6 className="font-semibold text-warning mb-2">Budget Management Guidelines</h6>
-                            <ul className="text-sm text-foreground-600 space-y-1">
-                              <li>• Only spend the "Available to Spend" amount for each month</li>
-                              <li>• Don't spend future months' allocations until payments are received</li>
-                              <li>• Track actual expenses against available budget in Monthly Expenses</li>
-                              <li>• Maintain reserves for equipment maintenance and unexpected costs</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </CardBody>
-                    </Card>
-                  </div>
-                )}
               </>
             )}
         </div>

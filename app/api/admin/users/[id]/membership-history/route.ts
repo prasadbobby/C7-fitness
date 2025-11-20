@@ -77,7 +77,7 @@ export async function GET(
     const membershipLogsWithNames = await Promise.all(
       membershipLogs.map(async (log: any) => {
         // Check if recordedBy is a valid user ID
-        if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '') {
+        if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '' || log.recordedBy === 'SYSTEM') {
           return {
             ...log,
             recordedByName: 'System',
@@ -96,7 +96,7 @@ export async function GET(
           console.error(`Error fetching user ${log.recordedBy}:`, error);
           return {
             ...log,
-            recordedByName: 'Unknown User',
+            recordedByName: 'System',
           };
         }
       })

@@ -877,16 +877,28 @@ export function CommunityFeed({ challengeId, showTodayByDefault = false, isAdmin
                           {/* Edit and Delete options - Available for admins and post owners */}
                           {(isAdmin || post.author.userId === currentUserId) && (
                             <>
-                              <button
-                                onClick={() => {
-                                  handleEditPost(post);
-                                  setOpenDropdown(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-                              >
-                                <IconEdit size={16} />
-                                Edit Post
-                              </button>
+                              {/* Edit button - Admins can edit anytime, users can only edit today's posts */}
+                              {(() => {
+                                const postDate = new Date(post.date);
+                                const today = new Date();
+                                const isToday = postDate.getFullYear() === today.getFullYear() &&
+                                               postDate.getMonth() === today.getMonth() &&
+                                               postDate.getDate() === today.getDate();
+                                const canEdit = isAdmin || (post.author.userId === currentUserId && isToday);
+
+                                return canEdit && (
+                                  <button
+                                    onClick={() => {
+                                      handleEditPost(post);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                                  >
+                                    <IconEdit size={16} />
+                                    Edit Post
+                                  </button>
+                                );
+                              })()}
                               <button
                                 onClick={() => {
                                   openDeleteModal(post);
