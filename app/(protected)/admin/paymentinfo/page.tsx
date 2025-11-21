@@ -2069,17 +2069,19 @@ export default function PaymentInfoPage() {
                     <div className="min-w-0">
                       {(() => {
                         // Calculate per-period pricing
-                        // Assuming standard 3-month (90-day) periods
+                        // Standard period price is ₹35,000 for 90 days
                         const totalPrice = user.discountedPrice || 0;
-                        const totalDays = user.membershipAnalytics?.totalDays || 90;
+                        const standardPeriodPrice = 35000;
                         const standardPeriodDays = 90;
-                        const numberOfPeriods = Math.ceil(totalDays / standardPeriodDays);
-                        const perPeriodPrice = numberOfPeriods > 0 ? totalPrice / numberOfPeriods : totalPrice;
+
+                        // Calculate number of periods based on price
+                        const estimatedPeriods = Math.max(1, Math.round(totalPrice / standardPeriodPrice));
+                        const perPeriodPrice = totalPrice / estimatedPeriods;
 
                         return (
                           <>
                             <p className="font-medium text-foreground leading-tight">
-                              {formatCurrency(perPeriodPrice)}
+                              {formatCurrency(Math.round(perPeriodPrice))}
                             </p>
                             <p className="text-xs text-foreground-400 leading-tight mt-0.5">
                               Per {standardPeriodDays} days
