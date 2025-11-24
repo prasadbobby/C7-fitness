@@ -69,8 +69,6 @@ export default function RoutineMenu({ routineId, userRole, isSystemWorkout = fal
   return (
     <div className="relative">
       <Dropdown
-        placement="bottom-end"
-        offset={8}
         className="z-[999999]"
       >
         <DropdownTrigger>

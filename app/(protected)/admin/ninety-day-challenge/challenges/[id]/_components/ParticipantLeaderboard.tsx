@@ -112,7 +112,7 @@ export function ParticipantLeaderboard({ participants }: ParticipantLeaderboardP
               avgSleepQuality: metrics.avgSleepQuality,
               avgMood: metrics.avgMood,
               avgEnergy: metrics.avgEnergy,
-              photoScore: metrics.photoScore,
+              photoScore: (metrics as any).photoScore || 0,
               consistency: metrics.consistency
             }
           };

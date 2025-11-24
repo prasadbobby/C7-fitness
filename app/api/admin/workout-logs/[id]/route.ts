@@ -123,7 +123,7 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating workout log:", error);
     return NextResponse.json(
-      { error: "Failed to update workout log", details: error.message },
+      { error: "Failed to update workout log", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

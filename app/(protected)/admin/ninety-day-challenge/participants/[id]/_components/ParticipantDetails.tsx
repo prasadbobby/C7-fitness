@@ -28,7 +28,7 @@ interface Participant {
     id: string;
     title: string;
     startDate: string;
-    endDate: string;
+    endDate: string | null;
   };
 }
 
@@ -148,7 +148,12 @@ export function ParticipantDetails({ participant }: Props) {
           </div>
           <div className="flex justify-between">
             <span className="text-zinc-600 dark:text-zinc-400">Challenge End:</span>
-            <span className="font-medium">{new Date(participant.challenge.endDate).toLocaleDateString()}</span>
+            <span className="font-medium">
+              {participant.challenge.endDate
+                ? new Date(participant.challenge.endDate).toLocaleDateString()
+                : "Not set"
+              }
+            </span>
           </div>
         </div>
 

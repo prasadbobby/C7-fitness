@@ -34,7 +34,7 @@ export default function SystemRoutineDisplay({
   systemRoutines,
 }: SystemRoutineDisplayProps) {
   const strengthRoutines = systemRoutines.filter(
-    (routine) => routine.systemRoutineCategory === "Strength",
+    (routine) => (routine as any).systemRoutineCategory === "Strength" || routine.trainingType === "STRENGTH",
   );
 
   return (

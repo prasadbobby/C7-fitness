@@ -70,6 +70,9 @@ interface WeeklyParticipant extends Participant {
   weeklyMetrics: {
     totalPosts: number;
     totalEligibleDays: number;
+    totalWeekDays: number;
+    weekProgress: number;
+    photoScore: number;
     consistency: number;
     avgSleepHours: number;
     avgSleepQuality: number;

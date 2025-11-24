@@ -15,23 +15,23 @@ export async function DELETE(
     // Clear all user-specific records
     await prisma.$transaction(async (tx) => {
       // Delete user measurements
-      await tx.measurement.deleteMany({
-        where: { userInfoId: id }
+      await tx.bodyMeasurement.deleteMany({
+        where: { userId: id }
       });
 
       // Delete workout logs
       await tx.workoutLog.deleteMany({
-        where: { userInfoId: id }
+        where: { userId: id }
       });
 
       // Delete training progressions
-      await tx.trainingProgression.deleteMany({
-        where: { userInfoId: id }
+      await tx.userTrainingProgression.deleteMany({
+        where: { userId: id }
       });
 
       // Delete assignments
-      await tx.assignment.deleteMany({
-        where: { userInfoId: id }
+      await tx.assignedWorkout.deleteMany({
+        where: { userId: id }
       });
 
       // Delete payment logs for this user

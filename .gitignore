@@ -104,3 +104,9 @@ cron-setup.md
 vercel.json
 debug-*.js
 apply-s*.js
+production_exercises.txt
+local_exercises.txt
+import-workouts*.js
+sync-missing-exercises.js
+missing_in_production.txt
+workouts.json

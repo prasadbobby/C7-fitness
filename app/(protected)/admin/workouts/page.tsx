@@ -1987,9 +1987,9 @@ export default function WorkoutAssignment() {
                     size="sm"
                   >
                     <SelectItem key="all" value="all">All Categories</SelectItem>
-                    {uniqueCategories.map((category) => (
+                    {uniqueCategories.map((category) =>
                       <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
+                    )}
                   </Select>
                 </div>
               </div>

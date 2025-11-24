@@ -205,7 +205,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching user progress:", error);
     return NextResponse.json(
-      { error: "Failed to fetch user progress", details: error.message },
+      { error: "Failed to fetch user progress", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

@@ -62,8 +62,8 @@ export async function GET(
                 createdAt: true,
               },
               where: {
-                photos: {
-                  not: null
+                NOT: {
+                  photos: null
                 }
               },
               orderBy: { date: 'desc' },
@@ -82,7 +82,7 @@ export async function GET(
     return NextResponse.json({
       challenge: {
         id: challenge.id,
-        participants: challenge.participants
+        participants: (challenge as any).participants || []
       }
     });
   } catch (error) {
