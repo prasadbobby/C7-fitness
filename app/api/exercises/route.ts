@@ -220,6 +220,172 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const { userId } = auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "You must be signed in" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const userInfo = await prisma.userInfo.findUnique({
+      where: { userId },
+      select: { role: true },
+    });
+
+    if (!userInfo || (userInfo.role !== "ADMIN" && userInfo.role !== "SUPER_ADMIN")) {
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const exerciseId = searchParams.get("id");
+
+    if (!exerciseId) {
+      return NextResponse.json(
+        { error: "Exercise ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      name,
+      aliases = [],
+      primary_muscles = [],
+      secondary_muscles = [],
+      primaryMuscles = [],
+      secondaryMuscles = [],
+      force,
+      level,
+      mechanic,
+      equipment,
+      category,
+      instructions = [],
+      description,
+      tips = [],
+      image,
+    } = body;
+
+    // Support both JSON format (primaryMuscles) and database format (primary_muscles)
+    const finalPrimaryMuscles = primaryMuscles.length > 0 ? primaryMuscles : primary_muscles;
+    const finalSecondaryMuscles = secondaryMuscles.length > 0 ? secondaryMuscles : secondary_muscles;
+
+    // Validate required fields
+    if (!name || !level || !category) {
+      return NextResponse.json(
+        { error: "Name, level, and category are required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Check if exercise exists
+    const existingExercise = await prisma.exercise.findUnique({
+      where: { id: exerciseId },
+      select: { name: true, image: true },
+    });
+
+    if (!existingExercise) {
+      return NextResponse.json(
+        { error: "Exercise not found" },
+        { status: 404 }
+      );
+    }
+
+    // Generate directory name from exercise name (for new images)
+    const exerciseDirName = name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/_{2,}/g, '_');
+
+    // Use provided image URL, existing image, or generate default path
+    const imagePath = image || existingExercise.image || `/images/exercises/${exerciseDirName}/images/0.jpg`;
+
+    // Only update local files in development if name changed
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (!isProduction && existingExercise.name !== name.trim()) {
+      const exerciseDir = join(process.cwd(), 'public', 'images', 'exercises', exerciseDirName);
+      const imagesDir = join(exerciseDir, 'images');
+
+      try {
+        // Create the directory structure for new name
+        await mkdir(exerciseDir, { recursive: true });
+        await mkdir(imagesDir, { recursive: true });
+
+        // Create/update the exercise.json file
+        const exerciseJson = {
+          name: name.trim(),
+          force: force || null,
+          level,
+          mechanic: mechanic || null,
+          equipment: equipment || null,
+          primaryMuscles: finalPrimaryMuscles,
+          secondaryMuscles: finalSecondaryMuscles,
+          instructions: instructions.filter((instruction: string) => instruction.trim()),
+          category,
+          ...(description?.trim() && { description: description.trim() }),
+          ...(aliases.length > 0 && { aliases: aliases.filter((alias: string) => alias.trim()) }),
+          ...(tips.length > 0 && { tips: tips.filter((tip: string) => tip.trim()) }),
+        };
+
+        const jsonPath = join(exerciseDir, 'exercise.json');
+        await writeFile(jsonPath, JSON.stringify(exerciseJson, null, 2));
+
+        // Try to remove old directory if name changed
+        if (existingExercise.name !== name.trim()) {
+          const oldExerciseDirName = existingExercise.name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/_{2,}/g, '_');
+          const oldExerciseDir = join(process.cwd(), 'public', 'images', 'exercises', oldExerciseDirName);
+          try {
+            await rm(oldExerciseDir, { recursive: true, force: true });
+          } catch (error) {
+            console.warn("Could not delete old exercise directory:", error);
+          }
+        }
+
+      } catch (fileError) {
+        console.error("Error updating directories/files:", fileError);
+        // Continue with database update even if file operations fail
+      }
+    }
+
+    // Update the exercise in database
+    const updatedExercise = await prisma.exercise.update({
+      where: { id: exerciseId },
+      data: {
+        name: name.trim(),
+        aliases: aliases.filter((alias: string) => alias.trim()),
+        primary_muscles: finalPrimaryMuscles,
+        secondary_muscles: finalSecondaryMuscles,
+        force: force || null,
+        level,
+        mechanic: mechanic || null,
+        equipment: equipment || null,
+        category,
+        instructions: instructions.filter((instruction: string) => instruction.trim()),
+        description: description?.trim() || null,
+        tips: tips.filter((tip: string) => tip.trim()),
+        image: imagePath,
+        date_updated: new Date(),
+      },
+    });
+
+    return NextResponse.json({
+      message: "Exercise updated successfully",
+      exercise: updatedExercise,
+    });
+  } catch (error) {
+    console.error("Error updating exercise:", error);
+    return NextResponse.json(
+      { error: "Failed to update exercise" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { userId } = auth();

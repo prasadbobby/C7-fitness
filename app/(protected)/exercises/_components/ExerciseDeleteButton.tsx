@@ -43,14 +43,13 @@ export default function ExerciseDeleteButton({ exerciseId, exerciseName, onDelet
   return (
     <>
       <Button
-        size="sm"
-        variant="flat"
+        isIconOnly
         color="danger"
-        startContent={<IconTrash size={16} />}
+        variant="flat"
         onPress={onOpen}
         aria-label="Delete exercise"
       >
-        
+        <IconTrash className="hover:text-danger" size={20} />
       </Button>
 
       <BottomSheet

@@ -19,6 +19,7 @@ import ExerciseAddToRoutineCreatorButton from "./ExerciseAddToRoutineCreatorButt
 import ExerciseRemoveRoutineCreatorButton from "./ExerciseRemoveRoutineCreatorButton";
 import ExerciseFavButton from "./ExerciseFavButton";
 import ExerciseDeleteButton from "./ExerciseDeleteButton";
+import ExerciseEditButton from "./ExerciseEditButton";
 import { useUser } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 
@@ -140,7 +141,7 @@ export default function ExerciseTable({
                   },
                 )}
               >
-                <ButtonGroup size="sm" variant="flat">
+                <ButtonGroup variant="flat" className="gap-1">
                   <ExerciseInfoButton exercise={exercise} />
                   <ExerciseFavButton
                     exerciseId={exercise.id}
@@ -155,6 +156,10 @@ export default function ExerciseTable({
                       <ExerciseAddToRoutineButton
                         exercise={exercise}
                         userRoutines={userRoutines}
+                      />
+                      <ExerciseEditButton
+                        exercise={exercise}
+                        onExerciseUpdated={() => window.location.reload()}
                       />
                       <ExerciseDeleteButton
                         exerciseId={exercise.id}
