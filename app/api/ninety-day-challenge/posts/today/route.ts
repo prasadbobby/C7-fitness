@@ -13,24 +13,49 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const requestedChallengeId = searchParams.get("challengeId");
 
     if (!date) {
       return NextResponse.json({ error: "Date parameter required" }, { status: 400 });
     }
 
-    // Get user's active challenge participation
-    const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
-      where: {
-        userId: user.id,
-        isEnabled: true,
-        challenge: {
-          isActive: true,
-        },
-      },
-    });
+    let challengeId;
 
-    if (!participant) {
-      return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
+    if (requestedChallengeId) {
+      // Check if user has access to the requested challenge
+      const requestedParticipant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: user.id,
+          challengeId: requestedChallengeId,
+          isEnabled: true,
+          challenge: {
+            isActive: true,
+          },
+        },
+      });
+
+      if (requestedParticipant) {
+        challengeId = requestedChallengeId;
+      } else {
+        return NextResponse.json({ error: "No access to requested challenge" }, { status: 403 });
+      }
+    } else {
+      // Fall back to user's default active challenge
+      const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: user.id,
+          isEnabled: true,
+          challenge: {
+            isActive: true,
+          },
+        },
+      });
+
+      if (!participant) {
+        return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
+      }
+
+      challengeId = participant.challengeId;
     }
 
     // Get post for the specified date - create date in UTC to match post creation logic
@@ -41,7 +66,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId_challengeId_date: {
           userId: user.id,
-          challengeId: participant.challengeId,
+          challengeId: challengeId,
           date: searchDate,
         },
       },

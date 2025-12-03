@@ -42,6 +42,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [initialImageIndex, setInitialImageIndex] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isChallengeCompleted, setIsChallengeCompleted] = useState(false);
 
   const [formData, setFormData] = useState({
     sleepHours: 8,
@@ -60,6 +61,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     checkUserRole();
     if (challengeId) {
       checkTodaysPost();
+      checkChallengeStatus();
     }
   }, [challengeId]);
 
@@ -68,6 +70,7 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     setHasPostedToday(false);
     setIsEditing(false);
     setTodaysPost(null);
+    setIsChallengeCompleted(false);
     setFormData({
       sleepHours: 8,
       sleepQuality: "",
@@ -91,6 +94,18 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
       }
     } catch (error) {
       console.error('Error checking user role:', error);
+    }
+  };
+
+  const checkChallengeStatus = async () => {
+    try {
+      const response = await fetch(`/api/ninety-day-challenge/stats?challengeId=${challengeId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsChallengeCompleted(data.isCompleted);
+      }
+    } catch (error) {
+      console.error('Error checking challenge status:', error);
     }
   };
 
@@ -128,6 +143,13 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent submission if challenge is completed and user is not admin
+    if (isChallengeCompleted && !isAdmin) {
+      alert('Cannot submit posts to a completed challenge.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -279,34 +301,56 @@ export function DailyPostForm({ challengeId }: DailyPostFormProps) {
     <Card>
       <CardHeader className="flex justify-between">
         <h3 className="text-lg font-semibold">
-          {isAdmin ? "Create New Post" : (hasPostedToday ? "Today's Update" : "Create Today's Post")}
+          {isChallengeCompleted && !isAdmin ? "Challenge Completed" :
+           isAdmin ? "Create New Post" : (hasPostedToday ? "Today's Update" : "Create Today's Post")}
         </h3>
-        {hasPostedToday && !isAdmin && (
-          <div className="flex gap-2">
-            <Chip color="success" size="sm" startContent={<IconCheck size={16} />}>
-              Posted
+        <div className="flex gap-2">
+          {isChallengeCompleted && !isAdmin && (
+            <Chip color="warning" size="sm">
+              No New Posts
             </Chip>
-            {!isEditing && (
-              <Button
-                size="sm"
-                variant="flat"
-                startContent={<IconEdit size={16} />}
-                onPress={() => setIsEditing(true)}
-              >
-                Edit
-              </Button>
-            )}
-          </div>
-        )}
-        {isAdmin && (
-          <Chip color="primary" size="sm">
-            Admin Mode
-          </Chip>
-        )}
+          )}
+          {hasPostedToday && !isAdmin && !isChallengeCompleted && (
+            <>
+              <Chip color="success" size="sm" startContent={<IconCheck size={16} />}>
+                Posted
+              </Chip>
+              {!isEditing && (
+                <Button
+                  size="sm"
+                  variant="flat"
+                  startContent={<IconEdit size={16} />}
+                  onPress={() => setIsEditing(true)}
+                >
+                  Edit
+                </Button>
+              )}
+            </>
+          )}
+          {isAdmin && (
+            <Chip color="primary" size="sm">
+              Admin Mode
+            </Chip>
+          )}
+        </div>
       </CardHeader>
 
       <CardBody>
-        {hasPostedToday && !isEditing && !isAdmin ? (
+        {isChallengeCompleted && !isAdmin ? (
+          // Challenge Completed Message
+          <div className="text-center py-8 space-y-4">
+            <div className="text-6xl">🎉</div>
+            <h3 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200">
+              Challenge Completed!
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              This challenge has ended. No new posts can be created.
+            </p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-500">
+              Thank you for participating! Look out for new challenges.
+            </p>
+          </div>
+        ) : hasPostedToday && !isEditing && !isAdmin ? (
           // Display Mode
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">

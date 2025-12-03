@@ -14,9 +14,34 @@ interface PageProps {
   };
 }
 
-async function checkChallengeAccess(userId: string) {
+async function checkChallengeAccess(userId: string, requestedChallengeId?: string) {
   try {
-    // Check if user is enabled for any active challenge
+    // If a specific challenge is requested, check if user has access to it
+    if (requestedChallengeId) {
+      const requestedParticipant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: userId,
+          challengeId: requestedChallengeId,
+          isEnabled: true,
+          challenge: {
+            isActive: true,
+          },
+        },
+        include: {
+          challenge: true,
+        },
+      });
+
+      if (requestedParticipant) {
+        return {
+          isEnabled: true,
+          challengeId: requestedParticipant.challengeId,
+          challengeTitle: requestedParticipant.challenge.title,
+        };
+      }
+    }
+
+    // Fall back to user's default/first active challenge
     const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
       where: {
         userId: userId,
@@ -58,12 +83,12 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
 
   const isAdmin = userInfo?.role === 'ADMIN' || userInfo?.role === 'SUPER_ADMIN';
 
-  // If a specific challengeId is requested and user is admin, use that
+  // Check challenge access for both regular users and admins
   let accessData;
   let challengeTitle = "";
 
   if (requestedChallengeId && isAdmin) {
-    // Admin accessing specific challenge
+    // Admin accessing specific challenge - verify it exists
     const challenge = await prisma.ninetyDayChallenge.findUnique({
       where: { id: requestedChallengeId },
       select: { id: true, title: true, isActive: true }
@@ -80,8 +105,8 @@ export default async function PostsDashboardPage({ searchParams }: PageProps) {
       accessData = { isEnabled: false };
     }
   } else {
-    // Regular user or admin without specific challenge
-    accessData = await checkChallengeAccess(user.id);
+    // Regular user or admin - check if they have access to requested challenge
+    accessData = await checkChallengeAccess(user.id, requestedChallengeId);
     challengeTitle = accessData.challengeTitle || "";
   }
 

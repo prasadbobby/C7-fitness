@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/button";
+import { Select, SelectItem } from "@nextui-org/select";
 import { IconMessageCircle } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -38,19 +39,28 @@ export function ChallengeSelector({ challenges, selectedChallengeId }: Challenge
 
       {/* Challenge Selector */}
       {challenges.length > 1 && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-500">Switch Challenge:</span>
-          <select
-            className="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-background text-foreground text-sm"
-            value={selectedChallengeId}
-            onChange={(e) => handleChallengeChange(e.target.value)}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-foreground-600">Switch Challenge:</span>
+          <Select
+            placeholder="Choose a challenge"
+            selectedKeys={[selectedChallengeId]}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as string;
+              if (selected) {
+                handleChallengeChange(selected);
+              }
+            }}
+            className="w-full sm:w-48"
+            size="sm"
+            variant="bordered"
+            aria-label="Switch Challenge"
           >
             {challenges.map((challenge) => (
-              <option key={challenge.id} value={challenge.id}>
+              <SelectItem key={challenge.id} value={challenge.id}>
                 {challenge.title}
-              </option>
+              </SelectItem>
             ))}
-          </select>
+          </Select>
         </div>
       )}
     </div>

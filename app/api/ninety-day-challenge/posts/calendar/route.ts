@@ -14,20 +14,45 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const month = parseInt(searchParams.get("month") || "1");
     const year = parseInt(searchParams.get("year") || "2024");
+    const requestedChallengeId = searchParams.get("challengeId");
 
-    // Get user's active challenge participation
-    const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
-      where: {
-        userId: user.id,
-        isEnabled: true,
-        challenge: {
-          isActive: true,
+    let challengeId;
+
+    if (requestedChallengeId) {
+      // Check if user has access to the requested challenge
+      const requestedParticipant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: user.id,
+          challengeId: requestedChallengeId,
+          isEnabled: true,
+          challenge: {
+            isActive: true,
+          },
         },
-      },
-    });
+      });
 
-    if (!participant) {
-      return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
+      if (requestedParticipant) {
+        challengeId = requestedChallengeId;
+      } else {
+        return NextResponse.json({ error: "No access to requested challenge" }, { status: 403 });
+      }
+    } else {
+      // Fall back to user's default active challenge
+      const participant = await prisma.ninetyDayChallengeParticipant.findFirst({
+        where: {
+          userId: user.id,
+          isEnabled: true,
+          challenge: {
+            isActive: true,
+          },
+        },
+      });
+
+      if (!participant) {
+        return NextResponse.json({ error: "No active challenge found" }, { status: 404 });
+      }
+
+      challengeId = participant.challengeId;
     }
 
     // Get start and end of the month
@@ -38,7 +63,7 @@ export async function GET(request: NextRequest) {
     const posts = await prisma.ninetyDayChallengePost.findMany({
       where: {
         userId: user.id,
-        challengeId: participant.challengeId,
+        challengeId: challengeId,
         date: {
           gte: startOfMonth,
           lte: endOfMonth,

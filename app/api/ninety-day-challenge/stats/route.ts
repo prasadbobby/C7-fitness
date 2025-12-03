@@ -88,6 +88,9 @@ export async function GET(request: Request) {
       },
     });
 
+    // Check if challenge is completed (ended)
+    const isCompleted = now > endDate;
+
     return NextResponse.json({
       challengeTitle: challenge.title,
       startDate: challenge.startDate,
@@ -98,6 +101,7 @@ export async function GET(request: Request) {
       completedDays: userPosts.length,
       streak,
       totalParticipants,
+      isCompleted,
     });
   } catch (error) {
     console.error("Error fetching challenge stats:", error);

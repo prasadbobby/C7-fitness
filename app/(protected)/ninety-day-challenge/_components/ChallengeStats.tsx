@@ -20,6 +20,7 @@ interface ChallengeInfo {
   completedDays: number;
   streak: number;
   totalParticipants: number;
+  isCompleted: boolean;
 }
 
 interface ChallengeStatsProps {
@@ -92,9 +93,15 @@ export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
               {new Date(stats.startDate).toLocaleDateString()} - {new Date(stats.endDate).toLocaleDateString()}
             </p>
           </div>
-          <Chip color="primary" size="lg">
-            Day {stats.daysPassed} of {stats.totalDays}
-          </Chip>
+          {stats.isCompleted ? (
+            <Chip color="success" size="lg">
+              Challenge Completed
+            </Chip>
+          ) : (
+            <Chip color="primary" size="lg">
+              Day {stats.daysPassed} of {stats.totalDays}
+            </Chip>
+          )}
         </div>
 
         {/* Progress Bar */}
@@ -102,13 +109,13 @@ export function ChallengeStats({ challengeId }: ChallengeStatsProps) {
           <div className="flex justify-between text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">Challenge Progress</span>
             <span className="text-zinc-600 dark:text-zinc-400">
-              {stats.daysRemaining} days remaining
+              {stats.isCompleted ? 'Challenge Ended' : `${stats.daysRemaining} days remaining`}
             </span>
           </div>
           <Progress
-            value={progressPercentage}
+            value={stats.isCompleted ? 100 : progressPercentage}
             className="w-full"
-            color="primary"
+            color={stats.isCompleted ? "success" : "primary"}
             size="lg"
           />
         </div>

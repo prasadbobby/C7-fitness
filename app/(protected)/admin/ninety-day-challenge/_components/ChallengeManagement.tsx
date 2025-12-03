@@ -228,14 +228,37 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
                       <IconCalendarEvent size={18} className="text-primary" />
                     </div>
                     <h4 className="font-bold text-xl text-foreground">{challenge.title}</h4>
-                    <Chip
-                      color={challenge.isActive ? "success" : "default"}
-                      variant="flat"
-                      size="sm"
-                      className="font-medium"
-                    >
-                      {challenge.isActive ? "Active" : "Inactive"}
-                    </Chip>
+                    <div className="flex gap-2">
+                      {(() => {
+                        const now = new Date();
+                        const endDate = new Date(challenge.endDate);
+                        const isCompleted = now > endDate;
+
+                        if (isCompleted) {
+                          return (
+                            <Chip
+                              color="warning"
+                              variant="flat"
+                              size="sm"
+                              className="font-medium"
+                            >
+                              Completed
+                            </Chip>
+                          );
+                        } else {
+                          return (
+                            <Chip
+                              color={challenge.isActive ? "success" : "default"}
+                              variant="flat"
+                              size="sm"
+                              className="font-medium"
+                            >
+                              {challenge.isActive ? "Active" : "Inactive"}
+                            </Chip>
+                          );
+                        }
+                      })()}
+                    </div>
                   </div>
 
                   {challenge.description && (
