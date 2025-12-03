@@ -77,7 +77,7 @@ export async function GET(
     const membershipLogsWithNames = await Promise.all(
       membershipLogs.map(async (log: any) => {
         // Check if recordedBy is a valid user ID
-        if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '' || log.recordedBy === 'SYSTEM') {
+        if (!log.recordedBy || typeof log.recordedBy !== 'string' || log.recordedBy.trim() === '' || log.recordedBy === 'SYSTEM' || log.recordedBy === 'AUTO_EXTENSION_SCRIPT') {
           return {
             ...log,
             recordedByName: 'System',

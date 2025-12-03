@@ -822,21 +822,21 @@ export default function PaymentInfoPage() {
               ...selectedUser.membershipAnalytics,
               // Calculate based on current membership pricing, not total accumulated pricing
               perDayRate: (() => {
-                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                const currentMembershipPrice = paymentInfo.discountedPrice || paymentInfo.packagePrice || 0;
                 return currentMembershipPrice && selectedUser.membershipAnalytics.totalDays ?
                   currentMembershipPrice / selectedUser.membershipAnalytics.totalDays : 0;
               })(),
               setupDiscount: paymentInfo.packagePrice && paymentInfo.discountedPrice ?
-                paymentInfo.packagePrice - Math.min(paymentInfo.packagePrice, 35000) : 0,
-              discountPercentage: paymentInfo.packagePrice && paymentInfo.packagePrice > 35000 ?
-                ((paymentInfo.packagePrice - 35000) / paymentInfo.packagePrice) * 100 : 0,
+                paymentInfo.packagePrice - paymentInfo.discountedPrice : 0,
+              discountPercentage: paymentInfo.packagePrice && paymentInfo.discountedPrice ?
+                ((paymentInfo.packagePrice - paymentInfo.discountedPrice) / paymentInfo.packagePrice) * 100 : 0,
               paymentPercentage: (() => {
-                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                const currentMembershipPrice = paymentInfo.discountedPrice || paymentInfo.packagePrice || 0;
                 return currentMembershipPrice && paymentInfo.totalAmountPaid ?
                   Math.min(100, (paymentInfo.totalAmountPaid / currentMembershipPrice) * 100) : 0;
               })(),
               daysCoveredByPayments: (() => {
-                const currentMembershipPrice = Math.min(paymentInfo.packagePrice || 0, 35000);
+                const currentMembershipPrice = paymentInfo.discountedPrice || paymentInfo.packagePrice || 0;
                 const perDayRate = currentMembershipPrice && selectedUser.membershipAnalytics.totalDays ?
                   currentMembershipPrice / selectedUser.membershipAnalytics.totalDays : 0;
                 return perDayRate && paymentInfo.totalAmountPaid ?
@@ -1351,7 +1351,7 @@ export default function PaymentInfoPage() {
   const getCorrectAnalytics = (user: PaymentUser) => {
     if (!user.membershipAnalytics) return null;
 
-    const currentMembershipPrice = Math.min(user.packagePrice || 0, 35000);
+    const currentMembershipPrice = user.discountedPrice || user.packagePrice || 0;
     const totalDays = user.membershipAnalytics.totalDays;
     const perDayRate = currentMembershipPrice / totalDays;
     const paymentPercentage = currentMembershipPrice > 0 ? Math.min(100, (user.totalAmountPaid / currentMembershipPrice) * 100) : 0;
@@ -3509,7 +3509,7 @@ export default function PaymentInfoPage() {
                             // If packagePrice exists, use that as base, otherwise use discountedPrice
                             const basePrice = selectedUser.packagePrice || selectedUser.discountedPrice || 0;
                             // For current membership, show the package price or a reasonable offered price
-                            const offeredPrice = Math.min(basePrice, 35000); // Cap at 35000 for current membership
+                            const offeredPrice = selectedUser.discountedPrice || basePrice; // Use actual discounted price
                             return formatCurrency(offeredPrice);
                           })()}
                         </p>
@@ -3522,8 +3522,8 @@ export default function PaymentInfoPage() {
                           <div>
                             <span className="text-foreground-500">Per Month:</span>
                             <span className="font-medium ml-1">₹{(() => {
-                              // Calculate per month for current membership (35000 for 3 months)
-                              const currentMembershipPrice = Math.min(selectedUser.packagePrice || 0, 35000);
+                              // Calculate per month for current membership using actual pricing
+                              const currentMembershipPrice = selectedUser.discountedPrice || selectedUser.packagePrice || 0;
                               const monthsTotal = selectedUser.membershipAnalytics.totalDays / 30;
                               return monthsTotal > 0 ? (currentMembershipPrice / monthsTotal).toFixed(0) : '0';
                             })()}</span>
@@ -3531,8 +3531,8 @@ export default function PaymentInfoPage() {
                           <div>
                             <span className="text-foreground-500">Per Day:</span>
                             <span className="font-medium ml-1">₹{(() => {
-                              // Calculate per day for current membership (35000 for 90 days)
-                              const currentMembershipPrice = Math.min(selectedUser.packagePrice || 0, 35000);
+                              // Calculate per day for current membership using actual pricing
+                              const currentMembershipPrice = selectedUser.discountedPrice || selectedUser.packagePrice || 0;
                               const totalDays = selectedUser.membershipAnalytics.totalDays;
                               return totalDays > 0 ? (currentMembershipPrice / totalDays).toFixed(2) : '0';
                             })()}</span>
@@ -3552,8 +3552,8 @@ export default function PaymentInfoPage() {
                         </div>
                         <p className="text-lg font-bold text-foreground-600">
                           {(() => {
-                            // Show current membership value, not accumulated total
-                            const currentMembershipValue = Math.min(selectedUser.packagePrice || 0, 35000);
+                            // Show current membership value using actual pricing
+                            const currentMembershipValue = selectedUser.discountedPrice || selectedUser.packagePrice || 0;
                             return formatCurrency(currentMembershipValue);
                           })()}
                         </p>
