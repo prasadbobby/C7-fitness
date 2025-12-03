@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { auth } from "@clerk/nextjs";
+import { nowIST, parseISTDate, istToUTC, daysRemainingIST, daysBetweenIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const now = new Date();
+    const now = nowIST();
 
     if (action === 'PAUSE') {
       // Can only pause ACTIVE memberships
@@ -65,10 +66,10 @@ export async function POST(
         );
       }
 
-      const pauseUntilDate = pauseUntil ? new Date(pauseUntil) : null;
+      const pauseUntilDate = pauseUntil ? istToUTC(parseISTDate(pauseUntil.split('T')[0])) : null;
 
-      // Validate pause until date
-      if (pauseUntilDate && pauseUntilDate <= now) {
+      // Validate pause until date (compare UTC times)
+      if (pauseUntilDate && pauseUntilDate <= istToUTC(now)) {
         return NextResponse.json(
           { error: "Pause until date must be in the future" },
           { status: 400 }
@@ -80,11 +81,11 @@ export async function POST(
         where: { id },
         data: {
           membershipStatus: 'PAUSED',
-          pausedFrom: now,
+          pausedFrom: istToUTC(now),
           pausedUntil: pauseUntilDate,
           pauseReason: reason,
           membershipSetBy: adminUserId,
-          updatedAt: now,
+          updatedAt: istToUTC(now),
         },
       });
 
@@ -101,7 +102,7 @@ export async function POST(
           newEndDate: currentMembership.membershipEndDate,
           previousDuration: currentMembership.membershipDuration,
           newDuration: currentMembership.membershipDuration,
-          changeDate: now,
+          changeDate: istToUTC(now),
           notes: reason || (pauseUntilDate
             ? `Paused until ${pauseUntilDate.toDateString()}`
             : 'Paused indefinitely'),
@@ -133,8 +134,8 @@ export async function POST(
         );
       }
 
-      // Calculate how many days the membership was paused
-      const pausedDays = Math.ceil((now.getTime() - currentMembership.pausedFrom.getTime()) / (1000 * 60 * 60 * 24));
+      // Calculate how many days the membership was paused using IST utilities
+      const pausedDays = daysBetweenIST(currentMembership.pausedFrom, istToUTC(now));
       const totalPausedDays = (currentMembership.totalPausedDays || 0) + pausedDays;
 
       let newEndDate = currentMembership.membershipEndDate;
@@ -156,7 +157,7 @@ export async function POST(
           pausedUntil: null,
           pauseReason: null,
           membershipSetBy: adminUserId,
-          updatedAt: now,
+          updatedAt: istToUTC(now),
         },
       });
 
@@ -173,7 +174,7 @@ export async function POST(
           newEndDate: newEndDate,
           previousDuration: currentMembership.membershipDuration,
           newDuration: currentMembership.membershipDuration,
-          changeDate: now,
+          changeDate: istToUTC(now),
           notes: adjustEndDate
             ? `Resumed after ${pausedDays} days pause. End date extended by ${pausedDays} days.`
             : `Resumed after ${pausedDays} days pause. End date unchanged.`,
@@ -181,9 +182,8 @@ export async function POST(
         },
       });
 
-      // Calculate days remaining
-      const diffTime = newEndDate ? newEndDate.getTime() - now.getTime() : 0;
-      const daysRemaining = newEndDate ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+      // Calculate days remaining using IST utilities
+      const daysRemaining = newEndDate ? daysRemainingIST(newEndDate) : 0;
 
       return NextResponse.json({
         success: true,

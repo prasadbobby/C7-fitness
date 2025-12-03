@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { toISTDateString } from "@/utils/timezone";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Select, SelectItem } from "@nextui-org/select";
@@ -83,7 +84,7 @@ export default function AddMeasurementForm({ onSuccess, onCancel, adminUserId }:
         measurementType: formData.measurementType,
         value: parseFloat(formData.value),
         unit: selectedType?.unit || 'unit',
-        recordedDate: formData.recordedDate.toISOString(),
+        recordedDate: toISTDateString(formData.recordedDate),
         notes: formData.notes || null,
       };
 

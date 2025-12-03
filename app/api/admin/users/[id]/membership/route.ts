@@ -3,7 +3,7 @@ import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { auth } from "@clerk/nextjs";
 import { MembershipStatus, MembershipChangeType } from "@prisma/client";
-import { nowIST, daysRemainingIST, daysBetweenIST, utcToIST } from "@/utils/timezone";
+import { nowIST, daysRemainingIST, daysBetweenIST, utcToIST, parseISTDate, istToUTC } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -159,10 +159,10 @@ export async function GET(
     // Check if there's a scheduled extension that should now be applied
     if (userInfo.upcomingStartDate && userInfo.upcomingEndDate) {
       const upcomingStart = new Date(userInfo.upcomingStartDate);
-      const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
+      const nowISTExtended = nowIST(); // Use IST utility for extension date comparison
 
       // If the extension start date has passed, apply it automatically
-      if (nowIST >= upcomingStart) {
+      if (nowISTExtended >= upcomingStart) {
         console.log(`Auto-applying scheduled extension for user ${userInfo.userId} - Start date ${upcomingStart.toISOString()} has passed`);
 
         // Store the original end date for tracking
@@ -197,7 +197,7 @@ export async function GET(
             previousDuration: userInfo.membershipDuration,
             newDuration: userInfo.upcomingDuration,
             changeDate: new Date(),
-            notes: `Scheduled extension automatically applied on ${nowIST.toISOString()}. ${userInfo.upcomingNotes || ''}`.trim(),
+            notes: `Scheduled extension automatically applied on ${nowISTExtended.toISOString()}. ${userInfo.upcomingNotes || ''}`.trim(),
             recordedBy: 'SYSTEM'
           }
         });
@@ -312,13 +312,14 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Calculate end date
-    const membershipStartDate = new Date(startDate);
+    // Calculate end date using IST utilities
+    const membershipStartDateIST = parseISTDate(startDate.split('T')[0]); // Parse as IST
+    const membershipStartDate = istToUTC(membershipStartDateIST); // Convert to UTC for storage
     const membershipEndDate = new Date(membershipStartDate);
     membershipEndDate.setDate(membershipEndDate.getDate() + parseInt(duration));
 
-    // Determine membership status
-    const now = new Date();
+    // Determine membership status using IST
+    const now = nowIST();
     let membershipStatus: MembershipStatus = 'ACTIVE';
 
     if (status) {
@@ -407,11 +408,10 @@ export async function PUT(
       return updatedUser;
     });
 
-    // Calculate days remaining
+    // Calculate days remaining using IST utilities
     let daysRemaining = 0;
     if (result.membershipEndDate) {
-      const diffTime = result.membershipEndDate.getTime() - now.getTime();
-      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      daysRemaining = daysRemainingIST(result.membershipEndDate);
     }
 
     return NextResponse.json({

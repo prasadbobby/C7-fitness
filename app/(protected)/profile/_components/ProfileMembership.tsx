@@ -18,7 +18,7 @@ import {
   IconUser,
   IconNotes,
 } from "@tabler/icons-react";
-import { format } from "date-fns";
+import { formatIST, formatISTDateTime } from "@/utils/timezone";
 import BottomSheet from "@/components/UI/BottomSheet";
 
 interface MembershipInfo {
@@ -238,7 +238,7 @@ export default function ProfileMembership() {
             <div>
               <p className="text-xs text-zinc-500">Start Date</p>
               <p className="text-sm font-medium">
-                {new Date(membershipInfo.startDate!).toLocaleDateString()}
+                {formatIST(new Date(membershipInfo.startDate!))}
               </p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function ProfileMembership() {
             <div className="text-right">
               <p className="text-xs text-zinc-500">End Date</p>
               <p className="text-sm font-medium">
-                {new Date(membershipInfo.endDate!).toLocaleDateString()}
+                {formatIST(new Date(membershipInfo.endDate!))}
               </p>
             </div>
             <div className="p-2 bg-content2 rounded-lg">
@@ -369,7 +369,7 @@ export default function ProfileMembership() {
                           </Chip>
                         </div>
                         <div className="text-xs text-foreground-500">
-                          {format(new Date(log.changeDate), 'MMM dd, yyyy HH:mm')}
+                          {formatISTDateTime(new Date(log.changeDate))}
                         </div>
                       </div>
                     </div>
@@ -391,11 +391,11 @@ export default function ProfileMembership() {
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-foreground-600">Start Date:</span>
                           <span className="text-foreground-400">
-                            {log.previousStartDate ? format(new Date(log.previousStartDate), 'MMM dd, yyyy') : 'None'}
+                            {log.previousStartDate ? formatIST(new Date(log.previousStartDate)) : 'None'}
                           </span>
                           <span className="text-foreground-400">→</span>
                           <span className="text-foreground-700">
-                            {format(new Date(log.newStartDate), 'MMM dd, yyyy')}
+                            {formatIST(new Date(log.newStartDate))}
                           </span>
                         </div>
                       )}
@@ -404,11 +404,11 @@ export default function ProfileMembership() {
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-foreground-600">End Date:</span>
                           <span className="text-foreground-400">
-                            {log.previousEndDate ? format(new Date(log.previousEndDate), 'MMM dd, yyyy') : 'None'}
+                            {log.previousEndDate ? formatIST(new Date(log.previousEndDate)) : 'None'}
                           </span>
                           <span className="text-foreground-400">→</span>
                           <span className="text-foreground-700">
-                            {format(new Date(log.newEndDate), 'MMM dd, yyyy')}
+                            {formatIST(new Date(log.newEndDate))}
                           </span>
                         </div>
                       )}

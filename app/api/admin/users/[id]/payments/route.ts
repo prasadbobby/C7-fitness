@@ -3,6 +3,7 @@ import prisma from "@/prisma/prisma";
 import { requireSuperAdmin } from "@/utils/adminAuth";
 import { PaymentMethod } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
+import { parseISTDate, istToUTC } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -147,7 +148,7 @@ export async function POST(
         data: {
           userInfoId: id,
           amount: parseFloat(amount),
-          paymentDate: new Date(paymentDate),
+          paymentDate: istToUTC(parseISTDate(paymentDate.split('T')[0])),
           paymentMethod: paymentMethod as PaymentMethod,
           transactionId: transactionId?.trim() || null,
           notes: notes?.trim() || null,

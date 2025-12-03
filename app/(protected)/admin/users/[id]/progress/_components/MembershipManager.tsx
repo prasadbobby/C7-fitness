@@ -300,7 +300,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          startDate: startDate.toISOString(),
+          startDate: toISTDateString(startDate),
           duration: parseInt(duration),
           status,
           notes,
@@ -354,7 +354,7 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
         body: JSON.stringify({
           extensionType,
           extensionValue: parseInt(extensionValue),
-          extensionStartDate: extensionStartDate ? extensionStartDate.toISOString().split('T')[0] : "",
+          extensionStartDate: extensionStartDate ? toISTDateString(extensionStartDate) : "",
           reason: extensionReason || `Extended by ${extensionValue} ${extensionType.toLowerCase()}`,
           isComplementary,
         }),

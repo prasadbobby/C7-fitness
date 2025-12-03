@@ -110,3 +110,5 @@ import-workouts*.js
 sync-missing-exercises.js
 missing_in_production.txt
 workouts.json
+demo-home/
+alternate/

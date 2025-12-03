@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { auth } from "@clerk/nextjs";
-import { nowIST, createISTDate, daysBetweenIST } from "@/utils/timezone";
+import { nowIST, createISTDate, daysBetweenIST, parseISTDate, istToUTC, daysRemainingIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -122,7 +122,9 @@ export async function POST(
 
     // Use custom start date if it's meaningfully different from default continuation
     if (shouldUseCustomStartDate) {
-      const customStartDate = new Date(extensionStartDate);
+      // Parse the user-provided date as IST and convert to UTC for storage
+      const customStartDateIST = parseISTDate(extensionStartDate.split('T')[0]); // Parse as IST date
+      const customStartDate = istToUTC(customStartDateIST); // Convert to UTC for database storage
       const currentEndDate = currentMembership.membershipEndDate ? new Date(currentMembership.membershipEndDate) : now;
 
       // Check if custom start date is after current membership ends
@@ -135,8 +137,8 @@ export async function POST(
         newStatus = currentMembership.membershipStatus;
 
         // Store upcoming extension information in new fields
-        const upcomingStartDate = new Date(extensionStartDate);
-        const upcomingEndDate = new Date(extensionStartDate);
+        const upcomingStartDate = customStartDate; // Already in UTC
+        const upcomingEndDate = new Date(customStartDate);
         upcomingEndDate.setDate(upcomingEndDate.getDate() + extensionDays);
 
         // Add upcoming extension fields to the update
@@ -148,8 +150,8 @@ export async function POST(
         };
       } else {
         // Custom start date provided - start extension from the specified date immediately
-        newStartDate = new Date(extensionStartDate);
-        newEndDate = new Date(extensionStartDate);
+        newStartDate = customStartDate; // Already in UTC
+        newEndDate = new Date(customStartDate);
         newEndDate.setDate(newEndDate.getDate() + extensionDays);
 
         // Calculate total duration from original start date to new end date
@@ -160,7 +162,7 @@ export async function POST(
         } else {
           // If no original start date, use extension duration
           newDuration = extensionDays;
-          newStartDate = new Date(extensionStartDate); // Update start date too
+          newStartDate = customStartDate; // Use the properly converted UTC date
         }
 
         // Set status to ACTIVE for custom extensions
@@ -247,9 +249,8 @@ export async function POST(
       },
     });
 
-    // Calculate days remaining
-    const diffTime = newEndDate.getTime() - now.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Calculate days remaining using IST utilities
+    const daysRemaining = daysRemainingIST(newEndDate);
 
     return NextResponse.json({
       success: true,

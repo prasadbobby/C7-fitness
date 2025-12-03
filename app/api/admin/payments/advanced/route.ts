@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
+import { nowIST, istToUTC } from '@/utils/timezone';
 import {
   calculateProRataPayment,
   calculateRefund,
@@ -175,7 +176,7 @@ async function handlePartialPayment(data: {
       data: {
         userInfoId: data.userInfoId,
         amount: data.upfrontAmount,
-        paymentDate: new Date(),
+        paymentDate: istToUTC(nowIST()),
         paymentMethod: data.paymentMethod as any,
         notes: `Partial payment: ${data.notes || 'Upfront payment'} (${paymentPlan.paymentSchedule})`,
         recordedBy: adminUserId
@@ -244,7 +245,7 @@ async function handleEarlyRenewal(data: {
       data: {
         userInfoId: data.userInfoId,
         amount: finalAmount,
-        paymentDate: new Date(),
+        paymentDate: istToUTC(nowIST()),
         paymentMethod: data.paymentMethod as any,
         notes: `Early renewal: ${data.notes || ''} (${renewalCalculation.isAdvancePayment ? 'Advance payment' : 'Regular renewal'})`,
         recordedBy: adminUserId
@@ -271,7 +272,7 @@ async function handleEarlyRenewal(data: {
         newEndDate: renewalCalculation.newMembershipEnd,
         previousDuration: userInfo.membershipDuration,
         newDuration: (userInfo.membershipDuration || 0) + data.newDurationDays,
-        changeDate: new Date(),
+        changeDate: istToUTC(nowIST()),
         notes: `Early renewal with ${renewalCalculation.gapDays} gap days. ${renewalCalculation.isAdvancePayment ? 'Advance payment processed.' : ''}`,
         recordedBy: adminUserId
       }
@@ -342,7 +343,7 @@ async function handleMembershipPause(data: {
         newStatus: 'PAUSED',
         previousEndDate: userInfo.membershipEndDate,
         newEndDate: data.adjustEndDate ? pauseCalculation.adjustedEndDate : userInfo.membershipEndDate,
-        changeDate: new Date(),
+        changeDate: istToUTC(nowIST()),
         notes: `Membership paused: ${data.pauseReason}. ${data.adjustEndDate ? `End date extended by ${pauseCalculation.pauseDays} days.` : 'No adjustment to end date.'}`,
         recordedBy: adminUserId
       }
@@ -445,7 +446,7 @@ async function handleComplementaryExtension(data: {
         newEndDate: extensionCalculation.newEndDate,
         previousDuration: userInfo.membershipDuration,
         newDuration: (userInfo.membershipDuration || 0) + data.extensionDays,
-        changeDate: new Date(),
+        changeDate: istToUTC(nowIST()),
         notes: `Complementary extension: ${data.reason}. No additional payment required.`,
         recordedBy: adminUserId
       }
@@ -515,7 +516,7 @@ async function handleMembershipCancellation(data: {
         data: {
           userInfoId: data.userInfoId,
           amount: -refundCalculation.netRefund, // Negative amount for refund
-          paymentDate: new Date(),
+          paymentDate: istToUTC(nowIST()),
           paymentMethod: 'CASH', // Assuming cash refund
           notes: `Refund for cancelled membership. Refund calculation: ₹${refundCalculation.eligibleRefund} eligible - ₹${refundCalculation.processingFee} processing fee = ₹${refundCalculation.netRefund} net refund`,
           recordedBy: adminUserId
@@ -538,7 +539,7 @@ async function handleMembershipCancellation(data: {
         changeType: 'CANCELLATION',
         previousStatus: userInfo.membershipStatus,
         newStatus: 'CANCELLED',
-        changeDate: new Date(),
+        changeDate: istToUTC(nowIST()),
         notes: `Membership cancelled: ${data.cancellationReason}. ${refundCalculation.netRefund > 0 ? `Refund processed: ₹${refundCalculation.netRefund}` : 'No refund processed.'}`,
         recordedBy: adminUserId
       }

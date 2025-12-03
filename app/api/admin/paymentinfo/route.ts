@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser, clerkClient } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
-import { nowIST } from '@/utils/timezone';
+import { nowIST, daysRemainingIST, daysBetweenIST, istToUTC } from '@/utils/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
       if (user.discountedPrice !== null) {
         if ((user.remainingAmount || 0) <= 0) {
           paymentStatus = 'fully_paid';
-        } else if (user.nextPaymentDue && new Date(user.nextPaymentDue) < nowIST()) {
+        } else if (user.nextPaymentDue && user.nextPaymentDue < istToUTC(nowIST())) {
           paymentStatus = 'overdue';
         } else {
           paymentStatus = 'pending';
@@ -204,17 +204,17 @@ export async function GET(request: Request) {
 
       // Calculate analytics if user has valid membership data (pricing is optional for display)
       if (user.membershipStartDate && user.membershipDuration && user.membershipStatus !== 'INACTIVE') {
-        const startDate = new Date(user.membershipStartDate);
+        const startDate = new Date(user.membershipStartDate); // Already UTC from database
         const endDate = user.membershipEndDate ? new Date(user.membershipEndDate) : new Date(startDate.getTime() + (user.membershipDuration * 24 * 60 * 60 * 1000));
 
-        const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-        const daysElapsed = Math.max(0, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysRemaining = Math.max(0, daysRemainingIST(endDate));
+        const daysElapsed = Math.max(0, daysBetweenIST(startDate, istToUTC(now)));
         const totalDays = user.membershipDuration;
         const monthsTotal = Math.floor(totalDays / 30);
         const remainingMonths = Math.floor(daysRemaining / 30);
-        const isExpired = now > endDate;
+        const isExpired = istToUTC(now) > endDate;
         const isPaused = user.membershipStatus === 'PAUSED';
-        const isUpcoming = now < startDate;
+        const isUpcoming = istToUTC(now) < startDate;
 
         // Calculate per-day rate and pricing breakdown
         const perDayRate = user.discountedPrice ? user.discountedPrice / totalDays : 0;
@@ -309,7 +309,7 @@ export async function GET(request: Request) {
         u.discountedPrice !== null &&
         (u.remainingAmount || 0) > 0 &&
         u.nextPaymentDue &&
-        new Date(u.nextPaymentDue) < nowIST()
+        u.nextPaymentDue < istToUTC(nowIST())
       ).length,
       totalRevenue: allUsersForStats.reduce((sum, u) => sum + (u.totalAmountPaid || 0), 0),
       totalPending: allUsersForStats.reduce((sum, u) => sum + (u.remainingAmount || 0), 0),

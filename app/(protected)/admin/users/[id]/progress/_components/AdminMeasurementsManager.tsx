@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toISTDateString, formatIST, formatISTDateTime } from "@/utils/timezone";
 import {
   Card,
   CardBody,
@@ -137,7 +138,7 @@ export default function AdminMeasurementsManager({
           measurementType: selectedMeasurementType,
           value: parseFloat(addFormValue),
           unit: selectedMeasurementUnit,
-          recordedDate: addFormDate.toISOString(),
+          recordedDate: toISTDateString(addFormDate),
           notes: addFormNotes.trim() || undefined,
         }),
       });

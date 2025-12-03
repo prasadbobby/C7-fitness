@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs';
 import prisma from '@/prisma/prisma';
+import { parseISTDate, istToUTC } from '@/utils/timezone';
 
 export async function GET() {
   try {
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
         userId_measurementType_recordedDate: {
           userId: user.id,
           measurementType: measurementType,
-          recordedDate: new Date(recordedDate)
+          recordedDate: istToUTC(parseISTDate(recordedDate.split('T')[0]))
         }
       },
       update: {

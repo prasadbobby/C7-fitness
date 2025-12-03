@@ -900,7 +900,7 @@ export default function PaymentInfoPage() {
       const payload = {
         amount: parseFloat(paymentAmount),
         paymentMethod,
-        paymentDate: paymentDate.toISOString(),
+        paymentDate: toISTDateString(paymentDate),
         transactionId: transactionId.trim() || null,
         notes: paymentNote.trim() || null,
       };
@@ -986,7 +986,7 @@ export default function PaymentInfoPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nextPaymentDue: newDate?.toISOString() || null,
+          nextPaymentDue: newDate ? toISTDateString(newDate) : null,
         }),
       });
 
@@ -999,13 +999,13 @@ export default function PaymentInfoPage() {
           selectedUser.discountedPrice,
           selectedUser.totalAmountPaid,
           selectedUser.remainingAmount,
-          newDate?.toISOString() || null
+          newDate ? toISTDateString(newDate) : null
         );
 
         // Update selected user with new due date and recalculated status
         const updatedUser = {
           ...selectedUser,
-          nextPaymentDue: newDate?.toISOString() || null,
+          nextPaymentDue: newDate ? toISTDateString(newDate) : null,
           paymentStatus: paymentStatus as any,
         };
 
@@ -1103,7 +1103,7 @@ export default function PaymentInfoPage() {
       const payload = {
         amount: parseFloat(editPaymentAmount),
         paymentMethod: editPaymentMethod,
-        paymentDate: editPaymentDate.toISOString(),
+        paymentDate: toISTDateString(editPaymentDate),
         transactionId: editTransactionId.trim() || null,
         notes: editPaymentNote.trim() || null,
       };
@@ -1432,12 +1432,13 @@ export default function PaymentInfoPage() {
         new Date(a.changeDate).getTime() - new Date(b.changeDate).getTime()
       );
 
-      // Track all membership periods treating extensions as separate billing periods
+      // Track membership periods - consolidate extensions and date changes into continuous memberships
       for (let i = 0; i < sortedLogs.length; i++) {
         const log = sortedLogs[i];
 
-        // Skip status-only changes that don't create new periods
-        if (log.changeType === 'STATUS_CHANGE' || log.changeType === 'PAUSE' || log.changeType === 'RESUME') {
+        // Skip status-only changes, extensions, and date changes that don't create new periods
+        if (log.changeType === 'STATUS_CHANGE' || log.changeType === 'PAUSE' || log.changeType === 'RESUME' ||
+            log.changeType === 'EXTENSION' || log.changeType === 'DATE_CHANGE') {
           continue;
         }
 
@@ -1542,43 +1543,51 @@ export default function PaymentInfoPage() {
       }
     }
 
-    // If no periods from logs, use current membership
-    if (tempPeriods.length === 0) {
+    // Always add current membership period if it exists
+    if (currentMembership.membershipStartDate && currentMembership.membershipEndDate) {
       const startDate = new Date(currentMembership.membershipStartDate);
-      const endDate = currentMembership.membershipEndDate ?
-        new Date(currentMembership.membershipEndDate) :
-        new Date(startDate.getTime() + (currentMembership.membershipDuration * 24 * 60 * 60 * 1000));
+      const endDate = new Date(currentMembership.membershipEndDate);
 
-      const now = nowIST();
-      let actualStatus = 'ACTIVE';
-      if (now < startDate) {
-        actualStatus = 'UPCOMING';
-      } else if (now > endDate) {
-        actualStatus = 'EXPIRED';
-      } else if (currentMembership.membershipStatus === 'PAUSED') {
-        actualStatus = 'PAUSED';
+      // Check if this current period is different from any historical periods
+      const isDifferentPeriod = !tempPeriods.some(p =>
+        p.startDate.getTime() === startDate.getTime() &&
+        p.endDate.getTime() === endDate.getTime()
+      );
+
+      if (isDifferentPeriod) {
+        const now = nowIST();
+        let actualStatus = currentMembership.membershipStatus;
+
+        // Override status based on dates
+        if (now < startDate) {
+          actualStatus = 'UPCOMING';
+        } else if (now > endDate) {
+          actualStatus = 'EXPIRED';
+        } else if (currentMembership.membershipStatus === 'PAUSED') {
+          actualStatus = 'PAUSED';
+        } else if (currentMembership.membershipStatus === 'ACTIVE') {
+          actualStatus = 'ACTIVE';
+        }
+
+        tempPeriods.push({
+          startDate,
+          endDate,
+          duration: currentMembership.membershipDuration,
+          status: actualStatus,
+          changeType: 'CURRENT',
+          notes: currentMembership.membershipNotes
+        });
       }
-
-      tempPeriods.push({
-        startDate,
-        endDate,
-        duration: currentMembership.membershipDuration,
-        status: actualStatus,
-        changeType: 'CURRENT',
-        notes: currentMembership.membershipNotes
-      });
     }
 
-    // Calculate total duration of all periods
-    const totalDurationAllPeriods = tempPeriods.reduce((sum, p) => sum + p.duration, 0);
+    // Get total package price from discounted price
     const totalPackagePrice = user.discountedPrice || 0;
 
-    // Second pass: assign pricing to each period proportionally
+    // Second pass: assign pricing to each period
     for (const period of tempPeriods) {
-      // Calculate price proportionally based on duration
-      const periodPackagePrice = totalDurationAllPeriods > 0
-        ? (period.duration / totalDurationAllPeriods) * totalPackagePrice
-        : totalPackagePrice;
+      // Each period represents a separate billing/purchase cycle
+      // Current membership and distinct historical periods each get full package price
+      let periodPackagePrice = totalPackagePrice;
 
       membershipPeriods.push({
         ...period,
@@ -3486,9 +3495,28 @@ export default function PaymentInfoPage() {
                           </div>
                         </div>
                       )}
+                      {/* Offered Price (Original) */}
+                      <div className="flex justify-between items-center pt-2">
+                        <div>
+                          <p className="text-sm font-bold text-success">Offered Price (Original)</p>
+                          <p className="text-xs text-foreground-500">
+                            Initial price offered to customer
+                          </p>
+                        </div>
+                        <p className="text-lg font-bold text-success">
+                          {(() => {
+                            // Calculate current membership offered price
+                            // If packagePrice exists, use that as base, otherwise use discountedPrice
+                            const basePrice = selectedUser.packagePrice || selectedUser.discountedPrice || 0;
+                            // For current membership, show the package price or a reasonable offered price
+                            const offeredPrice = Math.min(basePrice, 35000); // Cap at 35000 for current membership
+                            return formatCurrency(offeredPrice);
+                          })()}
+                        </p>
+                      </div>
 
                       {/* Monthly Breakdown */}
-                      <div className="bg-content2 rounded-lg p-3">
+                      <div className="bg-content2 rounded-lg p-3 border-t border-divider">
                         <p className="text-xs font-medium text-foreground-600 mb-2">Rate Information:</p>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
@@ -3512,25 +3540,7 @@ export default function PaymentInfoPage() {
                         </div>
                       </div>
 
-                      {/* Offered Price (Original) */}
-                      <div className="flex justify-between items-center pt-2 border-t border-divider">
-                        <div>
-                          <p className="text-sm font-bold text-success">Offered Price (Original)</p>
-                          <p className="text-xs text-foreground-500">
-                            Initial price offered to customer
-                          </p>
-                        </div>
-                        <p className="text-lg font-bold text-success">
-                          {(() => {
-                            // Calculate current membership offered price
-                            // If packagePrice exists, use that as base, otherwise use discountedPrice
-                            const basePrice = selectedUser.packagePrice || selectedUser.discountedPrice || 0;
-                            // For current membership, show the package price or a reasonable offered price
-                            const offeredPrice = Math.min(basePrice, 35000); // Cap at 35000 for current membership
-                            return formatCurrency(offeredPrice);
-                          })()}
-                        </p>
-                      </div>
+                     
 
                       {/* Total Membership Value (for reference) */}
                       <div className="flex justify-between items-center py-2 bg-content2 px-3 rounded-lg">

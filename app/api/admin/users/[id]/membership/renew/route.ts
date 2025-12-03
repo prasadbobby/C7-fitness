@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
 import { auth } from "@clerk/nextjs";
+import { nowIST, parseISTDate, istToUTC, daysRemainingIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const now = new Date();
+    const now = nowIST();
     let renewalStartDate: Date;
     let renewalEndDate: Date;
     let newStatus = 'ACTIVE';
@@ -64,7 +65,7 @@ export async function POST(
     switch (renewalType) {
       case 'EXPIRED_RENEWAL': {
         // Start fresh from today (or specified date) for expired membership
-        renewalStartDate = newStartDate ? new Date(newStartDate) : now;
+        renewalStartDate = newStartDate ? istToUTC(parseISTDate(newStartDate.split('T')[0])) : istToUTC(now);
         renewalEndDate = new Date(renewalStartDate);
         renewalEndDate.setDate(renewalEndDate.getDate() + newDuration);
 
@@ -102,12 +103,12 @@ export async function POST(
       case 'UPGRADE_RENEWAL':
       case 'DOWNGRADE_RENEWAL': {
         // For upgrades/downgrades, start from current end date or today if expired
-        if (currentMembership.membershipEndDate && new Date(currentMembership.membershipEndDate) > now) {
+        if (currentMembership.membershipEndDate && new Date(currentMembership.membershipEndDate) > istToUTC(now)) {
           // Current membership is still active, start from end date
           renewalStartDate = new Date(currentMembership.membershipEndDate);
         } else {
           // Current membership is expired, start from today
-          renewalStartDate = now;
+          renewalStartDate = istToUTC(now);
         }
 
         renewalEndDate = new Date(renewalStartDate);
@@ -157,15 +158,14 @@ export async function POST(
         newEndDate: renewalEndDate,
         previousDuration: currentMembership.membershipDuration,
         newDuration: newDuration,
-        changeDate: now,
+        changeDate: istToUTC(now),
         notes: reason || `${renewalType.replace('_', ' ').toLowerCase()} - ${newDuration} days`,
         recordedBy: adminUserId!,
       },
     });
 
-    // Calculate days remaining
-    const diffTime = renewalEndDate.getTime() - now.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Calculate days remaining using IST utilities
+    const daysRemaining = daysRemainingIST(renewalEndDate);
 
     return NextResponse.json({
       success: true,

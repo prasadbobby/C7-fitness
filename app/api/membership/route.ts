@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { auth } from "@clerk/nextjs";
+import { utcToIST, nowIST, daysRemainingIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (userInfo.upcomingStartDate && userInfo.upcomingEndDate) {
       const now = new Date();
       const upcomingStart = new Date(userInfo.upcomingStartDate);
-      const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
+      const nowIST = utcToIST(now); // Use timezone utility instead of manual calculation
 
       // If the extension start date has passed, apply it automatically
       if (nowIST >= upcomingStart) {
@@ -95,19 +96,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate days remaining if membership exists
+    // Calculate days remaining if membership exists using IST
     let daysRemaining = 0;
     let isExpired = false;
     let isActive = false;
 
     if (userInfo.membershipEndDate && userInfo.membershipStartDate) {
-      const now = new Date();
+      const now = nowIST();
       const startDate = new Date(userInfo.membershipStartDate);
       const endDate = new Date(userInfo.membershipEndDate);
 
-      const diffTime = endDate.getTime() - now.getTime();
-      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      isExpired = daysRemaining < 0;
+      daysRemaining = daysRemainingIST(endDate);
+      isExpired = daysRemaining <= 0;
       isActive = now >= startDate && now <= endDate && userInfo.membershipStatus === 'ACTIVE';
     }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toISTDateString, formatIST, formatISTDateTime } from "@/utils/timezone";
 import {
   Card,
   CardBody,
@@ -138,7 +139,7 @@ export default function PaymentManager({ userId, userInfo }: PaymentManagerProps
       const payload = {
         packagePrice: parseFloat(packagePrice) || null,
         discountedPrice: parseFloat(discountedPrice) || null,
-        nextPaymentDue: nextPaymentDue?.toISOString() || null,
+        nextPaymentDue: nextPaymentDue ? toISTDateString(nextPaymentDue) : null,
         paymentNotes: paymentNotes.trim() || null,
       };
 
@@ -176,7 +177,7 @@ export default function PaymentManager({ userId, userInfo }: PaymentManagerProps
       const payload = {
         amount: parseFloat(paymentAmount),
         paymentMethod,
-        paymentDate: paymentDate.toISOString(),
+        paymentDate: toISTDateString(paymentDate),
         transactionId: transactionId.trim() || null,
         notes: paymentNote.trim() || null,
       };
