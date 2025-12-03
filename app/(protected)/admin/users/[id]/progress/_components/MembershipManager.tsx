@@ -1298,10 +1298,19 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                       <div>
                         <p className="text-foreground-500">After Extension</p>
                         <p className="font-medium text-success">
-                          {(membershipInfo.membershipDuration || 0) +
-                           (extensionType === 'DAYS' ? parseInt(extensionValue) :
-                            extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
-                            parseInt(extensionValue) * 30)} days
+                          {(() => {
+                            const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
+                                                extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
+                                                parseInt(extensionValue) * 30;
+
+                            // If membership is expired/inactive, show only the new duration (fresh membership)
+                            if (['EXPIRED', 'CANCELLED', 'SUSPENDED', 'INACTIVE'].includes(membershipInfo.membershipStatus)) {
+                              return `${extensionDays} days`;
+                            }
+
+                            // For active memberships, add to current duration (normal extension)
+                            return `${(membershipInfo.membershipDuration || 0) + extensionDays} days`;
+                          })()}
                         </p>
                       </div>
                       <div>
@@ -1318,6 +1327,17 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                             const extensionDays = extensionType === 'DAYS' ? parseInt(extensionValue) :
                                                 extensionType === 'WEEKS' ? parseInt(extensionValue) * 7 :
                                                 parseInt(extensionValue) * 30;
+
+                            // If membership is expired/inactive, start fresh the next day after expiry
+                            if (['EXPIRED', 'CANCELLED', 'SUSPENDED', 'INACTIVE'].includes(membershipInfo.membershipStatus)) {
+                              const newStart = new Date(currentEnd);
+                              newStart.setDate(newStart.getDate() + 1); // Start next day after expiry
+                              const newEnd = new Date(newStart);
+                              newEnd.setDate(newEnd.getDate() + extensionDays);
+                              return formatIST(newEnd, false);
+                            }
+
+                            // For active memberships, extend from current end date
                             const newEnd = new Date(currentEnd);
                             newEnd.setDate(newEnd.getDate() + extensionDays);
                             return formatIST(newEnd, false);
@@ -1328,6 +1348,16 @@ export default function MembershipManager({ userId, userInfo }: MembershipManage
                   );
                 }
               })()}
+
+              {/* Show note for expired memberships */}
+              {['EXPIRED', 'CANCELLED', 'SUSPENDED', 'INACTIVE'].includes(membershipInfo.membershipStatus) && (
+                <div className="mt-3 p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800">
+                  <p className="text-sm text-warning-600 dark:text-warning-400">
+                    <IconGift className="w-4 h-4 inline mr-1" />
+                    This will create a <strong>new membership</strong> starting the day after the current membership expired, not extend the existing one.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
