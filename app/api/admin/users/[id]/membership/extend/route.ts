@@ -177,23 +177,34 @@ export async function POST(
         };
       }
     } else {
-      // Original logic - extend from current end date
-      if (currentMembership.membershipEndDate) {
-        newStartDate = currentMembership.membershipStartDate || now;
-        newEndDate = new Date(currentMembership.membershipEndDate);
-        newEndDate.setDate(newEndDate.getDate() + extensionDays);
-        newDuration = (currentMembership.membershipDuration || 0) + extensionDays;
-      } else {
-        // No end date set, extend from today
-        newStartDate = currentMembership.membershipStartDate || now;
-        newEndDate = new Date(now);
-        newEndDate.setDate(newEndDate.getDate() + extensionDays);
-        newDuration = extensionDays;
-      }
-
-      // Activate membership if it's expired, cancelled, etc.
+      // Check if membership is expired and should start fresh
       if (['EXPIRED', 'CANCELLED', 'SUSPENDED', 'INACTIVE'].includes(currentMembership.membershipStatus)) {
+        // For expired/inactive memberships, start NEW membership the next day after expiry
+        if (currentMembership.membershipEndDate) {
+          newStartDate = new Date(currentMembership.membershipEndDate);
+          newStartDate.setDate(newStartDate.getDate() + 1); // Start the next day after expiry
+        } else {
+          newStartDate = now; // If no end date, start today
+        }
+        newEndDate = new Date(newStartDate);
+        newEndDate.setDate(newEndDate.getDate() + extensionDays);
+        newDuration = extensionDays; // Only the new membership duration, not accumulated
         newStatus = 'ACTIVE';
+      } else {
+        // For active memberships, extend normally from current end date
+        if (currentMembership.membershipEndDate) {
+          newStartDate = currentMembership.membershipStartDate || now;
+          newEndDate = new Date(currentMembership.membershipEndDate);
+          newEndDate.setDate(newEndDate.getDate() + extensionDays);
+          newDuration = (currentMembership.membershipDuration || 0) + extensionDays;
+        } else {
+          // No end date set, extend from today
+          newStartDate = currentMembership.membershipStartDate || now;
+          newEndDate = new Date(now);
+          newEndDate.setDate(newEndDate.getDate() + extensionDays);
+          newDuration = extensionDays;
+        }
+        newStatus = currentMembership.membershipStatus; // Keep current status for active extensions
       }
 
       // For normal extensions, preserve any existing upcoming extension data
@@ -230,11 +241,13 @@ export async function POST(
       data: updateData,
     });
 
-    // Log the extension
+    // Log the extension - use appropriate change type based on whether it's a new membership or extension
+    const isNewMembershipAfterExpiry = ['EXPIRED', 'CANCELLED', 'SUSPENDED', 'INACTIVE'].includes(currentMembership.membershipStatus) && !shouldUseCustomStartDate;
+
     await prisma.membershipLog.create({
       data: {
         userInfoId: id,
-        changeType: 'EXTENSION',
+        changeType: isNewMembershipAfterExpiry ? 'RENEWAL' : 'EXTENSION',
         previousStatus: currentMembership.membershipStatus,
         newStatus: newStatus,
         previousStartDate: currentMembership.membershipStartDate,
@@ -244,7 +257,9 @@ export async function POST(
         previousDuration: currentMembership.membershipDuration,
         newDuration: newDuration,
         changeDate: now,
-        notes: reason || `Extended by ${extensionValue} ${extensionType.toLowerCase()}`,
+        notes: reason || (isNewMembershipAfterExpiry ?
+          `Renewed membership for ${extensionValue} ${extensionType.toLowerCase()} after previous membership expired` :
+          `Extended by ${extensionValue} ${extensionType.toLowerCase()}`),
         recordedBy: adminUserId!,
       },
     });
