@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminPagination from "@/components/Admin/AdminPagination";
@@ -110,12 +110,43 @@ export default function UserManagement() {
   const searchTerm = searchParams.get("search") || "";
   const selectedRole = searchParams.get("role") || "all";
 
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm); // Local search state for immediate UI updates
+
   const itemsPerPage = limit;
 
   useEffect(() => {
     fetchUsers();
     fetchCurrentUserRole();
   }, [page, limit, searchTerm, selectedRole]);
+
+  // Sync local search state when URL search term changes
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm);
+  }, [searchTerm]);
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    (searchValue: string) => {
+      const timeoutId = setTimeout(() => {
+        const params = new URLSearchParams(searchParams);
+        if (searchValue) {
+          params.set('search', searchValue);
+        } else {
+          params.delete('search');
+        }
+        params.set('page', '1'); // Reset to page 1 when searching
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
+      }, 500); // 500ms delay
+
+      return () => clearTimeout(timeoutId);
+    },
+    [searchParams, pathname, replace]
+  );
+
+  useEffect(() => {
+    const cleanup = debouncedSearch(localSearchTerm);
+    return cleanup;
+  }, [localSearchTerm, debouncedSearch]);
 
   const fetchCurrentUserRole = async () => {
     try {
@@ -142,7 +173,8 @@ export default function UserManagement() {
   };
 
   const handleSearchChange = (value: string) => {
-    updateURLParams({ search: value, page: 1 });
+    setLocalSearchTerm(value); // Update local state immediately for responsive UI
+    // The debounced search effect will handle updating the URL
   };
 
   const handleRoleChange = (role: string) => {
@@ -402,7 +434,7 @@ export default function UserManagement() {
               <Input
                 placeholder="Search users..."
                 startContent={<IconSearch size={20} />}
-                value={searchTerm}
+                value={localSearchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>

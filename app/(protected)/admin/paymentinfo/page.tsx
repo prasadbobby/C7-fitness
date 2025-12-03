@@ -698,6 +698,8 @@ export default function PaymentInfoPage() {
   // Handle months change
   const handleMonthsChange = (value: string) => {
     setMembershipMonths(value);
+
+    // Calculate price per month if final pricing is available
     const months = parseInt(value);
     const finalPriceValue = parseFloat(discountedPrice);
 
@@ -710,9 +712,12 @@ export default function PaymentInfoPage() {
   const handlePackagePriceChange = (value: string) => {
     setPackagePrice(value);
 
-    // Set discounted price to package price by default (can be changed by user)
-    if (!discountedPrice) {
-      setDiscountedPrice(value);
+    // Calculate price per month if all values are available
+    const finalPriceValue = parseFloat(discountedPrice);
+    const months = parseInt(membershipMonths);
+
+    if (months > 0 && finalPriceValue > 0) {
+      calculatePricing(finalPriceValue, months);
     }
   };
 
@@ -3845,9 +3850,22 @@ export default function PaymentInfoPage() {
               />
             </div>
 
-            {/* Auto-calculated Price Per Month */}
-            {membershipMonths && discountedPrice && (
-              <div className="mt-4">
+          </div>
+
+
+          {/* Final Pricing */}
+          <div>
+            <h5 className="font-medium text-sm text-foreground-700 mb-3">Final Pricing</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                type="number"
+                label="Final Total Price (₹)"
+                placeholder="45000"
+                value={discountedPrice}
+                onChange={(e) => handleFinalPriceChange(e.target.value)}
+                description="Final price after any discounts"
+              />
+              {membershipMonths && discountedPrice && (
                 <Input
                   type="number"
                   label="Price Per Month (₹)"
@@ -3859,24 +3877,7 @@ export default function PaymentInfoPage() {
                     inputWrapper: "bg-content2"
                   }}
                 />
-              </div>
-            )}
-
-          </div>
-
-
-          {/* Final Pricing */}
-          <div>
-            <h5 className="font-medium text-sm text-foreground-700 mb-3">Final Pricing</h5>
-            <div className="max-w-md">
-              <Input
-                type="number"
-                label="Final Total Price (₹)"
-                placeholder="45000"
-                value={discountedPrice}
-                onChange={(e) => handleFinalPriceChange(e.target.value)}
-                description="Final price after any discounts"
-              />
+              )}
             </div>
           </div>
 
