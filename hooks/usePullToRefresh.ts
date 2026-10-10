@@ -8,7 +8,6 @@ interface UsePullToRefreshOptions {
   refreshType?: 'router' | 'window' | 'custom';
   disabled?: boolean;
 }
-
 export default function usePullToRefresh({
   onRefresh,
   refreshType = 'router',
