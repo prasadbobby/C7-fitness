@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac } from 'crypto';
 
 const WEBHOOK_SECRET = 'c7fitness_deploy_secret_2026';
 
@@ -24,14 +24,24 @@ export async function POST(request: NextRequest) {
       .update(body)
       .digest('hex');
 
-    // Use timing-safe comparison
-    const signatureBuffer = Buffer.from(signature);
-    const hashBuffer = Buffer.from(hash);
+    // Debug logging
+    console.log('Webhook debug:', {
+      receivedSig: signature,
+      calculatedHash: hash,
+      match: signature === hash,
+      bodyLength: body.length
+    });
 
-    if (signatureBuffer.length !== hashBuffer.length ||
-        !timingSafeEqual(signatureBuffer, hashBuffer)) {
+    if (signature !== hash) {
       return NextResponse.json(
-        { error: 'Invalid signature', expected: hash.substring(0, 20) + '...', received: signature.substring(0, 20) + '...' },
+        {
+          error: 'Invalid signature',
+          debug: {
+            expected: hash,
+            received: signature,
+            bodyLength: body.length
+          }
+        },
         { status: 401 }
       );
     }
