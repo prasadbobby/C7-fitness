@@ -74,9 +74,13 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
 
     // Create invitation for new user
     try {
+      // Construct redirect URL safely
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://c7personalfitness.com';
+      const redirectUrl = `${baseUrl}/sign-up?role=${targetRole.toLowerCase()}`;
+
       const invitation = await clerkClient.invitations.createInvitation({
         emailAddress: email,
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://c7personalfitness.com/'}/sign-up?role=${targetRole.toLowerCase()}`,
+        redirectUrl,
         publicMetadata: {
           role: targetRole.toLowerCase(),
           invitedBy: currentUserRole?.toLowerCase() || "admin"
