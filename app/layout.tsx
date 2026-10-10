@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: "https://c7personalfitness.com"
+    canonical: "/"
   },
 
   category: "fitness",
