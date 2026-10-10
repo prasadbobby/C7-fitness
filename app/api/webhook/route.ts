@@ -24,24 +24,9 @@ export async function POST(request: NextRequest) {
       .update(body)
       .digest('hex');
 
-    // Debug logging
-    console.log('Webhook debug:', {
-      receivedSig: signature,
-      calculatedHash: hash,
-      match: signature === hash,
-      bodyLength: body.length
-    });
-
     if (signature !== hash) {
       return NextResponse.json(
-        {
-          error: 'Invalid signature',
-          debug: {
-            expected: hash,
-            received: signature,
-            bodyLength: body.length
-          }
-        },
+        { error: 'Invalid signature' },
         { status: 401 }
       );
     }
@@ -57,8 +42,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Trigger deployment via internal endpoint
-    const deployResponse = await fetch('http://localhost:3001/api/deploy-internal', {
+    // Trigger deployment in background (don't wait for response)
+    fetch('http://localhost:3001/api/deploy-internal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -69,18 +54,13 @@ export async function POST(request: NextRequest) {
         ref: ref,
         timestamp: new Date().toISOString()
       })
-    });
+    }).catch(err => console.error('Background deploy error:', err));
 
-    if (!deployResponse.ok) {
-      throw new Error(`Deploy trigger failed: ${deployResponse.statusText}`);
-    }
-
-    const result = await deployResponse.json();
-
+    // Return immediately to avoid GitHub timeout
     return NextResponse.json({
-      message: 'Deployment triggered',
+      message: 'Deployment triggered in background',
       timestamp: new Date().toISOString(),
-      details: result
+      ref: ref
     });
 
   } catch (error) {
@@ -88,7 +68,7 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(
-      { error: 'Deployment failed', details: errorMessage },
+      { error: 'Webhook processing failed', details: errorMessage },
       { status: 500 }
     );
   }
