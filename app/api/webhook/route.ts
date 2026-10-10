@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac } from 'crypto';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { appendFile } from 'fs/promises';
-
-const execAsync = promisify(exec);
+import { createHmac, timingSafeEqual } from 'crypto';
 
 const WEBHOOK_SECRET = 'c7fitness_deploy_secret_2026';
-const DEPLOY_SCRIPT = '/home/c7personalfitness.com/deploy.sh';
-const DEPLOY_LOG = '/home/c7personalfitness.com/deploy.log';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,23 +15,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get raw body
-    const body = await request.text();
+    // Get raw body as buffer for signature verification
+    const bodyBuffer = await request.arrayBuffer();
+    const body = Buffer.from(bodyBuffer);
 
     // Verify signature
     const hash = 'sha256=' + createHmac('sha256', WEBHOOK_SECRET)
       .update(body)
       .digest('hex');
 
-    if (hash !== signature) {
+    // Use timing-safe comparison
+    const signatureBuffer = Buffer.from(signature);
+    const hashBuffer = Buffer.from(hash);
+
+    if (signatureBuffer.length !== hashBuffer.length ||
+        !timingSafeEqual(signatureBuffer, hashBuffer)) {
       return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 403 }
+        { error: 'Invalid signature', expected: hash.substring(0, 20) + '...', received: signature.substring(0, 20) + '...' },
+        { status: 401 }
       );
     }
 
     // Parse payload to check event
-    const payload = JSON.parse(body);
+    const payload = JSON.parse(body.toString('utf-8'));
     const ref = payload.ref;
 
     // Only deploy on push to main branch
@@ -48,20 +47,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Execute deployment script
-    const timestamp = new Date().toISOString();
-    const { stdout, stderr } = await execAsync(DEPLOY_SCRIPT);
-    const output = stdout + (stderr ? '\nErrors:\n' + stderr : '');
+    // Trigger deployment via internal endpoint
+    const deployResponse = await fetch('http://localhost:3001/api/deploy-internal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': WEBHOOK_SECRET
+      },
+      body: JSON.stringify({
+        event: 'github_webhook',
+        ref: ref,
+        timestamp: new Date().toISOString()
+      })
+    });
 
-    // Log deployment
-    await appendFile(
-      DEPLOY_LOG,
-      `${timestamp}\nDeployment triggered by webhook\n${output}\n\n`
-    );
+    if (!deployResponse.ok) {
+      throw new Error(`Deploy trigger failed: ${deployResponse.statusText}`);
+    }
+
+    const result = await deployResponse.json();
 
     return NextResponse.json({
       message: 'Deployment triggered',
-      timestamp
+      timestamp: new Date().toISOString(),
+      details: result
     });
 
   } catch (error) {
