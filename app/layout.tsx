@@ -114,7 +114,11 @@ export default async function RootLayout({
       signUpUrl="/sign-up"
       afterSignInUrl="/dashboard"
       afterSignUpUrl="/dashboard"
-      allowedRedirectOrigins={['http://localhost:3000']}
+      allowedRedirectOrigins={
+        process.env.NODE_ENV === 'production'
+          ? ['https://c7personalfitness.com']
+          : ['http://localhost:3000']
+      }
       // Completely remove domain in development to prevent redirects
       {...(process.env.NODE_ENV === 'production' && { domain: 'clerk.c7personalfitness.com' })}
     >
