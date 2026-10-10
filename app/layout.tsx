@@ -1,7 +1,7 @@
-import { SpeedInsights } from "@vercel/speed-insights/next";
+// import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Providers } from "./providers";
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react";
+// import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -19,7 +19,7 @@ export function generateViewport() {
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://c7personal.fit'),
+  metadataBase: new URL('https://c7personalfitness.com'),
   title: {
     default: "C7 Personal Fitness Studio - Track, Analyze & Optimize Your Workouts",
     template: "%s | C7 Personal Fitness Studio"
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: "https://c7personal.fit"
+    canonical: "https://c7personalfitness.com"
   },
 
   category: "fitness",
@@ -110,11 +110,13 @@ export default async function RootLayout({
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL?.trim() || '/sign-in'}
-      signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL?.trim() || '/sign-up'}
-      afterSignInUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL?.trim() || '/dashboard'}
-      afterSignUpUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL?.trim() || '/dashboard'}
-      domain={process.env.NEXT_PUBLIC_CLERK_DOMAIN || (process.env.NODE_ENV === 'production' ? 'clerk.c7personal.fit' : undefined)}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
+      allowedRedirectOrigins={['http://localhost:3000']}
+      // Completely remove domain in development to prevent redirects
+      {...(process.env.NODE_ENV === 'production' && { domain: 'clerk.c7personalfitness.com' })}
     >
       <html
         lang="en"
@@ -137,8 +139,8 @@ export default async function RootLayout({
             />
             {children}
           </Providers>
-          <SpeedInsights />
-          <Analytics />
+          {/* <SpeedInsights /> */}
+          {/* <Analytics /> */}
         </body>
       </html>
     </ClerkProvider>

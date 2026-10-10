@@ -16,6 +16,7 @@ model UserInfo {
   weight   Float?
   dateOfBirth DateTime? // Date of birth
   role     UserRole @default(USER)
+  locked   Boolean  @default(false) // User account lock status
 
   // Membership validity fields
   membershipStartDate DateTime?

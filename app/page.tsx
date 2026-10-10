@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: 'Transform your fitness with C7 Personal Fitness Studio. Track every rep, achieve every goal. Join thousands of athletes already using our comprehensive fitness tracking app.',
     type: 'website',
     images: ['/og-image.jpg'],
-    url: 'https://c7personal.fit'
+    url: 'https://c7personalfitness.com'
   },
 
   twitter: {
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: 'https://c7personal.fit'
+    canonical: 'https://c7personalfitness.com'
   }
 };
 

@@ -32,6 +32,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://c7personal.fit/sitemap.xml',
+    sitemap: 'https://c7personalfitness.com/sitemap.xml',
   }
 }

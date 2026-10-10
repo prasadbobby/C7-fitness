@@ -21,14 +21,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "all";
 
-    // Build where clause for filtering
-    const where: any = {};
-    if (role !== "all") {
-      where.role = role;
-    }
-
-    // Get total count for pagination
-    const total = await prisma.userInfo.count({ where });
+    // We'll filter by role after getting all users since we're now showing all Clerk users
 
     // Get all users from Clerk (this approach works like the search API)
     let allClerkUsers: any[] = [];
@@ -60,9 +53,8 @@ export async function GET(request: NextRequest) {
     // Create a map of Clerk users by their ID
     const clerkUserMap = new Map(allClerkUsers.map(user => [user.id, user]));
 
-    // Get users from database and combine with Clerk data
-    const userInfos = await prisma.userInfo.findMany({
-      where,
+    // Get all users from our database (for role and locked status)
+    const userInfosInDb = await prisma.userInfo.findMany({
       include: {
         _count: {
           select: {
@@ -73,17 +65,22 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Filter users to only include those that exist in Clerk and fetch latest measurements
-    const validUsers = await Promise.all(
-      userInfos
-        .filter(userInfo => clerkUserMap.has(userInfo.userId))
-        .map(async userInfo => {
-          const clerkUser = clerkUserMap.get(userInfo.userId)!;
+    // Create a map of database users by userId for quick lookup
+    const dbUserMap = new Map(userInfosInDb.map(user => [user.userId, user]));
 
-          // Fetch latest height measurement
-          const latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
+    // Process ALL Clerk users (not just those in database)
+    const validUsers = await Promise.all(
+      allClerkUsers.map(async clerkUser => {
+        const userInfo = dbUserMap.get(clerkUser.id);
+
+        // Fetch latest measurements if user exists in database
+        let latestHeightMeasurement = null;
+        let latestWeightMeasurement = null;
+
+        if (userInfo) {
+          latestHeightMeasurement = await prisma.bodyMeasurement.findFirst({
             where: {
-              userId: userInfo.userId,
+              userId: clerkUser.id,
               measurementType: 'HEIGHT',
             },
             orderBy: {
@@ -91,46 +88,53 @@ export async function GET(request: NextRequest) {
             },
           });
 
-          // Fetch latest weight measurement
-          const latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
+          latestWeightMeasurement = await prisma.bodyMeasurement.findFirst({
             where: {
-              userId: userInfo.userId,
+              userId: clerkUser.id,
               measurementType: 'WEIGHT',
             },
             orderBy: {
               recordedDate: 'desc',
             },
           });
+        }
 
-          return {
-            id: userInfo.id,
-            userId: userInfo.userId,
-            role: userInfo.role,
-            age: userInfo.age,
-            // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
-            height: latestHeightMeasurement?.value || userInfo.height,
-            weight: latestWeightMeasurement?.value || userInfo.weight,
-            createdAt: userInfo.createdAt.toISOString(),
-            updatedAt: userInfo.updatedAt.toISOString(),
-            _count: userInfo._count,
-            // Full Clerk data
-            email: clerkUser.emailAddresses?.[0]?.emailAddress || "No email",
-            firstName: clerkUser.firstName || "",
-            lastName: clerkUser.lastName || "",
-            username: clerkUser.username || "",
-            imageUrl: clerkUser.imageUrl || "",
-            name: clerkUser.firstName && clerkUser.lastName
-              ? `${clerkUser.firstName} ${clerkUser.lastName}`
-              : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown User",
-          };
-        })
+        return {
+          id: userInfo?.id || `temp-${clerkUser.id}`, // Temporary ID for users not in DB
+          userId: clerkUser.id,
+          role: userInfo?.role || 'USER', // Default role for users not in DB
+          age: userInfo?.age || null,
+          // Use latest measurements from BodyMeasurement table, fallback to UserInfo table
+          height: latestHeightMeasurement?.value || userInfo?.height || null,
+          weight: latestWeightMeasurement?.value || userInfo?.weight || null,
+          createdAt: userInfo?.createdAt.toISOString() || (clerkUser.createdAt ? new Date(clerkUser.createdAt).toISOString() : new Date().toISOString()),
+          updatedAt: userInfo?.updatedAt.toISOString() || (clerkUser.updatedAt ? new Date(clerkUser.updatedAt).toISOString() : new Date().toISOString()),
+          _count: userInfo?._count || { assignedWorkouts: 0 },
+          // Full Clerk data
+          email: clerkUser.emailAddresses?.[0]?.emailAddress || "No email",
+          firstName: clerkUser.firstName || "",
+          lastName: clerkUser.lastName || "",
+          username: clerkUser.username || "",
+          imageUrl: clerkUser.imageUrl || "",
+          name: clerkUser.firstName && clerkUser.lastName
+            ? `${clerkUser.firstName} ${clerkUser.lastName}`
+            : clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown User",
+          // Use locked status from our database, default to false if not in DB
+          locked: userInfo?.locked || false,
+        };
+      })
     );
 
-    // Filter by search term if provided (BEFORE pagination)
+    // Filter by role if provided
     let filteredUsers = validUsers;
+    if (role !== "all") {
+      filteredUsers = filteredUsers.filter(user => user.role === role);
+    }
+
+    // Filter by search term if provided (AFTER role filtering, BEFORE pagination)
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredUsers = validUsers.filter(user =>
+      filteredUsers = filteredUsers.filter(user =>
         user.email.toLowerCase().includes(searchLower) ||
         user.name.toLowerCase().includes(searchLower) ||
         user.firstName?.toLowerCase().includes(searchLower) ||

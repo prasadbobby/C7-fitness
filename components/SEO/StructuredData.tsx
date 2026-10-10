@@ -5,7 +5,7 @@ export default function StructuredData() {
     "name": "C7 Personal Fitness Studio",
     "alternateName": "C7 Fitness App",
     "description": "The ultimate fitness tracking app for serious athletes. Track workouts, join 90-day challenges, and achieve your fitness goals with comprehensive analytics.",
-    "url": "https://c7personal.fit",
+    "url": "https://c7personalfitness.com",
     "applicationCategory": "HealthApplication",
     "operatingSystem": "Web, iOS, Android",
     "offers": {
@@ -17,7 +17,7 @@ export default function StructuredData() {
     "creator": {
       "@type": "Organization",
       "name": "C7 Personal Fitness Studio",
-      "url": "https://c7personal.fit"
+      "url": "https://c7personalfitness.com"
     },
     "featureList": [
       "Workout Tracking",
@@ -29,7 +29,7 @@ export default function StructuredData() {
       "Workout Planning",
       "Performance Insights"
     ],
-    "screenshot": "https://c7personal.fit/og-image.jpg",
+    "screenshot": "https://c7personalfitness.com/og-image.jpg",
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "4.8",
@@ -59,8 +59,8 @@ export default function StructuredData() {
     "@type": "Organization",
     "name": "C7 Personal Fitness Studio",
     "alternateName": "C7 Fitness",
-    "url": "https://c7personal.fit",
-    "logo": "https://c7personal.fit/logo.png",
+    "url": "https://c7personalfitness.com",
+    "logo": "https://c7personalfitness.com/logo.png",
     "description": "C7 Personal Fitness Studio provides comprehensive fitness tracking solutions for athletes and fitness enthusiasts.",
     "foundingDate": "2024",
     "industry": "Fitness Technology",
@@ -95,25 +95,25 @@ export default function StructuredData() {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://c7personal.fit"
+        "item": "https://c7personalfitness.com"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Dashboard",
-        "item": "https://c7personal.fit/dashboard"
+        "item": "https://c7personalfitness.com/dashboard"
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": "Workouts",
-        "item": "https://c7personal.fit/workout"
+        "item": "https://c7personalfitness.com/workout"
       },
       {
         "@type": "ListItem",
         "position": 4,
         "name": "90-Day Challenge",
-        "item": "https://c7personal.fit/ninety-day-challenge"
+        "item": "https://c7personalfitness.com/ninety-day-challenge"
       }
     ]
   };

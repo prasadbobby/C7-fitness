@@ -51,9 +51,11 @@ import {
   IconSettings,
   IconUserCheck,
   IconChevronRight,
+  IconUserX,
 } from "@tabler/icons-react";
 import { InviteUserForm } from "./_components/InviteUserForm";
 import { cancelInvitation, updateUserRole } from "../settings/_actions";
+import { formatISTDateTime } from "@/utils/timezone";
 
 interface User {
   id: string;
@@ -74,6 +76,7 @@ interface User {
   username: string;
   imageUrl: string;
   name: string;
+  locked?: boolean;
 }
 
 interface PendingInvitation {
@@ -98,10 +101,12 @@ export default function UserManagement() {
   const [currentTab, setCurrentTab] = useState("all");
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
+  const [isLocking, setIsLocking] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isLockOpen, onOpen: onLockOpen, onClose: onLockClose } = useDisclosure();
   const { isOpen: isInviteOpen, onOpen: onInviteOpen, onClose: onInviteClose } = useDisclosure();
 
   // Get values from URL parameters
@@ -128,7 +133,12 @@ export default function UserManagement() {
   const debouncedSearch = useCallback(
     (searchValue: string) => {
       const timeoutId = setTimeout(() => {
-        const params = new URLSearchParams(searchParams);
+        const params = new URLSearchParams();
+        // Copy existing params
+        searchParams.forEach((value, key) => {
+          params.set(key, value);
+        });
+
         if (searchValue) {
           params.set('search', searchValue);
         } else {
@@ -161,7 +171,12 @@ export default function UserManagement() {
   };
 
   const updateURLParams = (updates: Record<string, string | number>) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams();
+    // Copy existing params
+    searchParams.forEach((value, key) => {
+      params.set(key, value);
+    });
+
     Object.entries(updates).forEach(([key, value]) => {
       if (value) {
         params.set(key, value.toString());
@@ -224,6 +239,63 @@ export default function UserManagement() {
   const handleDeleteUser = (user: User) => {
     setSelectedUser(user);
     onDeleteOpen();
+  };
+
+  const handleLockUser = (user: User) => {
+    setSelectedUser(user);
+    onLockOpen();
+  };
+
+  const handleUnlockUser = async (user: User) => {
+    setIsLocking(user.userId);
+    try {
+      const response = await fetch(`/api/admin/users/${user.userId}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to unlock user');
+      }
+
+      // Success - refresh the users list
+      await fetchUsers();
+      console.log('User unlocked successfully');
+    } catch (error: any) {
+      console.error('Error unlocking user:', error);
+      alert(error.message || 'Failed to unlock user');
+    } finally {
+      setIsLocking(null);
+    }
+  };
+
+  const lockUser = async () => {
+    if (!selectedUser) return;
+
+    setIsLocking(selectedUser.userId);
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.userId}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to lock user');
+      }
+
+      // Success - refresh the users list and close modal
+      await fetchUsers();
+      onLockClose();
+      setSelectedUser(null);
+      console.log('User locked successfully');
+    } catch (error: any) {
+      console.error('Error locking user:', error);
+      alert(error.message || 'Failed to lock user');
+    } finally {
+      setIsLocking(null);
+    }
   };
 
   const updateUser = async (userData: Partial<User>) => {
@@ -336,16 +408,17 @@ export default function UserManagement() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(dateString));
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      // Use IST timezone formatting for proper local time display
+      return formatISTDateTime(date, true);
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
-
-  const totalPages = Math.ceil(total / itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -517,21 +590,22 @@ export default function UserManagement() {
                     </TableHeader>
                     <TableBody emptyContent="No users found" isLoading={loading}>
                       {users.map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={user.id} className={user.locked ? "opacity-50" : ""}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar
                                 src={user.imageUrl}
                                 name={user.name ? user.name.charAt(0).toUpperCase() : "U"}
                                 size="sm"
-                                color="primary"
+                                color={user.locked ? "danger" : "primary"}
                                 showFallback
                               />
                               <div>
-                                <div className="font-medium text-sm">
+                                <div className={`font-medium text-sm ${user.locked ? "line-through text-danger" : ""}`}>
                                   {user.name || "Unknown User"}
+                                  {user.locked && <span className="ml-2 text-xs text-danger font-normal">(Locked)</span>}
                                 </div>
-                                <div className="text-xs text-foreground-500">
+                                <div className={`text-xs text-foreground-500 ${user.locked ? "line-through" : ""}`}>
                                   {user.email}
                                 </div>
                               </div>
@@ -603,6 +677,32 @@ export default function UserManagement() {
                                   <IconEdit size={16} />
                                 </Button>
                               )}
+                              {currentUserRole === "SUPER_ADMIN" && !user.locked && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="ghost"
+                                  color="warning"
+                                  onPress={() => handleLockUser(user)}
+                                  title="Lock User"
+                                  isLoading={isLocking === user.userId}
+                                >
+                                  <IconUserX size={16} />
+                                </Button>
+                              )}
+                              {currentUserRole === "SUPER_ADMIN" && user.locked && (
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="ghost"
+                                  color="success"
+                                  onPress={() => handleUnlockUser(user)}
+                                  title="Unlock User"
+                                  isLoading={isLocking === user.userId}
+                                >
+                                  <IconUserCheck size={16} />
+                                </Button>
+                              )}
                               {currentUserRole === "SUPER_ADMIN" && (
                                 <Button
                                   isIconOnly
@@ -650,6 +750,7 @@ export default function UserManagement() {
                               />
                               <div>
                                 <div className="flex items-center gap-2 mb-1">
+                                  <RoleIcon size={16} className="text-foreground-400" />
                                   <p className="font-semibold text-foreground">
                                     {admin.name}
                                   </p>
@@ -801,6 +902,44 @@ export default function UserManagement() {
                   <li>Equipment preferences and goals</li>
                   <li>All related data from both database and Clerk</li>
                 </ul>
+              </div>
+            </div>
+          )}
+        </BottomSheet>
+      )}
+
+      {/* Lock User Modal */}
+      {currentUserRole === "SUPER_ADMIN" && (
+        <BottomSheet
+          isOpen={isLockOpen}
+          onClose={onLockClose}
+          title="Lock User Account"
+          size="md"
+          footer={
+            <>
+              <Button variant="ghost" onPress={onLockClose}>
+                Cancel
+              </Button>
+              <Button
+                color="warning"
+                onPress={lockUser}
+                isLoading={isLocking === selectedUser?.userId}
+              >
+                Lock Account
+              </Button>
+            </>
+          }
+        >
+          {selectedUser && (
+            <div>
+              <p className="mb-4">Are you sure you want to lock this user's account?</p>
+              <div className="p-4 bg-warning/10 rounded-lg border-l-4 border-warning">
+                <p className="text-sm font-medium mb-2">This will prevent the user from signing in using Clerk's lock functionality.</p>
+                <div className="mt-3 p-2 bg-content1 rounded">
+                  <p className="text-sm font-medium">User Details:</p>
+                  <p className="text-sm text-foreground-600">{selectedUser.name}</p>
+                  <p className="text-sm text-foreground-500">{selectedUser.email}</p>
+                </div>
               </div>
             </div>
           )}

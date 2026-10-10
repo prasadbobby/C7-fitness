@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       // Send OTP via email
       try {
         await resend.emails.send({
-          from: 'C7 Personal Fitness Studio <send@c7personal.fit>',
+          from: 'C7 Personal Fitness Studio <noreply@mail.c7personalfitness.com>',
           to: [email],
           subject: 'Password Reset OTP - C7 Personal Fitness',
           html: `

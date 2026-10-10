@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://c7personal.fit'
+  const baseUrl = 'https://c7personalfitness.com'
 
   return [
     {

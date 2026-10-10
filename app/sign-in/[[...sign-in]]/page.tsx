@@ -10,8 +10,8 @@ export default function Page({ searchParams }: PageProps) {
   const { error } = searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md space-y-4 mx-auto">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 p-4">
             <div className="text-sm text-red-800">
@@ -42,6 +42,9 @@ export default function Page({ searchParams }: PageProps) {
               card: "shadow-lg"
             }
           }}
+          routing="path"
+          path="/sign-in"
+          signUpUrl="/sign-up"
         />
         {!error && (
           <div className="text-center text-sm text-gray-600">
