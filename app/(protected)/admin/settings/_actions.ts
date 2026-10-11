@@ -74,17 +74,37 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
 
     // Create invitation for new user
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://c7personalfitness.com';
+      const baseUrl = 'https://c7personalfitness.com';
       const redirectUrl = `${baseUrl}/sign-up?role=${targetRole.toLowerCase()}`;
 
-      const invitation = await clerkClient.invitations.createInvitation({
-        emailAddress: email,
-        redirectUrl,
-        publicMetadata: {
-          role: targetRole.toLowerCase(),
-          invitedBy: currentUserRole?.toLowerCase() || "admin"
-        }
+      // Call Clerk API directly using fetch to avoid SDK issues
+      const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+      if (!clerkSecretKey) {
+        throw new Error("Clerk secret key not configured");
+      }
+
+      const invitationResponse = await fetch("https://api.clerk.com/v1/invitations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${clerkSecretKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email_address: email,
+          redirect_url: redirectUrl,
+          public_metadata: {
+            role: targetRole.toLowerCase(),
+            invitedBy: currentUserRole?.toLowerCase() || "admin"
+          }
+        })
       });
+
+      if (!invitationResponse.ok) {
+        const errorData = await invitationResponse.json();
+        throw new Error(`Clerk API error: ${JSON.stringify(errorData)}`);
+      }
+
+      const invitation = await invitationResponse.json();
 
       // Store the invited email in a temporary table for tracking
       await prisma.pendingInvitation.create({

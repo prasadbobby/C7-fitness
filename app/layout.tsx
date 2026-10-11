@@ -19,59 +19,8 @@ export function generateViewport() {
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: {
-    default: "C7 Personal Fitness Studio - Track, Analyze & Optimize Your Workouts",
-    template: "%s | C7 Personal Fitness Studio"
-  },
-  description: "C7 Personal Fitness Studio: The ultimate fitness tracking app for serious athletes. Log workouts, track progress, join 90-day challenges, and optimize your gym sessions with data-driven insights.",
-
-  keywords: [
-    "C7 Personal Fitness Studio",
-    "fitness tracking app",
-    "workout tracker",
-    "gym app",
-    "fitness studio",
-    "personal trainer app",
-    "workout planner",
-    "90 day fitness challenge",
-    "fitness progress tracking",
-    "bodybuilding app",
-    "strength training tracker",
-    "fitness analytics",
-    "gym workout log",
-    "fitness community",
-    "C7 fitness",
-    "personal fitness studio",
-    "workout optimization",
-    "fitness goals tracker"
-  ],
-
-  authors: [{ name: "C7 Personal Fitness Studio" }],
-  creator: "C7 Personal Fitness Studio",
-  publisher: "C7 Personal Fitness Studio",
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-
-  category: "fitness",
-  classification: "Fitness & Health",
-
-  other: {
-    "application-name": "C7 Personal Fitness Studio",
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "C7 Fitness"
-  }
+  title: "C7 Personal Fitness Studio",
+  description: "Track, Analyze & Optimize Your Workouts",
 };
 
 export default async function RootLayout({
@@ -80,13 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
-    >
+    <ClerkProvider>
       <html
         lang="en"
         className="min-h-dvh flex flex-col"
