@@ -74,21 +74,8 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
 
     // Create invitation for new user
     try {
-      // Construct redirect URL safely
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://c7personalfitness.com';
       const redirectUrl = `${baseUrl}/sign-up?role=${targetRole.toLowerCase()}`;
-
-      console.log('=== INVITATION DEBUG START ===');
-      console.log('baseUrl:', baseUrl);
-      console.log('baseUrl type:', typeof baseUrl);
-      console.log('baseUrl is array?:', Array.isArray(baseUrl));
-      console.log('redirectUrl:', redirectUrl);
-      console.log('redirectUrl type:', typeof redirectUrl);
-      console.log('email:', email);
-      console.log('targetRole:', targetRole);
-      console.log('currentUserRole:', currentUserRole);
-      console.log('NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
-      console.log('=== INVITATION DEBUG END ===');
 
       const invitation = await clerkClient.invitations.createInvitation({
         emailAddress: email,
@@ -98,8 +85,6 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
           invitedBy: currentUserRole?.toLowerCase() || "admin"
         }
       });
-
-      console.log('Invitation created successfully:', invitation.id);
 
       // Store the invited email in a temporary table for tracking
       await prisma.pendingInvitation.create({
@@ -115,30 +100,16 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
 
     } catch (clerkError: any) {
       // Handle Clerk-specific errors
-      console.error("=== CLERK ERROR DEBUG START ===");
-      console.error("Clerk error full:", JSON.stringify(clerkError, null, 2));
-      console.error("Error message:", clerkError?.message);
-      console.error("Error stack:", clerkError?.stack);
-      console.error("Error errors array:", clerkError?.errors);
-      console.error("=== CLERK ERROR DEBUG END ===");
-
       if (clerkError?.errors?.[0]?.code === 'duplicate_record') {
         return { success: false, error: "An invitation has already been sent to this email address" };
       }
 
+      console.error("Clerk invitation error:", clerkError);
       throw clerkError; // Re-throw to be caught by outer try-catch
     }
 
   } catch (error) {
-    console.error("=== OUTER ERROR DEBUG START ===");
-    console.error("Outer error:", error);
-    console.error("Error type:", typeof error);
-    console.error("Error constructor:", error?.constructor?.name);
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    console.error("=== OUTER ERROR DEBUG END ===");
+    console.error("Error inviting user:", error);
     return { success: false, error: "Failed to send invitation" };
   }
 }
