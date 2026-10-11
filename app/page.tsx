@@ -53,10 +53,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'C7 Personal Fitness Studio - Track Every Rep, Achieve Every Goal',
     description: 'The ultimate fitness tracking app for serious athletes. Join challenges, track progress, and transform your fitness journey.',
-  },
-
-  alternates: {
-    canonical: 'https://c7personalfitness.com'
   }
 };
 
