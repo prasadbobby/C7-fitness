@@ -105,12 +105,28 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
       }
 
       console.error("Clerk invitation error:", clerkError);
-      throw clerkError; // Re-throw to be caught by outer try-catch
+      const errorDetails = {
+        message: clerkError?.message || 'Unknown Clerk error',
+        errors: clerkError?.errors,
+        status: clerkError?.status,
+        stack: clerkError?.stack
+      };
+      return {
+        success: false,
+        error: `Clerk error: ${errorDetails.message}`,
+        details: JSON.stringify(errorDetails, null, 2)
+      };
     }
 
   } catch (error) {
     console.error("Error inviting user:", error);
-    return { success: false, error: "Failed to send invitation" };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    return {
+      success: false,
+      error: `Failed to send invitation: ${errorMessage}`,
+      details: errorStack
+    };
   }
 }
 

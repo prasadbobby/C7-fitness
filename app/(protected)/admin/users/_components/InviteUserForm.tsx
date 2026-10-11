@@ -53,15 +53,27 @@ export function InviteUserForm({ onSuccess, onCancel }: InviteUserFormProps) {
     try {
       const result = await inviteUser(email.trim(), selectedRole);
 
+      console.log("=== INVITATION RESULT ===");
+      console.log("Full result:", result);
+      console.log("Success:", result.success);
+      console.log("Error:", result.error);
+      console.log("Details:", (result as any).details);
+      console.log("========================");
+
       if (result.success) {
         toast.success(`${roleOptions.find(r => r.value === selectedRole)?.label} invitation sent successfully!`);
         setEmail("");
         setSelectedRole(UserRole.USER);
         onSuccess?.();
       } else {
+        console.error("Invitation failed:", result);
         toast.error(result.error || "Failed to send invitation");
+        if ((result as any).details) {
+          console.error("Error details:", (result as any).details);
+        }
       }
     } catch (error) {
+      console.error("Invitation exception:", error);
       toast.error("Failed to send invitation");
     } finally {
       setIsLoading(false);
