@@ -46,8 +46,7 @@ export const metadata: Metadata = {
     title: 'C7 Personal Fitness Studio - Your Fitness Journey Starts Here',
     description: 'Transform your fitness with C7 Personal Fitness Studio. Track every rep, achieve every goal. Join thousands of athletes already using our comprehensive fitness tracking app.',
     type: 'website',
-    images: ['/og-image.jpg'],
-    url: 'https://c7personalfitness.com'
+    images: ['https://c7personalfitness.com/og-image.jpg']
   },
 
   twitter: {
