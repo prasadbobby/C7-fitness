@@ -19,6 +19,12 @@ export default authMiddleware({
     "/api/admin/super-admin-auth"
   ],
   beforeAuth: (req) => {
+    console.log('=== MIDDLEWARE DEBUG ===');
+    console.log('pathname:', req.nextUrl.pathname);
+    console.log('req.url:', req.url);
+    console.log('req.url type:', typeof req.url);
+    console.log('req.url is array:', Array.isArray(req.url));
+    console.log('======================');
     // Block direct access to sign-up unless it's via invitation
     if (req.nextUrl.pathname === "/sign-up") {
       const searchParams = req.nextUrl.searchParams;
