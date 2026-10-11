@@ -1,9 +1,5 @@
 import { authMiddleware } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import { PrismaClient } from '@prisma/client';
-
-// Initialize Prisma client for middleware
-const prisma = new PrismaClient();
 
 export default authMiddleware({
   publicRoutes: [
@@ -19,12 +15,6 @@ export default authMiddleware({
     "/api/admin/super-admin-auth"
   ],
   beforeAuth: (req) => {
-    console.log('=== MIDDLEWARE DEBUG ===');
-    console.log('pathname:', req.nextUrl.pathname);
-    console.log('req.url:', req.url);
-    console.log('req.url type:', typeof req.url);
-    console.log('req.url is array:', Array.isArray(req.url));
-    console.log('======================');
     // Block direct access to sign-up unless it's via invitation
     if (req.nextUrl.pathname === "/sign-up") {
       const searchParams = req.nextUrl.searchParams;
@@ -39,38 +29,8 @@ export default authMiddleware({
     }
   },
   async afterAuth(auth, req) {
-    // Skip lock check for public routes and locked page
-    if (req.nextUrl.pathname === "/" ||
-        req.nextUrl.pathname === "/sign-in" ||
-        req.nextUrl.pathname === "/sign-up" ||
-        req.nextUrl.pathname === "/locked" ||
-        req.nextUrl.pathname === "/privacy-policy" ||
-        req.nextUrl.pathname === "/terms" ||
-        req.nextUrl.pathname.startsWith("/api/webhooks/") ||
-        req.nextUrl.pathname.startsWith("/api/admin/users/check-lock")) {
-      return NextResponse.next();
-    }
-
-    // If user is authenticated, check if they're locked in our database
-    if (auth.userId) {
-      try {
-        // Check our database directly for lock status (this is the source of truth)
-        const userInfo = await prisma.userInfo.findUnique({
-          where: { userId: auth.userId },
-          select: { locked: true }
-        });
-
-        if (userInfo?.locked) {
-          // User is locked in our database - redirect to locked page
-          const lockedUrl = new URL('/locked', req.url);
-          return NextResponse.redirect(lockedUrl);
-        }
-      } catch (error) {
-        console.error('Error checking lock status:', error);
-        // If we can't check, allow the request to proceed (fail-safe)
-      }
-    }
-
+    // Note: Lock checking removed from middleware due to Edge Runtime limitations
+    // Lock status should be checked in page components or API routes using Prisma
     return NextResponse.next();
   },
 });
