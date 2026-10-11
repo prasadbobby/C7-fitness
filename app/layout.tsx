@@ -85,10 +85,6 @@ export const metadata: Metadata = {
     },
   },
 
-  alternates: {
-    canonical: "https://c7personalfitness.com"
-  },
-
   category: "fitness",
   classification: "Fitness & Health",
 
