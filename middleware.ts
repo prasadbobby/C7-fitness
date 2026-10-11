@@ -29,8 +29,13 @@ export default authMiddleware({
     }
   },
   async afterAuth(auth, req) {
-    // Note: Lock checking removed from middleware due to Edge Runtime limitations
-    // Lock status should be checked in page components or API routes using Prisma
+    // Redirect unauthenticated users to sign-in for protected routes
+    if (!auth.userId && !auth.isPublicRoute) {
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
     return NextResponse.next();
   },
 });
