@@ -50,29 +50,6 @@ export const metadata: Metadata = {
   creator: "C7 Personal Fitness Studio",
   publisher: "C7 Personal Fitness Studio",
 
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    title: "C7 Personal Fitness Studio - Premium Fitness Tracking App",
-    description: "Transform your fitness journey with C7 Personal Fitness Studio. Track workouts, analyze progress, and achieve your goals with our comprehensive fitness app.",
-    siteName: "C7 Personal Fitness Studio",
-    images: [
-      {
-        url: "https://c7personalfitness.com/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "C7 Personal Fitness Studio - Fitness Tracking App"
-      }
-    ]
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "C7 Personal Fitness Studio - Track Your Fitness Journey",
-    description: "The ultimate fitness tracking app for serious athletes. Join challenges, track progress, and optimize your workouts.",
-    images: ["https://c7personalfitness.com/og-image.jpg"]
-  },
-
   robots: {
     index: true,
     follow: true,
