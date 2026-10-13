@@ -47,7 +47,13 @@ export default async function Page({ searchParams }: PageProps) {
             appearance={{
               elements: {
                 formButtonPrimary: "bg-blue-600 hover:bg-blue-700",
-                card: "shadow-lg"
+                card: "shadow-lg",
+                // Hide social/OAuth buttons for invitation signups
+                socialButtonsBlockButton: "hidden",
+                socialButtonsBlockButtonArrow: "hidden",
+                dividerRow: "hidden",
+                dividerLine: "hidden",
+                dividerText: "hidden"
               }
             }}
             afterSignUpUrl="/dashboard"
@@ -87,7 +93,13 @@ export default async function Page({ searchParams }: PageProps) {
             appearance={{
               elements: {
                 formButtonPrimary: "bg-blue-600 hover:bg-blue-700",
-                card: "shadow-lg"
+                card: "shadow-lg",
+                // Hide social/OAuth buttons for invitation signups
+                socialButtonsBlockButton: "hidden",
+                socialButtonsBlockButtonArrow: "hidden",
+                dividerRow: "hidden",
+                dividerLine: "hidden",
+                dividerText: "hidden"
               }
             }}
             afterSignUpUrl="/dashboard"
