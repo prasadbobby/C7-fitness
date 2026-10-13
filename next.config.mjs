@@ -5,6 +5,16 @@
  */
 const nextConfig = {
   reactStrictMode: false,
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "c7personalfitness.com",
+        "www.c7personalfitness.com",
+        "localhost:3000",
+        "localhost:3001"
+      ]
+    }
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
