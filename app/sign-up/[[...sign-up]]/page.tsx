@@ -51,7 +51,9 @@ export default async function Page({ searchParams }: PageProps) {
                 dividerText: "hidden",
                 // Make email field read-only for invitation signups
                 formFieldInput__emailAddress: "bg-gray-100 cursor-not-allowed pointer-events-none",
-                formFieldLabel__emailAddress: "text-gray-500"
+                formFieldLabel__emailAddress: "text-gray-500",
+                // Hide "Optional" text on fields
+                formFieldHintText: "hidden"
               }
             }}
             afterSignUpUrl="/dashboard"
@@ -97,7 +99,9 @@ export default async function Page({ searchParams }: PageProps) {
                 dividerText: "hidden",
                 // Make email field read-only for invitation signups
                 formFieldInput__emailAddress: "bg-gray-100 cursor-not-allowed pointer-events-none",
-                formFieldLabel__emailAddress: "text-gray-500"
+                formFieldLabel__emailAddress: "text-gray-500",
+                // Hide "Optional" text on fields
+                formFieldHintText: "hidden"
               }
             }}
             afterSignUpUrl="/dashboard"
