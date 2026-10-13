@@ -34,14 +34,9 @@ export default async function Page({ searchParams }: PageProps) {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome to C7 Personal Fitness Studio
             </h1>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-6">
               You've been invited to join C7. Complete your registration below.
             </p>
-            {role && (
-              <p className="text-sm text-blue-600 mb-6">
-                Role: {role.replace('_', ' ').toUpperCase()}
-              </p>
-            )}
           </div>
           <SignUp
             appearance={{
@@ -53,7 +48,10 @@ export default async function Page({ searchParams }: PageProps) {
                 socialButtonsBlockButtonArrow: "hidden",
                 dividerRow: "hidden",
                 dividerLine: "hidden",
-                dividerText: "hidden"
+                dividerText: "hidden",
+                // Make email field read-only for invitation signups
+                formFieldInput__emailAddress: "bg-gray-100 cursor-not-allowed pointer-events-none",
+                formFieldLabel__emailAddress: "text-gray-500"
               }
             }}
             afterSignUpUrl="/dashboard"
@@ -82,11 +80,8 @@ export default async function Page({ searchParams }: PageProps) {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome to C7 Personal Fitness Studio
             </h1>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-6">
               You've been invited to join C7. Complete your registration below.
-            </p>
-            <p className="text-sm text-blue-600 mb-6">
-              Invitation for: {decodeURIComponent(email)}
             </p>
           </div>
           <SignUp
@@ -99,7 +94,10 @@ export default async function Page({ searchParams }: PageProps) {
                 socialButtonsBlockButtonArrow: "hidden",
                 dividerRow: "hidden",
                 dividerLine: "hidden",
-                dividerText: "hidden"
+                dividerText: "hidden",
+                // Make email field read-only for invitation signups
+                formFieldInput__emailAddress: "bg-gray-100 cursor-not-allowed pointer-events-none",
+                formFieldLabel__emailAddress: "text-gray-500"
               }
             }}
             afterSignUpUrl="/dashboard"
