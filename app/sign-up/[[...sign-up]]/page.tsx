@@ -28,8 +28,8 @@ export default async function Page({ searchParams }: PageProps) {
   // If this is a Clerk invitation flow, allow it through
   if (hasClerkInvitation || hasRoleInvitation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md space-y-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md space-y-4 mx-auto">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome to C7 Personal Fitness Studio
@@ -76,8 +76,8 @@ export default async function Page({ searchParams }: PageProps) {
     }
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md space-y-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md space-y-4 mx-auto">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome to C7 Personal Fitness Studio
