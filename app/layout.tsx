@@ -19,6 +19,7 @@ export function generateViewport() {
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://c7personalfitness.com'),
   title: "C7 Personal Fitness Studio",
   description: "Track, Analyze & Optimize Your Workouts",
 };

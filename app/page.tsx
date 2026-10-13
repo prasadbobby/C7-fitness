@@ -21,39 +21,7 @@ import StructuredData from "@/components/SEO/StructuredData";
 
 export const metadata: Metadata = {
   title: 'C7 Personal Fitness Studio - Transform Your Fitness Journey',
-  description: 'C7 Personal Fitness Studio: The ultimate fitness tracking app for serious athletes. Track workouts, log exercises, join 90-day challenges, and achieve your fitness goals with comprehensive analytics and progress tracking.',
-
-  keywords: [
-    'C7 Personal Fitness Studio',
-    'fitness app',
-    'workout tracker',
-    'exercise tracking',
-    'gym app',
-    'personal training',
-    'fitness challenges',
-    '90 day challenge',
-    'fitness community',
-    'workout analytics',
-    'fitness progress',
-    'strength training',
-    'bodybuilding',
-    'fitness goals',
-    'workout planner',
-    'fitness studio app'
-  ],
-
-  openGraph: {
-    title: 'C7 Personal Fitness Studio - Your Fitness Journey Starts Here',
-    description: 'Transform your fitness with C7 Personal Fitness Studio. Track every rep, achieve every goal. Join thousands of athletes already using our comprehensive fitness tracking app.',
-    type: 'website',
-    images: ['https://c7personalfitness.com/og-image.jpg']
-  },
-
-  twitter: {
-    card: 'summary_large_image',
-    title: 'C7 Personal Fitness Studio - Track Every Rep, Achieve Every Goal',
-    description: 'The ultimate fitness tracking app for serious athletes. Join challenges, track progress, and transform your fitness journey.',
-  }
+  description: 'C7 Personal Fitness Studio: The ultimate fitness tracking app for serious athletes.',
 };
 
 export default function Home() {
