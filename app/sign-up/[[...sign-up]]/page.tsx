@@ -29,15 +29,7 @@ export default async function Page({ searchParams }: PageProps) {
   if (hasClerkInvitation || hasRoleInvitation) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md space-y-4 mx-auto">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Welcome to C7 Personal Fitness Studio
-            </h1>
-            <p className="text-gray-600 mb-6">
-              You've been invited to join C7. Complete your registration below.
-            </p>
-          </div>
+        <div className="w-full max-w-md mx-auto">
           <SignUp
             appearance={{
               elements: {
@@ -77,15 +69,7 @@ export default async function Page({ searchParams }: PageProps) {
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md space-y-4 mx-auto">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Welcome to C7 Personal Fitness Studio
-            </h1>
-            <p className="text-gray-600 mb-6">
-              You've been invited to join C7. Complete your registration below.
-            </p>
-          </div>
+        <div className="w-full max-w-md mx-auto">
           <SignUp
             appearance={{
               elements: {
