@@ -318,6 +318,14 @@ export default async function AdminDashboard() {
                   </p>
                 </div>
               </Link>
+              <Link href="/admin/nutrition">
+                <div className="p-4 bg-content2 rounded-lg border-l-4 border-primary hover:bg-content3 transition-colors cursor-pointer">
+                  <h4 className="font-medium text-foreground">Nutrition</h4>
+                  <p className="text-sm text-foreground-500 mt-1">
+                    Manage recipes and set member calorie, macro and water goals.
+                  </p>
+                </div>
+              </Link>
               <Link href="/admin/paymentinfo">
                 <div className="p-4 bg-content2 rounded-lg border-l-4 border-warning hover:bg-content3 transition-colors cursor-pointer">
                   <h4 className="font-medium text-foreground">Payment Dashboard</h4>

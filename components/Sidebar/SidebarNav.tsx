@@ -36,6 +36,7 @@ import {
   IconLock,
   IconCreditCard,
   IconCurrencyRupee,
+  IconSalad,
 } from "@tabler/icons-react";
 
 export default function SidebarNav() {
@@ -130,6 +131,13 @@ export default function SidebarNav() {
               label="Challenges"
               href="/admin/ninety-day-challenge"
               active={pathname === "/admin/ninety-day-challenge"}
+            />
+
+            <NavItem
+              icon={<IconSalad size={22} className="shrink-0" />}
+              label="Nutrition"
+              href="/admin/nutrition"
+              active={pathname === "/admin/nutrition"}
             />
 
             {userRole === "SUPER_ADMIN" && (

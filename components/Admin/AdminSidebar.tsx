@@ -11,7 +11,8 @@ import {
   IconSettings,
   IconChevronLeft,
   IconMenu2,
-  IconHome
+  IconHome,
+  IconSalad
 } from "@tabler/icons-react";
 import { Button } from "@nextui-org/react";
 
@@ -30,6 +31,11 @@ const adminMenuItems = [
     name: "Workout Assignment",
     href: "/admin/workouts",
     icon: IconBarbell,
+  },
+  {
+    name: "Nutrition",
+    href: "/admin/nutrition",
+    icon: IconSalad,
   },
   {
     name: "User Analytics",

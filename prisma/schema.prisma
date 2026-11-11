@@ -1095,3 +1095,131 @@ model MonthlyExpense {
   @@index([year])
   @@index([month, year])
 }
+
+// ─── C7 mobile: nutrition, community & preferences ───────────────────────────
+// Tables are created by c7-backend (db/migrations/001_mobile_nutrition.sql).
+// Modelled here so `prisma db push` / migrations never drop them.
+
+model Recipe {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  category    String          @default("other")
+  imageUrl    String?
+  kcal        Int             @default(0)
+  protein     Float           @default(0)
+  carbs       Float           @default(0)
+  fat         Float           @default(0)
+  minutes     Int             @default(0)
+  servings    Int             @default(1)
+  ingredients String[]        @default([])
+  steps       String[]        @default([])
+  tags        String[]        @default([])
+  isPublished Boolean         @default(true)
+  createdBy   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
+  likes       RecipeLike[]
+  saves       RecipeSave[]
+  comments    RecipeComment[]
+  mealLogs    MealLog[]
+
+  @@index([category, isPublished])
+}
+
+model RecipeLike {
+  id        String   @id @default(uuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+}
+
+model RecipeSave {
+  id        String   @id @default(uuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+}
+
+model RecipeComment {
+  id        String   @id @default(uuid())
+  recipeId  String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model UserFollow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+}
+
+model MealLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime
+  slot      String
+  recipeId  String?
+  name      String
+  kcal      Int      @default(0)
+  protein   Float    @default(0)
+  carbs     Float    @default(0)
+  fat       Float    @default(0)
+  servings  Float    @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  recipe    Recipe?  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+}
+
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime
+  amountMl  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, date])
+}
+
+model NutritionGoal {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  kcal       Int      @default(2000)
+  protein    Int      @default(120)
+  carbs      Int      @default(220)
+  fat        Int      @default(65)
+  waterMl    Int      @default(2500)
+  assignedBy String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+}
+
+model UserPreference {
+  userId                String    @id
+  fitnessGoal           String?
+  experienceLevel       String?
+  onboardingCompletedAt DateTime?
+  pushEnabled           Boolean   @default(true)
+  remindersEnabled      Boolean   @default(true)
+  hapticsEnabled        Boolean   @default(true)
+  metricUnits           Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+}
