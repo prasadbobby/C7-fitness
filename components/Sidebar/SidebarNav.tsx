@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
 import { useSidebarToggleContext } from "@/contexts/SidebarToggleContext";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Badge } from "@nextui-org/react";
 import { useState, useEffect } from "react";
 
@@ -38,6 +38,12 @@ import {
   IconCreditCard,
   IconCurrencyRupee,
   IconSalad,
+  IconPackage,
+  IconFileInvoice,
+  IconCalendarCheck,
+  IconSpeakerphone,
+  IconHeartbeat,
+  IconVideo,
 } from "@tabler/icons-react";
 
 export default function SidebarNav() {
@@ -60,6 +66,23 @@ export default function SidebarNav() {
       window.removeEventListener("c7:challenge-requests", load);
     };
   }, [isAdmin]);
+  // New package requests + overdue payments from the C7 backend (mobile app sign-ups).
+  const { getToken } = useAuth();
+  const [c7Badges, setC7Badges] = useState({ newEnquiries: 0, overduePayments: 0 });
+  useEffect(() => {
+    const base = (process.env.NEXT_PUBLIC_C7_API_URL ?? "").replace(/\/$/, "");
+    if (!isAdmin || !base) return;
+    const load = async () => {
+      const token = await getToken().catch(() => null);
+      fetch(`${base}/v1/admin/badges`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && setC7Badges(d))
+        .catch(() => {});
+    };
+    load();
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, [isAdmin, getToken]);
 
   useEffect(() => {
     async function checkUserStatus() {
@@ -157,6 +180,32 @@ export default function SidebarNav() {
               href="/admin/nutrition"
               active={pathname === "/admin/nutrition"}
             />
+
+            <SubMenuTitle title="Studio" />
+            <NavItem
+              icon={
+                <Badge content={c7Badges.newEnquiries} color="warning" size="sm" isInvisible={!c7Badges.newEnquiries} shape="circle">
+                  <IconPackage size={22} className="shrink-0" />
+                </Badge>
+              }
+              label={c7Badges.newEnquiries ? `Packages · ${c7Badges.newEnquiries} new` : "Packages"}
+              href="/admin/packages"
+              active={pathname === "/admin/packages"}
+            />
+            <NavItem
+              icon={
+                <Badge content={c7Badges.overduePayments} color="danger" size="sm" isInvisible={!c7Badges.overduePayments} shape="circle">
+                  <IconFileInvoice size={22} className="shrink-0" />
+                </Badge>
+              }
+              label={c7Badges.overduePayments ? `Billing · ${c7Badges.overduePayments} overdue` : "Billing"}
+              href="/admin/billing"
+              active={pathname === "/admin/billing"}
+            />
+            <NavItem icon={<IconCalendarCheck size={22} className="shrink-0" />} label="Attendance" href="/admin/attendance" active={pathname === "/admin/attendance"} />
+            <NavItem icon={<IconSpeakerphone size={22} className="shrink-0" />} label="Announcements" href="/admin/announcements" active={pathname === "/admin/announcements"} />
+            <NavItem icon={<IconHeartbeat size={22} className="shrink-0" />} label="Member health" href="/admin/member-health" active={pathname === "/admin/member-health"} />
+            <NavItem icon={<IconVideo size={22} className="shrink-0" />} label="Workout videos" href="/admin/videos" active={pathname === "/admin/videos"} />
 
             {userRole === "SUPER_ADMIN" && (
               <>
