@@ -2,7 +2,9 @@ const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");
 
-const dev = process.env.NODE_ENV !== "production";
+// Production unless explicitly told otherwise: running Next in dev mode behind the proxy
+// serves on-demand chunks and breaks pages with ChunkLoadError. `npm run dev` uses next dev directly.
+const dev = process.env.NODE_ENV === "development";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3001", 10);
 
