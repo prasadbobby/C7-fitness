@@ -88,10 +88,10 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
 
   return (
     <>
-      <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
+      <Card shadow="none" className="bg-content1 border border-divider">
         <CardHeader className="flex items-center justify-between pb-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl shadow-lg">
+            <div className="p-3 bg-content1 rounded-xl">
               <IconWorldStar className="w-6 h-6 text-primary" />
             </div>
             <div>
@@ -126,7 +126,7 @@ export function ChallengeCommunity({ challengeId, challengeTitle }: ChallengeCom
         </CardHeader>
         <CardBody className="pt-0">
           {/* Welcome Message */}
-          <div className="bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20 rounded-lg p-6">
+          <div className="bg-content1 dark:from-primary-900/20 dark:to-secondary-900/20 rounded-lg p-6">
             <div className="flex items-center space-x-4">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-primary-100 dark:bg-primary-800 rounded-full flex items-center justify-center">

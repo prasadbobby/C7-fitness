@@ -4,6 +4,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { useSidebarToggleContext } from "@/contexts/SidebarToggleContext";
 import { useUser } from "@clerk/nextjs";
+import { Badge } from "@nextui-org/react";
 import { useState, useEffect } from "react";
 
 interface NavItemProps {
@@ -46,6 +47,19 @@ export default function SidebarNav() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isChallengeEnabled, setIsChallengeEnabled] = useState(false);
+  // Pending "Request to join" count from the mobile app, shown as a badge on Challenges.
+  const [joinRequests, setJoinRequests] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) return;
+    const load = () => fetch("/api/admin/ninety-day-challenge/requests", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { count: 0 })).then((d) => setJoinRequests(d.count ?? 0)).catch(() => {});
+    load();
+    const t = setInterval(load, 60_000);
+    window.addEventListener("c7:challenge-requests", load);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("c7:challenge-requests", load);
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     async function checkUserStatus() {
@@ -127,8 +141,12 @@ export default function SidebarNav() {
             />
 
             <NavItem
-              icon={<IconCalendarEvent size={22} className="shrink-0" />}
-              label="Challenges"
+              icon={
+                <Badge content={joinRequests} color="warning" size="sm" isInvisible={!joinRequests} shape="circle">
+                  <IconCalendarEvent size={22} className="shrink-0" />
+                </Badge>
+              }
+              label={joinRequests ? `Challenges · ${joinRequests} request${joinRequests > 1 ? "s" : ""}` : "Challenges"}
               href="/admin/ninety-day-challenge"
               active={pathname === "/admin/ninety-day-challenge"}
             />

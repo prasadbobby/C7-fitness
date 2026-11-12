@@ -265,7 +265,7 @@ export function WeeklyLeaderboard({
 
       {/* Top 3 Podium for completed weeks */}
       {selectedWeek?.isCompleted && enhancedParticipants.length >= 3 && (
-        <div className="grid grid-cols-3 gap-2 mb-6 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+        <div className="grid grid-cols-3 gap-2 mb-6 p-4 bg-content1 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <div className="text-center">
             <div className="relative">
               <Avatar
@@ -408,7 +408,7 @@ export function WeeklyLeaderboard({
 
       {/* Admin Note for Completed Weeks */}
       {selectedWeek?.isCompleted && enhancedParticipants.length > 0 && (
-        <Card className="bg-gradient-to-r from-secondary-50 to-primary-50 dark:from-secondary-900/20 dark:to-primary-900/20 border border-secondary-200 dark:border-secondary-800">
+        <Card className="bg-content1 dark:from-secondary-900/20 dark:to-primary-900/20 border border-secondary-200 dark:border-secondary-800">
           <CardBody className="p-4">
             <div className="flex items-center gap-3">
               <IconGift className="w-5 h-5 text-secondary" />

@@ -109,7 +109,7 @@ export function ParticipantStats({ participant }: Props) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800">
+          <div className="bg-content1 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800">
             <div className="flex justify-center mb-2">
               <div className="p-2 bg-green-500 rounded-lg">
                 <Calendar className="text-white" size={20} />
@@ -123,7 +123,7 @@ export function ParticipantStats({ participant }: Props) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 text-center border border-orange-200 dark:border-orange-800">
+          <div className="bg-content1 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 text-center border border-orange-200 dark:border-orange-800">
             <div className="flex justify-center mb-2">
               <div className="p-2 bg-orange-500 rounded-lg">
                 <Flame className="text-white" size={20} />
@@ -137,7 +137,7 @@ export function ParticipantStats({ participant }: Props) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800">
+          <div className="bg-content1 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800">
             <div className="flex justify-center mb-2">
               <div className="p-2 bg-blue-500 rounded-lg">
                 <TrendingUp className="text-white" size={20} />

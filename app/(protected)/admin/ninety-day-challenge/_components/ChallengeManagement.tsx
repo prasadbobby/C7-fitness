@@ -156,7 +156,7 @@ export const ChallengeManagement = forwardRef<{ triggerCreateChallenge: () => vo
     <div className="space-y-4">
       {/* Create/Edit Form */}
       {showCreateForm && (
-        <Card shadow="none" className="shadow-md border-none bg-gradient-to-br from-background to-default-50">
+        <Card shadow="none" className="shadow-md border-none bg-content1">
           <CardHeader className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
               <IconPlus className="w-5 h-5 text-primary" />

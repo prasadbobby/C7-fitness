@@ -12,6 +12,8 @@ const AddParticipantModal = lazy(() => import("./_components/AddParticipantModal
 import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { Button } from "@nextui-org/button";
 import { Chip } from "@nextui-org/chip";
+import { Progress } from "@nextui-org/react";
+import { JoinRequests } from "../../_components/JoinRequests";
 import {
   IconTrophy,
   IconChartBar,
@@ -180,146 +182,60 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
       </nav>
 
       {/* Header */}
-      <div className="space-y-4">
-        {/* Title and Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              {challenge.title}
-            </h1>
-            <p className="text-foreground-500 mt-2">
-              Challenge Dashboard & Analytics
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-            <Button
-              color="danger"
-              variant="bordered"
-              size="lg"
-              startContent={<IconRefresh size={18} />}
-              onPress={handleClearScoresClick}
-              isLoading={clearingScores}
-              className="w-full sm:w-auto min-h-12 px-4"
-            >
-              {clearingScores ? "Clearing..." : "Clear Scores"}
-            </Button>
-            <Button
-              as={Link}
-              href={`/ninety-day-challenge/posts?challengeId=${challenge.id}`}
-              color="primary"
-              variant="solid"
-              size="lg"
-              startContent={<IconMessageCircle size={18} />}
-              className="w-full sm:w-auto min-h-12 px-4"
-            >
-              View All Posts
-            </Button>
-            <Button
-              color="secondary"
-              variant="shadow"
-              size="lg"
-              startContent={<IconUserPlus size={18} />}
-              onPress={() => setIsAddParticipantModalOpen(true)}
-              className="w-full sm:w-auto min-h-12 px-4"
-            >
-              Add Participant
-            </Button>
-            <Chip
-              color={challenge.isActive ? "success" : "default"}
-              variant="flat"
-              size="lg"
-            >
-              {challenge.isActive ? "Active" : "Inactive"}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">{challenge.title}</h1>
+            <Chip size="sm" variant="flat" color={daysRemaining === 0 ? "default" : challenge.isActive ? "success" : "warning"}>
+              {daysRemaining === 0 ? "Finished" : challenge.isActive ? "Live" : "Paused"}
             </Chip>
           </div>
+          <p className="text-sm text-foreground-500 mt-1">
+            {new Date(challenge.startDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} – {new Date(challenge.endDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="flat" startContent={<IconUserPlus size={18} />} onPress={() => setIsAddParticipantModalOpen(true)}>
+            Add participant
+          </Button>
+          <Button as={Link} href={`/ninety-day-challenge/posts?challengeId=${challenge.id}`} variant="flat" startContent={<IconMessageCircle size={18} />}>
+            All posts
+          </Button>
+          <Button color="danger" variant="light" startContent={<IconRefresh size={18} />} onPress={handleClearScoresClick} isLoading={clearingScores}>
+            Reset scores
+          </Button>
         </div>
       </div>
 
-      {/* Challenge Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card shadow="none" className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
-          <CardBody className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase text-primary/70 font-bold tracking-wider mb-1">
-                  Total Participants
-                </p>
-                <p className="text-3xl font-black text-primary">
-                  {challenge._count.participants}
-                </p>
+      {/* Overview */}
+      <Card shadow="none" className="border border-divider">
+        <CardBody className="p-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: "Participants", value: challenge._count.participants },
+              { label: "Day", value: `${Math.min(daysElapsed, totalDays)} / ${totalDays}` },
+              { label: "Elapsed", value: `${Math.round(progressPercentage)}%` },
+              { label: "Days left", value: daysRemaining },
+            ].map((t) => (
+              <div key={t.label}>
+                <p className="text-xs text-foreground-500">{t.label}</p>
+                <p className="text-2xl font-semibold text-foreground mt-1">{t.value}</p>
               </div>
-              <div className="p-3 bg-primary/15 rounded-xl">
-                <IconUsers className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+            ))}
+          </div>
+          <Progress aria-label="Challenge timeline" size="sm" value={progressPercentage} color="primary" className="mt-4" />
+        </CardBody>
+      </Card>
 
-        <Card shadow="none" className="bg-gradient-to-br from-secondary/5 to-secondary/10 border border-secondary/20">
-          <CardBody className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase text-secondary/70 font-bold tracking-wider mb-1">
-                  Days Elapsed
-                </p>
-                <p className="text-3xl font-black text-secondary">
-                  {daysElapsed}
-                </p>
-                <p className="text-xs text-secondary/60">of {totalDays} days</p>
-              </div>
-              <div className="p-3 bg-secondary/15 rounded-xl">
-                <IconCalendarEvent className="w-6 h-6 text-secondary" />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card shadow="none" className="bg-gradient-to-br from-success/5 to-success/10 border border-success/20">
-          <CardBody className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase text-success/70 font-bold tracking-wider mb-1">
-                  Progress
-                </p>
-                <p className="text-3xl font-black text-success">
-                  {Math.round(progressPercentage)}%
-                </p>
-                <p className="text-xs text-success/60">completion</p>
-              </div>
-              <div className="p-3 bg-success/15 rounded-xl">
-                <IconChartBar className="w-6 h-6 text-success" />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card shadow="none" className="bg-gradient-to-br from-warning/5 to-warning/10 border border-warning/20">
-          <CardBody className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase text-warning/70 font-bold tracking-wider mb-1">
-                  Days Remaining
-                </p>
-                <p className="text-3xl font-black text-warning">
-                  {daysRemaining}
-                </p>
-                <p className="text-xs text-warning/60">days left</p>
-              </div>
-              <div className="p-3 bg-warning/15 rounded-xl">
-                <IconTrophy className="w-6 h-6 text-warning" />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
+      <JoinRequests challengeId={challenge.id} compact onChange={() => window.location.reload()} />
 
       {/* Main Dashboard Content */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Participant Leaderboard */}
         <div className="xl:col-span-1">
-          <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl h-full">
+          <Card shadow="none" className="bg-content1 border border-divider h-full">
             <CardHeader className="flex items-center gap-4 pb-4">
-              <div className="p-3 bg-gradient-to-br from-warning/20 to-warning/10 rounded-xl shadow-lg">
+              <div className="p-3 bg-content1 rounded-xl">
                 <IconTrophy className="w-6 h-6 text-warning" />
               </div>
               <div>
@@ -338,7 +254,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
                 <div className="flex border-b border-divider px-6 bg-content1">
                   <button
                     onClick={() => setActiveLeaderboardTab("overall")}
-                    className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                    className={`flex items-center gap-2 px-4 py-3 border-b-2 hover:text-primary ${
                       activeLeaderboardTab === "overall"
                         ? "border-primary text-primary bg-primary/5"
                         : "border-transparent text-foreground-500 hover:text-foreground"
@@ -350,7 +266,7 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
                   </button>
                   <button
                     onClick={() => setActiveLeaderboardTab("weekly")}
-                    className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all duration-200 hover:text-primary ${
+                    className={`flex items-center gap-2 px-4 py-3 border-b-2 hover:text-primary ${
                       activeLeaderboardTab === "weekly"
                         ? "border-primary text-primary bg-primary/5"
                         : "border-transparent text-foreground-500 hover:text-foreground"
@@ -384,9 +300,9 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
 
         {/* Challenge Analytics */}
         <div className="xl:col-span-2">
-          <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl h-full">
+          <Card shadow="none" className="bg-content1 border border-divider h-full">
             <CardHeader className="flex items-center gap-4 pb-4">
-              <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl shadow-lg">
+              <div className="p-3 bg-content1 rounded-xl">
                 <IconChartBar className="w-6 h-6 text-primary" />
               </div>
               <div>
@@ -408,9 +324,9 @@ export default function ChallengeDashboardPage({ params }: PageProps) {
       </div>
 
       {/* Challenge Details */}
-      <Card shadow="none" className="bg-gradient-to-br from-background to-default-50 border border-divider shadow-xl">
+      <Card shadow="none" className="bg-content1 border border-divider">
         <CardHeader className="flex items-center gap-4 pb-4">
-          <div className="p-3 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-xl shadow-lg">
+          <div className="p-3 bg-content1 rounded-xl">
             <IconUsers className="w-6 h-6 text-secondary" />
           </div>
           <div>

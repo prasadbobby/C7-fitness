@@ -9,6 +9,7 @@ import {
   IconActivity,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { JoinRequests } from "./ninety-day-challenge/_components/JoinRequests";
 import Image from "next/image";
 import clsx from "clsx";
 import prisma from "@/prisma/prisma";
@@ -117,6 +118,9 @@ export default async function AdminDashboard() {
           Admin dashboard - manage workouts, routines, and track activity.
         </p>
       </div>
+
+      {/* Members who requested to join a challenge from the mobile app (hidden when none). */}
+      <JoinRequests compact />
 
       {/* Main Action Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
