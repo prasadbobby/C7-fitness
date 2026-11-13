@@ -1,10 +1,11 @@
 "use server";
 
 import { checkAdminAuth } from "@/utils/adminAuth";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export async function inviteUser(email: string, targetRole: UserRole = UserRole.USER) {
   try {
@@ -74,7 +75,7 @@ export async function inviteUser(email: string, targetRole: UserRole = UserRole.
 
     // Create invitation for new user
     try {
-      const baseUrl = 'https://c7personalfitness.com';
+      const baseUrl = SITE_URL;
       const redirectUrl = `${baseUrl}/sign-up?role=${targetRole.toLowerCase()}`;
 
       // Call Clerk API directly using fetch to avoid SDK issues

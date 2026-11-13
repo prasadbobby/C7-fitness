@@ -13,7 +13,7 @@ import { JoinRequests } from "./ninety-day-challenge/_components/JoinRequests";
 import Image from "next/image";
 import clsx from "clsx";
 import prisma from "@/prisma/prisma";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 
 export const dynamic = 'force-dynamic';
 

@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export function generateViewport() {
   return {
@@ -19,7 +20,7 @@ export function generateViewport() {
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://c7personalfitness.com'),
+  metadataBase: new URL(SITE_URL),
   title: "C7 Personal Fitness Studio",
   description: "Track, Analyze & Optimize Your Workouts",
 };

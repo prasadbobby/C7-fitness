@@ -70,7 +70,7 @@ export async function GET(
     const usersInfo = await Promise.all(
       userIds.map(async (userId) => {
         try {
-          const clerkUser = await (await import("@clerk/nextjs")).clerkClient.users.getUser(userId);
+          const clerkUser = await (await import("@/lib/clerkDirectory")).clerkClient.users.getUser(userId);
           return {
             userId,
             firstName: clerkUser.firstName || "Unknown",

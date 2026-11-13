@@ -39,14 +39,18 @@ app.prepare().then(() => {
       fixHeader("host");
       fixHeader("origin");
 
-      // Override host-related headers to ensure single values
-      req.headers["x-forwarded-proto"] = "https";
-      req.headers["x-forwarded-host"] = "c7personalfitness.com";
-      req.headers["host"] = "c7personalfitness.com";
-
-      // Fix origin header if it exists
-      if (req.headers["origin"]) {
-        req.headers["origin"] = "https://c7personalfitness.com";
+      // Behind the live proxy, pin host-related headers to the public domain (they can arrive
+      // duplicated). Requests straight to localhost (running this on your own machine) are left alone,
+      // otherwise sign-in redirects would send you to the live website.
+      const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers["host"] || "");
+      if (!isLocal) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+        const appHost = /localhost|127\.0\.0\.1/.test(appUrl) ? "" : appUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+        const publicHost = process.env.PUBLIC_HOST || appHost || "staging.c7personalfitness.com";
+        req.headers["x-forwarded-proto"] = "https";
+        req.headers["x-forwarded-host"] = publicHost;
+        req.headers["host"] = publicHost;
+        if (req.headers["origin"]) req.headers["origin"] = "https://" + publicHost;
       }
 
       const parsedUrl = parse(req.url, true);

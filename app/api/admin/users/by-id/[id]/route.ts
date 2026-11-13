@@ -120,7 +120,7 @@ export async function DELETE(
 
     // Optionally delete the user from Clerk as well
     try {
-      const { clerkClient } = await import("@clerk/nextjs");
+      const { clerkClient } = await import("@/lib/clerkDirectory");
       await clerkClient.users.deleteUser(user.userId);
     } catch (clerkError) {
       console.warn("Could not delete user from Clerk:", clerkError);

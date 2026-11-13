@@ -120,7 +120,7 @@ export async function GET(
     }
 
     // Fetch user data from Clerk for non-admin participants only with caching
-    const { clerkClient } = await import("@clerk/nextjs");
+    const { clerkClient } = await import("@/lib/clerkDirectory");
     const nonAdminUserIds = nonAdminParticipants.map(p => p.userId);
 
     // Check cache first

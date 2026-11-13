@@ -608,6 +608,7 @@ export default function UserManagement() {
                                 <div className={`text-xs text-foreground-500 ${user.locked ? "line-through" : ""}`}>
                                   {user.email}
                                 </div>
+                                {(user as { app?: AppInfo | null }).app && <AppSetupLine app={(user as { app?: AppInfo | null }).app!} />}
                               </div>
                             </div>
                           </TableCell>
@@ -1009,6 +1010,25 @@ function EditUserForm({
           Save Changes
         </Button>
       </div>
+    </div>
+  );
+}
+
+type AppInfo = { fitnessGoal: string | null; experienceLevel: string | null; onboardingCompletedAt: string | null; isGuest: boolean };
+const GOAL: Record<string, string> = { lose: "Lose weight", tone: "Get toned", muscle: "Build muscle", endurance: "Endurance" };
+
+/** What the member chose in the C7 app's first-time setup. */
+function AppSetupLine({ app }: { app: AppInfo }) {
+  return (
+    <div className="text-xs mt-0.5 flex items-center gap-1.5 flex-wrap">
+      {app.isGuest && <span className="text-warning">Guest · packages only</span>}
+      {app.onboardingCompletedAt ? (
+        <span className="text-foreground-400">
+          {[app.fitnessGoal ? GOAL[app.fitnessGoal] ?? app.fitnessGoal : null, app.experienceLevel ? app.experienceLevel.charAt(0).toUpperCase() + app.experienceLevel.slice(1) : null].filter(Boolean).join(" · ") || "Set up in app"}
+        </span>
+      ) : (
+        <span className="text-foreground-400">App setup not finished</span>
+      )}
     </div>
   );
 }

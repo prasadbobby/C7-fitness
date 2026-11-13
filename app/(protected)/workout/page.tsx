@@ -78,7 +78,7 @@ export default async function WorkoutPage() {
 
   if (adminIds.length > 0) {
     // Get admin info from Clerk since UserInfo only has userId and role
-    const { clerkClient } = await import("@clerk/nextjs");
+    const { clerkClient } = await import("@/lib/clerkDirectory");
 
     try {
       const adminUsers = await Promise.all(

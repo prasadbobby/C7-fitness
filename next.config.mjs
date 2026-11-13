@@ -8,6 +8,7 @@ const nextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
+        "staging.c7personalfitness.com",
         "c7personalfitness.com",
         "www.c7personalfitness.com",
         "localhost:3000",

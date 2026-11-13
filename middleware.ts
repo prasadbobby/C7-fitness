@@ -1,9 +1,17 @@
 import { authMiddleware } from "@clerk/nextjs";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-// Helper to construct safe URL avoiding duplicated header issues
-function getSafeBaseUrl(): string {
-  return "https://c7personalfitness.com";
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
+
+// Base URL for redirects. Behind the live proxy the Host header can arrive duplicated, so production
+// uses a fixed origin (NEXT_PUBLIC_APP_URL, else the staging admin). On a developer machine we stay on
+// whatever localhost origin the request came from — never bounce a local login to the live website.
+function getSafeBaseUrl(req: NextRequest): string {
+  const host = (req.headers.get("host") ?? "").split(",")[0].trim();
+  if (LOCAL_HOST.test(host)) return `http://${host}`;
+  const env = process.env.NEXT_PUBLIC_APP_URL;
+  if (env && !/localhost|127\.0\.0\.1/.test(env)) return env.replace(/\/$/, "");
+  return "https://staging.c7personalfitness.com";
 }
 
 export default authMiddleware({
@@ -30,7 +38,7 @@ export default authMiddleware({
 
       if (!hasClerkTicket && !hasInvitationToken && !hasRoleParam) {
         // Use hardcoded base URL to avoid header duplication issues
-        return NextResponse.redirect(new URL("/sign-in?error=invitation_required", getSafeBaseUrl()));
+        return NextResponse.redirect(new URL("/sign-in?error=invitation_required", getSafeBaseUrl(req)));
       }
     }
   },
@@ -38,7 +46,7 @@ export default authMiddleware({
     // Redirect unauthenticated users to sign-in for protected routes
     if (!auth.userId && !auth.isPublicRoute) {
       // Use hardcoded base URL to avoid header duplication issues
-      const signInUrl = new URL('/sign-in', getSafeBaseUrl());
+      const signInUrl = new URL('/sign-in', getSafeBaseUrl(req));
       signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);
     }

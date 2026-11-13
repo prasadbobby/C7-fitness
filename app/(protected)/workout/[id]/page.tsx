@@ -1,7 +1,7 @@
 import prisma from "@/prisma/prisma";
 import PageHeading from "@/components/PageHeading/PageHeading";
 import WorkoutManager from "./_components/WorkoutManager";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 
 async function fetchRoutine(id: string) {
   return await prisma.workoutPlan.findUnique({

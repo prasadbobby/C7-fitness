@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { checkRole } from "@/utils/roles";
 import { SearchUsers } from "./_search-users";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import { setRole } from "./_actions";
 
 import PageHeading from "@/components/PageHeading/PageHeading";

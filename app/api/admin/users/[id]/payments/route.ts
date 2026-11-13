@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireSuperAdmin } from "@/utils/adminAuth";
 import { PaymentMethod } from "@prisma/client";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import { parseISTDate, istToUTC } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';

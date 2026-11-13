@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { currentUser, clerkClient } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 
 export const dynamic = 'force-dynamic';

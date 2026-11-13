@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "@/utils/adminAuth";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 
 export const dynamic = 'force-dynamic';
@@ -146,7 +146,24 @@ export async function GET(request: NextRequest) {
 
     // Apply pagination to the filtered results
     const totalFilteredUsers = filteredUsers.length;
-    const paginatedUsers = filteredUsers.slice((page - 1) * limit, page * limit);
+    const pageSlice = filteredUsers.slice((page - 1) * limit, page * limit);
+    // Answers from the C7 app's first-time setup (goal, level) + whether they're a self-signed-up guest.
+    // These tables only exist in the C7 database; elsewhere this quietly adds nothing.
+    let appInfo = new Map<string, { fitnessGoal: string | null; experienceLevel: string | null; onboardingCompletedAt: Date | null; isGuest: boolean }>();
+    try {
+      const ids = pageSlice.map((u) => u.userId);
+      const rows = await prisma.$queryRaw<{ userId: string; fitnessGoal: string | null; experienceLevel: string | null; onboardingCompletedAt: Date | null; isGuest: boolean }[]>`
+        SELECT i."userId", p."fitnessGoal", p."experienceLevel", p."onboardingCompletedAt",
+               (a."accountType" = 'GUEST' AND i."membershipStatus" NOT IN ('ACTIVE','PAUSED','UPCOMING')) AS "isGuest"
+        FROM "UserInfo" i
+        LEFT JOIN "UserPreference" p ON p."userId" = i."userId"
+        LEFT JOIN "AppAccount" a ON a."userId" = i."userId"
+        WHERE i."userId" = ANY(${ids})`;
+      appInfo = new Map(rows.map((r) => [r.userId, { ...r, isGuest: !!r.isGuest }]));
+    } catch {
+      /* not the C7 database */
+    }
+    const paginatedUsers = pageSlice.map((u) => ({ ...u, app: appInfo.get(u.userId) ?? null }));
 
     // This is our final users array
     const users = paginatedUsers;

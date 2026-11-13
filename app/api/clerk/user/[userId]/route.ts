@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient } from "@/lib/clerkDirectory";
 import { requireAdmin } from "@/utils/adminAuth";
 
 export const dynamic = 'force-dynamic';
