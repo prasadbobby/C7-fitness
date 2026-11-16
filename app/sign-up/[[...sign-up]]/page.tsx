@@ -3,17 +3,22 @@ import { redirect } from "next/navigation";
 import prisma from "@/prisma/prisma";
 
 interface PageProps {
-  searchParams: {
+  // Next.js 15 passes searchParams as a Promise.
+  searchParams: Promise<{
     __clerk_ticket?: string;
     __clerk_status?: string;
     invitation_token?: string;
     email?: string;
     role?: string;
-  };
+  }>;
 }
 
+// This page is designed light. Clerk's components (@clerk/nextjs v7) follow the CSS color-scheme,
+// which the app's default dark theme sets to "dark" on <html>, so pin this page to light.
+const lightScheme = { colorScheme: "light" } as const;
+
 export default async function Page({ searchParams }: PageProps) {
-  const { __clerk_ticket, __clerk_status, invitation_token, email, role } = searchParams;
+  const { __clerk_ticket, __clerk_status, invitation_token, email, role } = await searchParams;
 
   // Check if this is an invitation-based signup
   const hasClerkInvitation = __clerk_ticket && __clerk_status === "sign_up";
@@ -28,7 +33,7 @@ export default async function Page({ searchParams }: PageProps) {
   // If this is a Clerk invitation flow, allow it through
   if (hasClerkInvitation || hasRoleInvitation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4" style={lightScheme}>
         <div className="w-full max-w-md mx-auto">
           <SignUp
             appearance={{
@@ -67,7 +72,7 @@ export default async function Page({ searchParams }: PageProps) {
     }
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4" style={lightScheme}>
         <div className="w-full max-w-md mx-auto">
           <SignUp
             appearance={{

@@ -13,9 +13,9 @@ import { IconPlayerTrackPrevFilled } from "@tabler/icons-react";
 export const dynamic = 'force-dynamic';
 
 export default async function NewRoutineFormStepTwo({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     id?: string;
     page?: number;
     perPage?: number;
@@ -26,8 +26,11 @@ export default async function NewRoutineFormStepTwo({
     force?: string;
     favs?: string;
     equipmentOwned?: string;
-  };
+  }>;
 }) {
+  // Next.js 15 passes searchParams as a Promise. Resolve it here so the plain object
+  // (not the Promise) is what reaches the client-side <ExerciseFilters>.
+  const searchParams = await searchParamsPromise;
   const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {

@@ -1,16 +1,21 @@
 import { SignIn } from "@clerk/nextjs";
 
 interface PageProps {
-  searchParams: {
+  // Next.js 15 passes searchParams as a Promise.
+  searchParams: Promise<{
     error?: string;
-  };
+  }>;
 }
 
-export default function Page({ searchParams }: PageProps) {
-  const { error } = searchParams;
+// This page is designed light. Clerk's components (@clerk/nextjs v7) follow the CSS color-scheme,
+// which the app's default dark theme sets to "dark" on <html>, so pin this page to light.
+const lightScheme = { colorScheme: "light" } as const;
+
+export default async function Page({ searchParams }: PageProps) {
+  const { error } = await searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4" style={lightScheme}>
       <div className="w-full max-w-md space-y-4 mx-auto">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 p-4">

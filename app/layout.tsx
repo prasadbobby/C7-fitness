@@ -19,6 +19,11 @@ export function generateViewport() {
 
 const inter = Inter({ subsets: ["latin"] });
 
+// @clerk/nextjs v7 no longer reads NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL / _AFTER_SIGN_UP_URL,
+// so hand them to ClerkProvider as the fallback redirects (used when there is no redirect_url).
+const afterSignInUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL || "/dashboard";
+const afterSignUpUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || "/dashboard";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "C7 Personal Fitness Studio",
@@ -31,14 +36,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className="min-h-dvh flex flex-col"
-        suppressHydrationWarning
+    <html
+      lang="en"
+      className="min-h-dvh flex flex-col"
+      suppressHydrationWarning
+    >
+      <body
+        className={`${inter.className} flex flex-col grow overflow-x-hidden`}
       >
-        <body
-          className={`${inter.className} flex flex-col grow overflow-x-hidden`}
+        {/* Clerk Core 3 (@clerk/nextjs v7) requires ClerkProvider inside <body>, not around <html>. */}
+        <ClerkProvider
+          signInFallbackRedirectUrl={afterSignInUrl}
+          signUpFallbackRedirectUrl={afterSignUpUrl}
         >
           <Providers>
             <Toaster
@@ -53,10 +62,10 @@ export default async function RootLayout({
             />
             {children}
           </Providers>
-          {/* <SpeedInsights /> */}
-          {/* <Analytics /> */}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+        {/* <SpeedInsights /> */}
+        {/* <Analytics /> */}
+      </body>
+    </html>
   );
 }
