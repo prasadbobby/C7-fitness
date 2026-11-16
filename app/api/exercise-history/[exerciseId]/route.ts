@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { exerciseId: string } },
 ) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
     const { exerciseId } = params;
 
     if (!userId) {

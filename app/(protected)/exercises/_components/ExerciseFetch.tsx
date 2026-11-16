@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import ExerciseTable from "./ExerciseTable";
 import { CategoryType, Muscle, LevelType, ForceType } from "@prisma/client";
@@ -38,7 +38,7 @@ export default async function ExerciseFetch({
   mode: string;
   selectedExercises?: any;
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

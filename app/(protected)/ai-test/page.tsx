@@ -1,11 +1,7 @@
 "use client";
-import { checkRole } from "@/utils/roles";
+import { useUser } from "@clerk/nextjs";
 import { Message, experimental_useAssistant as useAssistant } from "ai/react";
 import { useEffect, useRef } from "react";
-
-if (!checkRole("admin")) {
-  throw new Error("Unauthorized");
-}
 
 const roleToColorMap: Record<Message["role"], string> = {
   system: "red",
@@ -17,6 +13,9 @@ const roleToColorMap: Record<Message["role"], string> = {
 };
 
 export default function Chat() {
+  // Admin-only test page (checked in the browser; the AI route itself must also check on the server).
+  const { user, isLoaded } = useUser();
+  const isAdmin = (user?.publicMetadata as { role?: string } | undefined)?.role === "admin";
   const { status, messages, input, submitMessage, handleInputChange, error } =
     useAssistant({
       api: "/api/ai",
@@ -28,6 +27,9 @@ export default function Chat() {
       inputRef.current?.focus();
     }
   }, [status]);
+
+  if (!isLoaded) return null;
+  if (!isAdmin) return <p className="p-6">Unauthorized</p>;
 
   return (
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">

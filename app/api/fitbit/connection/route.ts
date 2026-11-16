@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { fitbitService } from "@/services/fitbitService";
 import prisma from "@/prisma/prisma";
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET - Get Fitbit connection status
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 // PUT - Update Fitbit sync settings
 export async function PUT(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Disconnect Fitbit
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

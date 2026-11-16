@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -7,7 +7,7 @@ import { Button } from "@nextui-org/button";
 import { formatDuration } from "@/utils/time";
 
 export default async function DashboardRecentActivity() {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

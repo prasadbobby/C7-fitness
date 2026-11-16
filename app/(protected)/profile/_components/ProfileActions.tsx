@@ -1,5 +1,5 @@
 "use client";
-import { useClerk } from "@clerk/clerk-react";
+import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/button";
 import { IconLogout } from "@tabler/icons-react";

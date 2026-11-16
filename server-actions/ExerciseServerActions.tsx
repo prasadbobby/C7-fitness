@@ -1,11 +1,11 @@
 "use server";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { revalidatePath } from "next/cache";
 import { TrackingType } from "@prisma/client";
 
 export async function handleToggleFavouriteExercise(exerciseId: string) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -54,7 +54,7 @@ export async function handleAddExerciseToNewRoutine(
   data: NewRoutineFromExercise,
 ) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -109,7 +109,7 @@ export async function handleAddExerciseToExistingRoutine(
   data: UpdateRoutineFromExercise,
 ) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");

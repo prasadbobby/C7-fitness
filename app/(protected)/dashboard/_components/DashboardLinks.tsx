@@ -2,7 +2,7 @@ import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardHeader } from "@nextui-org/card";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 
 export default async function DashboardLinks() {

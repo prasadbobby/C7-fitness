@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { fitbitService } from "@/services/fitbitService";
 import prisma from "@/prisma/prisma";
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // POST - Fetch steps data from Fitbit for specific date range
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 // GET - Get recent steps data
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

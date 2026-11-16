@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 

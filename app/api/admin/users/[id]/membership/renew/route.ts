@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { nowIST, parseISTDate, istToUTC, daysRemainingIST } from "@/utils/timezone";
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export async function POST(
 ) {
   try {
     await requireAdmin();
-    const { userId: adminUserId } = auth();
+    const { userId: adminUserId }  = await auth();
     const { id } = params;
 
     const body: RenewalRequest = await request.json();

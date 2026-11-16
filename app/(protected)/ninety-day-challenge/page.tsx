@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import PageHeading from "@/components/PageHeading/PageHeading";
 import { ChallengeCalendar } from "./_components/ChallengeCalendar";
 import { DailyPostForm } from "./_components/DailyPostForm";

@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import MobileNavbarClient from "./Navbar.client";
 export default async function MobileNavbar() {
   const user = await currentUser();

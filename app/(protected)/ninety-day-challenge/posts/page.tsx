@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import PageHeading from "@/components/PageHeading/PageHeading";
 import { IconChevronRight } from "@tabler/icons-react";
 import Link from "next/link";

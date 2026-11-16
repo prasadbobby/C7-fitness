@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import SidebarNav from "./SidebarNav";
 import SidebarBrand from "./SidebarBrand";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher/ThemeSwitcher";

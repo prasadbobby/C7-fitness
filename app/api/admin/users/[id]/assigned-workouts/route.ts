@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(

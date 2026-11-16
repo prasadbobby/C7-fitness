@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { format } from "date-fns";
 import {
@@ -30,7 +30,7 @@ export default async function DashboardChartWorkoutFrequency({
 }: {
   dateRange?: string;
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

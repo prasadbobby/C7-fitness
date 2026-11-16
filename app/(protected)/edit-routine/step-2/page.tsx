@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import PageHeading from "@/components/PageHeading/PageHeading";
 import StepProgress from "../_components/StepProgress";
@@ -28,7 +28,7 @@ export default async function NewRoutineFormStepTwo({
     equipmentOwned?: string;
   };
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { AssignmentStatus } from "@prisma/client";
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(

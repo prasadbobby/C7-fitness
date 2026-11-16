@@ -1,7 +1,7 @@
 import { IconTarget, IconTargetArrow } from "@tabler/icons-react";
 import DashboardGoalTemplate from "./DashboardGoalTemplate";
 import prisma from "@/prisma/prisma";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { UserGoal, GoalType } from "@prisma/client";
 import { Progress } from "@nextui-org/progress";
 import CreateDashboardGoal from "./CreateDashboardGoal";
@@ -19,7 +19,7 @@ type GoalWithProgress = {
 } & UserGoal;
 
 export default async function DashboardGoals() {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

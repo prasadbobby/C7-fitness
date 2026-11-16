@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminDashboard(params: {
   searchParams: { search?: string };
 }) {
-  if (!checkRole("admin")) {
+  if (!(await checkRole("admin"))) {
     redirect("/");
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
 import { requireAdmin } from "@/utils/adminAuth";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { MembershipStatus, MembershipChangeType } from "@prisma/client";
 import { nowIST, daysRemainingIST, daysBetweenIST, utcToIST, parseISTDate, istToUTC } from "@/utils/timezone";
 
@@ -274,7 +274,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId: adminUserId } = auth();
+    const { userId: adminUserId }  = await auth();
     await requireAdmin();
 
     const { id } = params;

@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import DashboardCardTemplate from "./DashboardCardTemplate";
 import { IconTarget } from "@tabler/icons-react";
 import prisma from "@/prisma/prisma";

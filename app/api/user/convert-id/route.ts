@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { assignC7UserId, getC7UserId } from "@/lib/c7-user-id";
 import prisma from "@/prisma/prisma";
 

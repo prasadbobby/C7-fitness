@@ -1,10 +1,10 @@
-import { auth, currentUser } from "@clerk/nextjs";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { UserRole } from "@prisma/client";
 
 export async function checkAdminAuth(): Promise<{ isAdmin: boolean; userId: string | null; role: UserRole | null }> {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return { isAdmin: false, userId: null, role: null };

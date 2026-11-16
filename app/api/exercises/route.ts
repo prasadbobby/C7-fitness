@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile, rm } from "fs/promises";
@@ -7,7 +7,7 @@ import { join } from "path";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const { userId } = auth();
+  const { userId }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -388,7 +388,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId }  = await auth();
 
     if (!userId) {
       return NextResponse.json(

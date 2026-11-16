@@ -1,12 +1,12 @@
 // DashboardCardDailyStreak.tsx
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import DashboardCardTemplate from "./DashboardCardTemplate";
 import { differenceInCalendarDays } from "date-fns";
 import { IconFlame } from "@tabler/icons-react";
 
 export default async function DashboardCardDailyStreak() {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

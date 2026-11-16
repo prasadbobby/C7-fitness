@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { Prisma } from "@prisma/client";
 import PageHeading from "@/components/PageHeading/PageHeading";
@@ -24,7 +24,7 @@ type ExtendedWorkoutPlan = WorkoutPlan & {
 };
 
 export default async function WorkoutPage() {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

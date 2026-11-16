@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { validateImageForProcessing, estimateBase64Size } from "@/utils/imageCompression";
 

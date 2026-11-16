@@ -48,8 +48,7 @@ export default async function Page({ searchParams }: PageProps) {
                 formFieldHintText: "hidden"
               }
             }}
-            afterSignUpUrl="/dashboard"
-            redirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
           />
         </div>
       </div>
@@ -88,8 +87,7 @@ export default async function Page({ searchParams }: PageProps) {
                 formFieldHintText: "hidden"
               }
             }}
-            afterSignUpUrl="/dashboard"
-            redirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
           />
         </div>
       </div>

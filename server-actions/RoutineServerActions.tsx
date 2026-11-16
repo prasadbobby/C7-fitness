@@ -1,11 +1,11 @@
 "use server";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function handleDeleteRoutine(routineId: string) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -69,7 +69,7 @@ export async function handleDeleteRoutine(routineId: string) {
 
 export async function handleCreateRoutine(data: any) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -120,7 +120,7 @@ export async function handleCreateRoutine(data: any) {
 
 export async function handleEditRoutine(data: any) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -186,7 +186,7 @@ export async function handleCreateRoutineStepOne(
   routineId: string | null,
 ) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -251,7 +251,7 @@ export async function handleAddExerciseToRoutine({
   routineId: string;
 }) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");
@@ -303,7 +303,7 @@ export async function handleRemoveExerciseFromRoutine({
   routineId: string;
 }) {
   try {
-    const { userId }: { userId: string | null } = auth();
+    const { userId }: { userId: string | null }  = await auth();
 
     if (!userId) {
       throw new Error("You must be signed in to view this page.");

@@ -1,6 +1,6 @@
 "use server";
-import { auth } from "@clerk/nextjs";
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
+import { clerkClient } from "@/lib/clerkDirectory";
 import prisma from "@/prisma/prisma";
 import { EquipmentType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -11,7 +11,7 @@ export async function handleUpdateUserDetails(data: {
   lastName: string;
   dateOfBirth?: Date | null;
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -51,7 +51,7 @@ export async function handleUpdateUserMeasurements(data: {
   height: string;
   weight: string;
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -83,7 +83,7 @@ export async function handleUpdateUserMeasurements(data: {
 export async function handleUpdateUserEquipment(
   selectedEquipment: EquipmentType[],
 ) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -116,7 +116,7 @@ export async function handleCreateUserGoal(data: {
   exerciseId: string;
   goalValue: number;
 }) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");
@@ -140,7 +140,7 @@ export async function handleCreateUserGoal(data: {
 }
 
 export async function handleDeleteUserGoal(id: string) {
-  const { userId }: { userId: string | null } = auth();
+  const { userId }: { userId: string | null }  = await auth();
 
   if (!userId) {
     throw new Error("You must be signed in to view this page.");

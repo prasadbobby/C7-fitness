@@ -1,5 +1,5 @@
-import { authMiddleware } from "@clerk/nextjs";
-import { NextResponse, type NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 
@@ -14,46 +14,40 @@ function getSafeBaseUrl(req: NextRequest): string {
   return "https://staging.c7personalfitness.com";
 }
 
-export default authMiddleware({
-  publicRoutes: [
-    "/",
-    "/sign-in",
-    "/sign-up",
-    "/privacy-policy",
-    "/terms",
-    "/locked"
-  ],
-  ignoredRoutes: [
-    "/api/auth/google-fitness/callback",
-    "/api/admin/super-admin-auth",
-    "/api/debug-headers"
-  ],
-  beforeAuth: (req) => {
-    // Block direct access to sign-up unless it's via invitation
-    if (req.nextUrl.pathname === "/sign-up") {
-      const searchParams = req.nextUrl.searchParams;
-      const hasClerkTicket = searchParams.has("__clerk_ticket") && searchParams.has("__clerk_status");
-      const hasInvitationToken = searchParams.has("invitation_token") && searchParams.has("email");
-      const hasRoleParam = searchParams.has("role");
+const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)", "/privacy-policy", "/terms", "/locked"]);
+// Routes that skip Clerk entirely (OAuth callbacks and the super-admin password flow).
+const isIgnoredRoute = createRouteMatcher(["/api/auth/google-fitness/callback", "/api/admin/super-admin-auth(.*)", "/api/debug-headers"]);
 
-      if (!hasClerkTicket && !hasInvitationToken && !hasRoleParam) {
-        // Use hardcoded base URL to avoid header duplication issues
-        return NextResponse.redirect(new URL("/sign-in?error=invitation_required", getSafeBaseUrl(req)));
-      }
+const withClerk = clerkMiddleware(async (auth, req) => {
+  // Block direct access to sign-up unless it's via invitation
+  if (req.nextUrl.pathname === "/sign-up") {
+    const searchParams = req.nextUrl.searchParams;
+    const hasClerkTicket = searchParams.has("__clerk_ticket") && searchParams.has("__clerk_status");
+    const hasInvitationToken = searchParams.has("invitation_token") && searchParams.has("email");
+    const hasRoleParam = searchParams.has("role");
+
+    if (!hasClerkTicket && !hasInvitationToken && !hasRoleParam) {
+      return NextResponse.redirect(new URL("/sign-in?error=invitation_required", getSafeBaseUrl(req)));
     }
-  },
-  async afterAuth(auth, req) {
-    // Redirect unauthenticated users to sign-in for protected routes
-    if (!auth.userId && !auth.isPublicRoute) {
-      // Use hardcoded base URL to avoid header duplication issues
-      const signInUrl = new URL('/sign-in', getSafeBaseUrl(req));
-      signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
+  }
+
+  // Redirect unauthenticated users to sign-in for protected routes
+  if (!isPublicRoute(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      const signInUrl = new URL("/sign-in", getSafeBaseUrl(req));
+      signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);
     }
+  }
 
-    return NextResponse.next();
-  },
+  return NextResponse.next();
 });
+
+export default function middleware(req: NextRequest, ev: NextFetchEvent) {
+  if (isIgnoredRoute(req)) return NextResponse.next();
+  return withClerk(req, ev);
+}
 
 export const config = {
   matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],

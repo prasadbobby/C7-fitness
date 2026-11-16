@@ -24,7 +24,7 @@ async function getSuperAdminEmails(): Promise<string[]> {
   });
 
   // We'll need to get the emails from Clerk since we only store userId in our database
-  const { clerkClient } = await import('@clerk/nextjs');
+  const { clerkClient } = await import("@/lib/clerkDirectory");
   const emails: string[] = [];
   const hardcodedSuperAdmin = "knvdurgaprasad610@gmail.com";
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
       // Get the userId from the database based on email
       // We need to find the super admin by looking up their email in Clerk
-      const { clerkClient } = await import('@clerk/nextjs');
+      const { clerkClient } = await import("@/lib/clerkDirectory");
       let userId = null;
 
       try {
